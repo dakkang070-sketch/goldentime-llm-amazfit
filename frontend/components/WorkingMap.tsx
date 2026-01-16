@@ -162,129 +162,124 @@ const WorkingMap: React.FC<LiveMapProps> = ({ patient, hospital }) => {
         fillOpacity: 1
       }).addTo(mapRef.current);
 
-      // 적당한 크기의 가독성 있는 환자 정보 팝업
+      // 가로 레이아웃 환자 정보 팝업 (사용자 디자인 기반)
       const patientPopupContent = `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; width: 580px; background: #fff;">
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; width: 650px; background: #fff; border-radius: 12px; overflow: hidden;">
           
-          <!-- 환자 헤더 -->
-          <div style="background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white; padding: 14px 16px; text-align: center; margin-bottom: 16px;">
-            <h2 style="margin: 0 0 4px 0; font-size: 18px; font-weight: 600;">${patient.name}</h2>
-            <div style="font-size: 13px; opacity: 0.9;">${patient.age}세 • ${patient.gender === 'M' ? '남성' : patient.gender === 'F' ? '여성' : '기타'} • ${patient.bloodType}형</div>
-          </div>
-
-          <!-- 위치 정보 -->
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
-            <div style="display: flex; align-items: center; margin-bottom: 8px;">
-              <div style="width: 24px; height: 24px; background: #4f46e5; border-radius: 4px; display: flex; align-items: center; justify-content: center; margin-right: 8px;">
-                <span style="color: white; font-size: 12px;">📍</span>
+          <!-- 환자 기본 정보 헤더 (풀폭) -->
+          <div style="padding: 20px 20px 16px 20px; border-bottom: 1px solid #f1f5f9;">
+            <div style="display: flex; align-items: center; margin-bottom: 12px;">
+              <div style="width: 20px; height: 20px; background: #64748b; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 8px;">
+                <span style="color: white; font-size: 11px;">👤</span>
               </div>
-              <h3 style="margin: 0; font-size: 14px; color: #1e293b; font-weight: 600;">위치 정보</h3>
+              <h3 style="margin: 0; font-size: 14px; color: #64748b; font-weight: 500;">환자 기본 정보</h3>
             </div>
-            <div style="font-size: 12px; color: #334155; margin-bottom: 8px;">${patient.detailAddress || patient.location}</div>
-            <div style="display: flex; gap: 8px;">
-              <div style="flex: 1; background: white; padding: 8px; border-radius: 4px; text-align: center;">
-                <div style="font-size: 10px; color: #6b7280;">GPS</div>
-                <div style="font-size: 11px; color: #111827; font-weight: 600;">±${patient.locationData?.gpsLocation?.accuracy || '3.2'}m</div>
-              </div>
-              <div style="flex: 1; background: white; padding: 8px; border-radius: 4px; text-align: center;">
-                <div style="font-size: 10px; color: #6b7280;">셀룰러</div>
-                <div style="font-size: 11px; color: #111827; font-weight: 600;">±${patient.locationData?.cellularLocation?.accuracy || '18.5'}m</div>
-              </div>
-              <div style="flex: 1; background: white; padding: 8px; border-radius: 4px; text-align: center;">
-                <div style="font-size: 10px; color: #6b7280;">WiFi</div>
-                <div style="font-size: 11px; color: #111827; font-weight: 600;">±${patient.locationData?.wifiLocation?.accuracy || '9.7'}m</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 메인 3열 그리드 -->
-          <div style="display: flex; gap: 12px;">
             
-            <!-- 생체 데이터 (좌측) -->
-            <div style="flex: 1;">
-              <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
-                <h3 style="margin: 0 0 10px 0; font-size: 13px; color: #1e293b; font-weight: 600; display: flex; align-items: center;">
-                  <span style="margin-right: 6px;">💓</span>생체 데이터
-                </h3>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                  <div style="text-align: center; padding: 10px; background: #fef2f2; border-radius: 6px;">
-                    <div style="font-size: 10px; color: #991b1b;">심박수</div>
-                    <div style="font-size: 20px; font-weight: 700; color: #dc2626;">${patient.vitals.heartRate}</div>
-                    <div style="font-size: 9px; color: #6b7280;">BPM</div>
-                  </div>
-                  <div style="text-align: center; padding: 10px; background: #eff6ff; border-radius: 6px;">
-                    <div style="font-size: 10px; color: #1d4ed8;">산소포화도</div>
-                    <div style="font-size: 20px; font-weight: 700; color: #2563eb;">${patient.vitals.oxygenLevel}</div>
-                    <div style="font-size: 9px; color: #6b7280;">%</div>
-                  </div>
-                  <div style="text-align: center; padding: 10px; background: #faf5ff; border-radius: 6px;">
-                    <div style="font-size: 10px; color: #7c3aed;">혈압</div>
-                    <div style="font-size: 16px; font-weight: 700; color: #8b5cf6;">${patient.vitals.bloodPressure}</div>
-                    <div style="font-size: 9px; color: #6b7280;">mmHg</div>
-                  </div>
-                  <div style="text-align: center; padding: 10px; background: #fff7ed; border-radius: 6px;">
-                    <div style="font-size: 10px; color: #ea580c;">체온</div>
-                    <div style="font-size: 20px; font-weight: 700; color: #f97316;">${patient.vitals.bodyTemp}</div>
-                    <div style="font-size: 9px; color: #6b7280;">°C</div>
-                  </div>
-                </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="border-left: 4px solid #3b82f6; padding-left: 16px;">
+                <h2 style="margin: 0 0 4px 0; font-size: 20px; color: #1e293b; font-weight: 600;">${patient.name} <span style="font-size: 14px; color: #64748b; font-weight: 400;">${patient.age}세, ${patient.gender === 'M' ? '남성' : patient.gender === 'F' ? '여성' : '기타'} • ${patient.bloodType}형</span></h2>
+              </div>
+              
+              <div style="background: ${patient.status === 'Critical' ? '#fef2f2' : patient.status === 'Serious' ? '#fff7ed' : '#f0fdf4'}; border: 1px solid ${patient.status === 'Critical' ? '#fecaca' : patient.status === 'Serious' ? '#fed7aa' : '#bbf7d0'}; border-radius: 6px; padding: 8px 16px;">
+                <span style="color: ${patient.status === 'Critical' ? '#dc2626' : patient.status === 'Serious' ? '#ea580c' : '#16a34a'}; font-size: 14px; font-weight: 600;">
+                  ${patient.status === 'Critical' ? '위급상태' : patient.status === 'Serious' ? '심각상태' : '안정상태'}
+                  ${patient.severityScore ? ` (위험도 ${patient.severityScore}/10)` : ''}
+                </span>
               </div>
             </div>
+          </div>
 
-            <!-- 상태 분석 (중앙) -->
+          <!-- 메인 컨텐츠 2열 -->
+          <div style="display: flex; gap: 20px; padding: 16px 20px 20px 20px;">
+            
+            <!-- 좌측: 위치 정보 -->
             <div style="flex: 1;">
-              <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
-                <h3 style="margin: 0 0 10px 0; font-size: 13px; color: #1e293b; font-weight: 600; display: flex; align-items: center;">
-                  <span style="margin-right: 6px;">⚡</span>상태 분석
-                </h3>
-                
-                <div style="text-align: center; padding: 14px; background: ${patient.status === 'Critical' ? '#fef2f2' : patient.status === 'Serious' ? '#fff7ed' : '#f0fdf4'}; border-radius: 8px; margin-bottom: 10px;">
-                  <div style="font-size: 24px; margin-bottom: 6px;">
-                    ${patient.status === 'Critical' ? '🔴' : patient.status === 'Serious' ? '🟡' : '🟢'}
+              <div style="margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                  <div style="width: 20px; height: 20px; background: #64748b; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 8px;">
+                    <span style="color: white; font-size: 11px;">📍</span>
                   </div>
-                  <div style="font-size: 14px; font-weight: 600; color: ${patient.status === 'Critical' ? '#dc2626' : patient.status === 'Serious' ? '#ea580c' : '#16a34a'};">
-                    ${patient.status === 'Critical' ? '위급상태' : patient.status === 'Serious' ? '심각상태' : '안정상태'}
-                  </div>
+                  <h4 style="margin: 0; font-size: 14px; color: #64748b; font-weight: 500;">현재 위치</h4>
                 </div>
                 
-                ${patient.severityScore ? `
-                <div style="text-align: center; padding: 10px; background: #fffbeb; border-radius: 6px;">
-                  <div style="font-size: 11px; color: #92400e;">위험도</div>
-                  <div style="font-size: 24px; font-weight: 700; color: #d97706;">${patient.severityScore}<span style="font-size: 14px;">/10</span></div>
-                </div>
-                ` : ''}
-              </div>
-            </div>
-
-            <!-- 증상 & AI 분석 (우측) -->
-            <div style="flex: 1;">
-              <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
-                <h3 style="margin: 0 0 10px 0; font-size: 13px; color: #1e293b; font-weight: 600; display: flex; align-items: center;">
-                  <span style="margin-right: 6px;">🏥</span>증상 & AI
-                </h3>
-                
-                ${patient.symptoms && patient.symptoms.length > 0 ? `
                 <div style="margin-bottom: 10px;">
-                  <h4 style="margin: 0 0 6px 0; font-size: 11px; color: #374151; font-weight: 600;">증상</h4>
-                  <div style="display: flex; flex-wrap: wrap; gap: 4px;">
-                    ${patient.symptoms.map(symptom => `
-                      <span style="display: inline-block; background: #fef2f2; color: #991b1b; padding: 3px 8px; border-radius: 12px; font-size: 10px; border: 1px solid #fecaca;">${symptom}</span>
-                    `).join('')}
-                  </div>
+                  <p style="margin: 0; font-size: 15px; color: #1e293b; line-height: 1.4;">${patient.detailAddress || patient.location}</p>
                 </div>
-                ` : ''}
                 
-                ${patient.aiAnalysis ? `
-                <div>
-                  <h4 style="margin: 0 0 6px 0; font-size: 11px; color: #374151; font-weight: 600;">AI 분석</h4>
-                  <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; padding: 10px;">
-                    <div style="font-size: 11px; color: #0c4a6e; line-height: 1.4;">
-                      ${patient.aiAnalysis.substring(0, 120)}${patient.aiAnalysis.length > 120 ? '...' : ''}
-                    </div>
-                  </div>
+                <div style="font-size: 12px; color: #64748b; line-height: 1.5;">
+                  <div><strong>GPS</strong> ±${patient.locationData?.gpsLocation?.accuracy || '3.2'}m</div>
+                  <div><strong>Cellular</strong> ±${patient.locationData?.cellularLocation?.accuracy || '15.7'}m</div>
+                  <div><strong>WiFi</strong> ±${patient.locationData?.wifiLocation?.accuracy || '8.3'}m</div>
                 </div>
-                ` : ''}
+              </div>
+
+              <!-- 추가 정보 (있는 경우) -->
+              ${patient.symptoms && patient.symptoms.length > 0 ? `
+              <div>
+                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                  <div style="width: 20px; height: 20px; background: #64748b; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 8px;">
+                    <span style="color: white; font-size: 11px;">🏥</span>
+                  </div>
+                  <h4 style="margin: 0; font-size: 14px; color: #64748b; font-weight: 500;">증상</h4>
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                  ${patient.symptoms.map(symptom => `
+                    <span style="display: inline-block; background: #fef2f2; color: #991b1b; padding: 4px 8px; border-radius: 12px; font-size: 11px; border: 1px solid #fecaca;">${symptom}</span>
+                  `).join('')}
+                </div>
+              </div>
+              ` : ''}
+            </div>
+
+            <!-- 우측: 생체 데이터 -->
+            <div style="flex: 1;">
+              <div style="display: flex; align-items: center; margin-bottom: 14px;">
+                <div style="width: 20px; height: 20px; background: #64748b; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 8px;">
+                  <span style="color: white; font-size: 11px;">📊</span>
+                </div>
+                <h4 style="margin: 0; font-size: 14px; color: #64748b; font-weight: 500;">생체 데이터</h4>
+              </div>
+              
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <!-- 심박수 -->
+                <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; text-align: center;">
+                  <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 6px;">
+                    <span style="color: #dc2626; font-size: 14px; margin-right: 4px;">♥</span>
+                    <span style="font-size: 12px; color: #64748b;">심박수</span>
+                  </div>
+                  <div style="font-size: 28px; font-weight: 700; color: #dc2626; margin-bottom: 2px;">${patient.vitals.heartRate}</div>
+                  <div style="font-size: 11px; color: #64748b;">BPM</div>
+                </div>
+                
+                <!-- 산소포화도 -->
+                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; text-align: center;">
+                  <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 6px;">
+                    <span style="color: #2563eb; font-size: 14px; margin-right: 4px;">💧</span>
+                    <span style="font-size: 12px; color: #64748b;">산소포화도</span>
+                  </div>
+                  <div style="font-size: 28px; font-weight: 700; color: #2563eb; margin-bottom: 2px;">${patient.vitals.oxygenLevel}</div>
+                  <div style="font-size: 11px; color: #64748b;">%</div>
+                </div>
+                
+                <!-- 혈압 -->
+                <div style="background: #faf5ff; border: 1px solid #d8b4fe; border-radius: 8px; padding: 16px; text-align: center;">
+                  <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 6px;">
+                    <span style="color: #7c3aed; font-size: 14px; margin-right: 4px;">🩸</span>
+                    <span style="font-size: 12px; color: #64748b;">혈압</span>
+                  </div>
+                  <div style="font-size: 24px; font-weight: 700; color: #7c3aed; margin-bottom: 2px;">${patient.vitals.bloodPressure}</div>
+                  <div style="font-size: 11px; color: #64748b;">mmHg</div>
+                </div>
+                
+                <!-- 체온 -->
+                <div style="background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 16px; text-align: center;">
+                  <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 6px;">
+                    <span style="color: #ea580c; font-size: 14px; margin-right: 4px;">🌡</span>
+                    <span style="font-size: 12px; color: #64748b;">체온</span>
+                  </div>
+                  <div style="font-size: 28px; font-weight: 700; color: #ea580c; margin-bottom: 2px;">${patient.vitals.bodyTemp}</div>
+                  <div style="font-size: 11px; color: #64748b;">°C</div>
+                </div>
               </div>
             </div>
           </div>
@@ -293,13 +288,13 @@ const WorkingMap: React.FC<LiveMapProps> = ({ patient, hospital }) => {
 
       // 클릭 시 팝업 제어
       patientMarker.bindPopup(patientPopupContent, {
-        maxWidth: 600,
-        minWidth: 580,
+        maxWidth: 680,
+        minWidth: 650,
         autoPan: true,
         autoPanPadding: [15, 15],
         keepInView: true,
         closeButton: true,
-        className: 'patient-popup-compact'
+        className: 'patient-popup-horizontal'
       });
       
       // 자동으로 팝업 열기 (환자 클릭 시 즉시 표시)
@@ -458,46 +453,46 @@ const WorkingMap: React.FC<LiveMapProps> = ({ patient, hospital }) => {
           margin: 0 !important;
         }
 
-        .patient-popup-compact .leaflet-popup-content {
+        .patient-popup-horizontal .leaflet-popup-content {
           margin: 0 !important;
           padding: 0 !important;
-          width: 580px !important;
+          width: 650px !important;
           max-width: 95vw !important;
           overflow: visible !important;
           font-size: 13px !important;
         }
 
-        .patient-popup-compact .leaflet-popup-content-wrapper {
+        .patient-popup-horizontal .leaflet-popup-content-wrapper {
           border-radius: 12px !important;
-          box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.08) !important;
           border: 1px solid #e2e8f0 !important;
           background: #ffffff !important;
           padding: 0 !important;
         }
 
-        .patient-popup-compact .leaflet-popup-tip {
+        .patient-popup-horizontal .leaflet-popup-tip {
           background: #ffffff !important;
           border: 1px solid #e2e8f0 !important;
         }
 
-        .patient-popup-compact .leaflet-popup-close-button {
-          color: #64748b !important;
+        .patient-popup-horizontal .leaflet-popup-close-button {
+          color: #94a3b8 !important;
           font-size: 16px !important;
           font-weight: 400 !important;
           padding: 6px !important;
-          width: 28px !important;
-          height: 28px !important;
-          margin: 8px !important;
+          width: 26px !important;
+          height: 26px !important;
+          margin: 10px !important;
           line-height: 1 !important;
           text-decoration: none !important;
-          background: rgba(100, 116, 139, 0.1) !important;
+          background: rgba(148, 163, 184, 0.1) !important;
           border-radius: 6px !important;
           transition: all 0.2s ease !important;
         }
 
-        .patient-popup-compact .leaflet-popup-close-button:hover {
-          background: rgba(100, 116, 139, 0.2) !important;
-          color: #334155 !important;
+        .patient-popup-horizontal .leaflet-popup-close-button:hover {
+          background: rgba(148, 163, 184, 0.2) !important;
+          color: #64748b !important;
         }
       `}</style>
 
