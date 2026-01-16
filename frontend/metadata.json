@@ -1,7 +1,0 @@
-{
-  "name": "LifeSync AI LLM v0.1",
-  "description": "Gemini AI를 활용하여 웨어러블 기기의 실시간 데이터를 분석하고 최적의 병원을 매칭하는 고성능 응급 대응 관리 시스템입니다.",
-  "requestFramePermissions": [
-    "geolocation"
-  ]
-}

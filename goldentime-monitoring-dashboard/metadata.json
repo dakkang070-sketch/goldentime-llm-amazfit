@@ -1,7 +1,0 @@
-{
-  "name": "GoldenTime AI Emergency Monitoring Dashboard",
-  "description": "A professional, real-time dark-themed monitoring dashboard for a 24/7 emergency medical system using AI. Features system health grids, live performance charts, hospital network status, and an emergency alert system.",
-  "requestFramePermissions": [
-    "geolocation"
-  ]
-}
