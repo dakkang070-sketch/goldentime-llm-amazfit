@@ -5,7 +5,7 @@ const rateLimit = require('express-rate-limit');
  */
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15분
-  max: 1000, // 최대 1000 요청 (개발용)
+  max: 10000, // 최대 10000 요청 (개발용으로 대폭 완화)
   message: {
     success: false,
     message: '너무 많은 요청이 발생했습니다. 잠시 후 다시 시도해주세요.'

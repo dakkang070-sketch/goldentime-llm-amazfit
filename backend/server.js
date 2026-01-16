@@ -83,26 +83,32 @@ if (process.env.ENABLE_REALTIME_BIOSIGNAL === 'true') {
   }, 8000); // 품질 관리 시스템 후 1초 대기
 }
 
-// 지능형 병원 매칭 및 국립중앙의료원 API 자동 갱신 시스템 시작
-if (process.env.ENABLE_HOSPITAL_MATCHING === 'true' && process.env.NEDC_API_SERVICE_KEY) {
-  const nedcApiService = require('./services/nedcApiService');
+// 지능형 병원 매칭 및 API 자동 갱신 시스템 시작 - 항상 활성화
+if (true) { // process.env.ENABLE_HOSPITAL_MATCHING === 'true'
   setTimeout(async () => {
     try {
-      // 국립중앙의료원 API 자동 갱신 스케줄러 시작
-      nedcApiService.startAutoRefreshScheduler();
+      // NEDC API (국립중앙의료원) 스케줄러 시작
+      if (process.env.NEDC_API_SERVICE_KEY) {
+        const nedcApiService = require('./services/nedcApiService');
+        nedcApiService.startAutoRefreshScheduler();
+        
+        // 초기 병원 데이터 동기화 (서버 시작 30초 후)
+        setTimeout(async () => {
+          try {
+            logger.info('🔄 초기 NEDC 병원 데이터 동기화 시작');
+            await nedcApiService.syncHospitalData(1, 100);
+            logger.info('✅ 초기 NEDC 병원 데이터 동기화 완료');
+          } catch (error) {
+            logger.warn('⚠️ 초기 NEDC 병원 데이터 동기화 실패 (스케줄러에서 재시도 예정)', { error: error.message });
+          }
+        }, 30000);
+      }
       
-      // 초기 병원 데이터 동기화 (서버 시작 30초 후)
-      setTimeout(async () => {
-        try {
-          logger.info('🔄 초기 병원 데이터 동기화 시작');
-          await nedcApiService.syncHospitalData(1, 100);
-          logger.info('✅ 초기 병원 데이터 동기화 완료');
-        } catch (error) {
-          logger.warn('⚠️  초기 병원 데이터 동기화 실패 (스케줄러에서 재시도 예정)', { error: error.message });
-        }
-      }, 30000);
-
-      logger.info('🏥 지능형 병원 매칭 시스템 및 NEDC API 자동 갱신 활성화됨');
+      // HIRA API (건강보험심사평가원) 스케줄러 시작 (30분 주기) - 전국 병원 데이터 로딩
+      const hiraApiService = require('./services/hiraApiService');
+      hiraApiService.startAutoRefreshScheduler();
+      
+      logger.info('🏥 지능형 병원 매칭 시스템 및 API 자동 갱신 활성화됨');
     } catch (error) {
       logger.error('❌ 병원 매칭 시스템 시작 실패', { error });
     }

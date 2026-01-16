@@ -41,6 +41,40 @@ export interface Vitals {
   stressLevel?: number;
 }
 
+export interface LocationData {
+  gpsLocation?: {
+    lat: number;
+    lng: number;
+    accuracy: number; // 미터 단위
+    timestamp: string;
+    source: 'smartwatch' | 'mobile_gps';
+  };
+  cellularLocation?: {
+    lat: number;
+    lng: number;
+    accuracy: number; // 미터 단위
+    timestamp: string;
+    cellTowerId: string;
+    signalStrength: number;
+  };
+  wifiLocation?: {
+    lat: number;
+    lng: number;
+    accuracy: number; // 미터 단위
+    timestamp: string;
+    connectedBssid: string;
+    nearbyAPs: number;
+  };
+  fusedLocation: {
+    lat: number;
+    lng: number;
+    accuracy: number; // 융합된 최종 정확도
+    confidence: number; // 0-100% 신뢰도
+    algorithm: 'multimodal_fusion';
+    timestamp: string;
+  };
+}
+
 export interface Patient {
   id: string;
   name: string;
@@ -51,8 +85,10 @@ export interface Patient {
   gender: 'M' | 'F' | 'O';
   status: PatientStatus;
   location: string;
+  detailAddress?: string;
   lat: number;
   lng: number;
+  locationData?: LocationData; // 멀티모달 위치 데이터
   vitals: Vitals;
   symptoms: string[];
   aiAnalysis?: string | null;
@@ -60,6 +96,8 @@ export interface Patient {
   recommendedHospitalId?: string;
   matchedAmbulanceId?: string;
   severityScore?: number;
+  hospitalMatchReason?: string;
+  hospitalMatchedAt?: string;
 }
 
 export interface Hospital {
@@ -79,6 +117,10 @@ export interface Hospital {
   distance: string | number;
   isEROpen: boolean;
   activeTraumaLevel: number;
+  phone?: string;
+  emergencyPhone?: string;
+  equipment?: any;
+  lastUpdated?: string;
 }
 
 export interface FireStation {

@@ -244,6 +244,18 @@ router.get('/engines', async (req, res) => {
           memoryUsage: '156MB',
           expiredToday: await getExpiredCacheCount()
         }
+      },
+      {
+        id: 'hira_api_integration',
+        name: 'HIRA API 통합 시스템',
+        status: await checkHiraApiStatus(),
+        icon: 'hospital',
+        metrics: {
+          cacheStatus: await getHiraCacheStatus(),
+          lastUpdate: await getHiraLastUpdate(),
+          cachedHospitals: await getHiraCachedHospitalsCount(),
+          schedulerStatus: 'ACTIVE'
+        }
       }
     ];
 
@@ -511,5 +523,50 @@ async function getActiveRequestsCount() { return 12; }
 async function checkDBConnection() { return 'CONNECTED'; }
 async function getAvgQueryTime() { return '45ms'; }
 async function getActiveDBConnections() { return 8; }
+
+// HIRA API 관련 헬퍼 함수들
+async function checkHiraApiStatus() {
+  try {
+    const hiraApiService = require('../services/hiraApiService');
+    const cacheStatus = hiraApiService.getCacheStatus();
+    return cacheStatus.schedulerRunning && cacheStatus.valid > 0 ? 'ACTIVE' : 'WARNING';
+  } catch (error) {
+    return 'ERROR';
+  }
+}
+
+async function getHiraCacheStatus() {
+  try {
+    const hiraApiService = require('../services/hiraApiService');
+    const status = hiraApiService.getCacheStatus();
+    return `${status.valid}개 유효 / ${status.total}개 전체`;
+  } catch (error) {
+    return 'N/A';
+  }
+}
+
+async function getHiraLastUpdate() {
+  try {
+    const hiraApiService = require('../services/hiraApiService');
+    const status = hiraApiService.getCacheStatus();
+    if (status.total > 0) {
+      const nextUpdate = Math.ceil((30 * 60 * 1000 - (Date.now() % (30 * 60 * 1000))) / 60000);
+      return `${nextUpdate}분 후 갱신`;
+    }
+    return '미실행';
+  } catch (error) {
+    return 'N/A';
+  }
+}
+
+async function getHiraCachedHospitalsCount() {
+  try {
+    const hiraApiService = require('../services/hiraApiService');
+    const status = hiraApiService.getCacheStatus();
+    return status.valid || 0;
+  } catch (error) {
+    return 0;
+  }
+}
 
 module.exports = router;

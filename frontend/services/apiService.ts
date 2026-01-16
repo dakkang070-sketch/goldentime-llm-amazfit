@@ -1,5 +1,5 @@
 class ApiService {
-  private baseUrl = 'http://localhost:3005/api';
+  private baseUrl = 'http://localhost:3000/api';
   private token: string | null = null;
 
   setToken(token: string) {
@@ -91,6 +91,19 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(patientData || {})
     });
+  }
+
+  // AI 병원 매칭 요청
+  async matchHospital(patientId: string, patientData?: any) {
+    return this.request(`/emergency/${patientId}/match-hospital`, {
+      method: 'POST',
+      body: JSON.stringify(patientData || {})
+    });
+  }
+
+  // 지도용 실시간 병원 데이터 조회
+  async getMapHospitals() {
+    return this.request('/emergency/hospitals/map-data');
   }
 }
 

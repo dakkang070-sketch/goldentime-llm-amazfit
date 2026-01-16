@@ -322,6 +322,7 @@ export const INITIAL_PATIENTS: Patient[] = [
     gender: 'M',
     status: PatientStatus.CRITICAL,
     location: '강남구 강남대로 396',
+    detailAddress: '강남구 강남대로 396 강남파이낸스센터 12층 1205호',
     lat: 37.4979 + (Math.random() - 0.5) * 0.01,
     lng: 127.0276 + (Math.random() - 0.5) * 0.01,
     symptoms: ['심박 변이 감지', '충격 감지'],
@@ -363,6 +364,39 @@ export const INITIAL_PATIENTS: Patient[] = [
       gyro: { x: 2.1, y: 1.8, z: 0.5 },
       networkStatus: 'Connected',
       positioningStatus: 'Locked'
+    },
+    locationData: {
+      gpsLocation: {
+        lat: 37.4979,
+        lng: 127.0276,
+        accuracy: 3.2,
+        timestamp: new Date(Date.now() - 2000).toISOString(),
+        source: 'smartwatch'
+      },
+      cellularLocation: {
+        lat: 37.4976,
+        lng: 127.0279,
+        accuracy: 15.7,
+        timestamp: new Date(Date.now() - 1500).toISOString(),
+        cellTowerId: 'KT-GN-001-4567',
+        signalStrength: -68
+      },
+      wifiLocation: {
+        lat: 37.4981,
+        lng: 127.0274,
+        accuracy: 8.3,
+        timestamp: new Date(Date.now() - 1000).toISOString(),
+        connectedBssid: '00:1B:2F:A2:BA:08',
+        nearbyAPs: 12
+      },
+      fusedLocation: {
+        lat: 37.4979,
+        lng: 127.0276,
+        accuracy: 2.8,
+        confidence: 94,
+        algorithm: 'multimodal_fusion',
+        timestamp: new Date().toISOString()
+      }
     }
   },
   {
@@ -375,6 +409,7 @@ export const INITIAL_PATIENTS: Patient[] = [
     gender: 'F',
     status: PatientStatus.STABLE,
     location: '마포구 양화로 160',
+    detailAddress: '마포구 양화로 160 한화비즈메트로 8층 803호',
     lat: 37.5575 + (Math.random() - 0.5) * 0.01,
     lng: 126.9245 + (Math.random() - 0.5) * 0.01,
     symptoms: ['정상 모니터링'],
@@ -415,6 +450,39 @@ export const INITIAL_PATIENTS: Patient[] = [
       gyro: { x: 0.1, y: 0.1, z: 0.1 },
       networkStatus: 'Connected',
       positioningStatus: 'Locked'
+    },
+    locationData: {
+      gpsLocation: {
+        lat: 37.5575,
+        lng: 126.9245,
+        accuracy: 4.1,
+        timestamp: new Date(Date.now() - 3000).toISOString(),
+        source: 'smartwatch'
+      },
+      cellularLocation: {
+        lat: 37.5572,
+        lng: 126.9248,
+        accuracy: 22.4,
+        timestamp: new Date(Date.now() - 2500).toISOString(),
+        cellTowerId: 'KT-MP-002-8901',
+        signalStrength: -72
+      },
+      wifiLocation: {
+        lat: 37.5577,
+        lng: 126.9243,
+        accuracy: 12.8,
+        timestamp: new Date(Date.now() - 1800).toISOString(),
+        connectedBssid: '00:2B:4F:C3:DA:12',
+        nearbyAPs: 18
+      },
+      fusedLocation: {
+        lat: 37.5575,
+        lng: 126.9245,
+        accuracy: 3.6,
+        confidence: 91,
+        algorithm: 'multimodal_fusion',
+        timestamp: new Date().toISOString()
+      }
     }
   },
   {
@@ -427,6 +495,7 @@ export const INITIAL_PATIENTS: Patient[] = [
     gender: 'M',
     status: PatientStatus.URGENT,
     location: '송파구 올림픽로 300',
+    detailAddress: '송파구 올림픽로 300 롯데월드타워 오피스텔 42층 4205호',
     lat: 37.5126 + (Math.random() - 0.5) * 0.01,
     lng: 127.1025 + (Math.random() - 0.5) * 0.01,
     symptoms: ['경도 빈맥', '스트레스 반응'],
@@ -468,6 +537,39 @@ export const INITIAL_PATIENTS: Patient[] = [
       gyro: { x: 1.2, y: 0.8, z: 0.3 },
       networkStatus: 'Connected',
       positioningStatus: 'Locked'
+    },
+    locationData: {
+      gpsLocation: {
+        lat: 37.5126,
+        lng: 127.1025,
+        accuracy: 2.9,
+        timestamp: new Date(Date.now() - 1500).toISOString(),
+        source: 'smartwatch'
+      },
+      cellularLocation: {
+        lat: 37.5123,
+        lng: 127.1028,
+        accuracy: 18.6,
+        timestamp: new Date(Date.now() - 2000).toISOString(),
+        cellTowerId: 'SKT-SP-003-5432',
+        signalStrength: -65
+      },
+      wifiLocation: {
+        lat: 37.5128,
+        lng: 127.1022,
+        accuracy: 7.4,
+        timestamp: new Date(Date.now() - 1200).toISOString(),
+        connectedBssid: '00:4C:5E:F1:BB:20',
+        nearbyAPs: 25
+      },
+      fusedLocation: {
+        lat: 37.5126,
+        lng: 127.1025,
+        accuracy: 2.5,
+        confidence: 96,
+        algorithm: 'multimodal_fusion',
+        timestamp: new Date().toISOString()
+      }
     }
   },
   {
@@ -480,6 +582,7 @@ export const INITIAL_PATIENTS: Patient[] = [
     gender: 'F',
     status: PatientStatus.CRITICAL,
     location: '서대문구 연세로 13',
+    detailAddress: '서대문구 연세로 13 연세의료원 신촌세브란스병원 응급의학과',
     lat: 37.5585 + (Math.random() - 0.5) * 0.01,
     lng: 126.9372 + (Math.random() - 0.5) * 0.01,
     symptoms: ['낙상 감지', '의식저하 의심'],
@@ -534,6 +637,39 @@ export const INITIAL_PATIENTS: Patient[] = [
       gyro: { x: 8.5, y: 6.2, z: 4.1 },
       networkStatus: 'Connected',
       positioningStatus: 'Locked'
+    },
+    locationData: {
+      gpsLocation: {
+        lat: 37.5585,
+        lng: 126.9372,
+        accuracy: 4.5,
+        timestamp: new Date(Date.now() - 4000).toISOString(),
+        source: 'smartwatch'
+      },
+      cellularLocation: {
+        lat: 37.5582,
+        lng: 126.9375,
+        accuracy: 28.3,
+        timestamp: new Date(Date.now() - 3500).toISOString(),
+        cellTowerId: 'LG-SDM-001-7891',
+        signalStrength: -75
+      },
+      wifiLocation: {
+        lat: 37.5587,
+        lng: 126.9369,
+        accuracy: 15.2,
+        timestamp: new Date(Date.now() - 2800).toISOString(),
+        connectedBssid: '00:8A:7F:E4:CC:35',
+        nearbyAPs: 8
+      },
+      fusedLocation: {
+        lat: 37.5585,
+        lng: 126.9372,
+        accuracy: 3.8,
+        confidence: 89,
+        algorithm: 'multimodal_fusion',
+        timestamp: new Date().toISOString()
+      }
     }
   },
   {
@@ -546,6 +682,7 @@ export const INITIAL_PATIENTS: Patient[] = [
     gender: 'F',
     status: PatientStatus.STABLE,
     location: '종로구 종로 129',
+    detailAddress: '종로구 종로 129 교보빌딩 지하2층 교보문고 카페',
     lat: 37.5704 + (Math.random() - 0.5) * 0.01,
     lng: 126.9922 + (Math.random() - 0.5) * 0.01,
     symptoms: ['정상 모니터링'],
@@ -586,6 +723,236 @@ export const INITIAL_PATIENTS: Patient[] = [
       gyro: { x: 0.2, y: 0.1, z: 0.1 },
       networkStatus: 'Connected',
       positioningStatus: 'Locked'
+    },
+    locationData: {
+      gpsLocation: {
+        lat: 37.5704,
+        lng: 126.9922,
+        accuracy: 3.7,
+        timestamp: new Date(Date.now() - 1800).toISOString(),
+        source: 'smartwatch'
+      },
+      cellularLocation: {
+        lat: 37.5701,
+        lng: 126.9925,
+        accuracy: 20.1,
+        timestamp: new Date(Date.now() - 2200).toISOString(),
+        cellTowerId: 'SKT-JNR-004-9876',
+        signalStrength: -70
+      },
+      wifiLocation: {
+        lat: 37.5706,
+        lng: 126.9920,
+        accuracy: 9.8,
+        timestamp: new Date(Date.now() - 1600).toISOString(),
+        connectedBssid: '00:9D:8B:A7:DE:45',
+        nearbyAPs: 15
+      },
+      fusedLocation: {
+        lat: 37.5704,
+        lng: 126.9922,
+        accuracy: 3.2,
+        confidence: 92,
+        algorithm: 'multimodal_fusion',
+        timestamp: new Date().toISOString()
+      }
+    }
+  },
+  {
+    id: 'p2901847329584',
+    name: '최수진',
+    age: 28,
+    birthDate: '1995-08-22',
+    bloodType: 'O-',
+    imageUrl: 'https://i.pravatar.cc/150?u=p2901847329584',
+    gender: 'F',
+    status: PatientStatus.CRITICAL,
+    location: '마포구 월드컵로 240',
+    detailAddress: '마포구 월드컵로 240 월드컵파크 6단지 602동 1504호',
+    lat: 37.5569 + (Math.random() - 0.5) * 0.01,
+    lng: 126.9075 + (Math.random() - 0.5) * 0.01,
+    symptoms: ['심한 호흡곤란', '천식 발작', '청색증'],
+    severityScore: 4,
+    aiAnalysis: `**🚨 호흡기 응급상황**
+
+📋 **주요 소견:**
+• 심한 저산소혈증 82%
+• 빈호흡 및 호흡곤란
+• 천식 급성악화 의심
+
+🔍 **분석 결과:**
+• 28세 여성 천식 발작
+• 기관지 경련 및 기도 폐쇄
+• 즉시 산소공급 및 기관지 확장제 필요
+
+📌 **권고 사항:**
+• 응급 기도확보 준비
+• 인공호흡기 대기
+• 중환자실 직행 필요`,
+    vitals: {
+      heartRate: 135,
+      bloodPressure: '140/85',
+      oxygenLevel: 82,
+      bodyTemp: 37.1,
+      lastUpdated: new Date().toISOString(),
+      history: Array.from({ length: 15 }, (_, i) => ({
+        time: new Date(Date.now() - (15 - i) * 4000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        hr: 130 + Math.floor(Math.random() * 12),
+        spo2: 80 + Math.floor(Math.random() * 5)
+      })),
+      ecgPattern: 'Sinus Tachycardia',
+      fallDetected: false,
+      activityContext: 'Emergency',
+      bloodGlucose: 110,
+      hrv: 12,
+      restingHR: 68,
+      pai: 95,
+      stressLevel: 95,
+      calories: 80,
+      steps: 120,
+      acc: { x: 0.2, y: 0.3, z: 0.8 },
+      gyro: { x: 3.2, y: 2.8, z: 1.5 },
+      networkStatus: 'Connected',
+      positioningStatus: 'Locked'
+    },
+    locationData: {
+      gpsLocation: {
+        lat: 37.5569,
+        lng: 126.9075,
+        accuracy: 5.2,
+        timestamp: new Date(Date.now() - 2500).toISOString(),
+        source: 'smartwatch'
+      },
+      cellularLocation: {
+        lat: 37.5566,
+        lng: 126.9078,
+        accuracy: 32.7,
+        timestamp: new Date(Date.now() - 3000).toISOString(),
+        cellTowerId: 'KT-MP-005-3456',
+        signalStrength: -77
+      },
+      wifiLocation: {
+        lat: 37.5571,
+        lng: 126.9072,
+        accuracy: 11.6,
+        timestamp: new Date(Date.now() - 2100).toISOString(),
+        connectedBssid: '00:6F:4A:B2:EF:58',
+        nearbyAPs: 22
+      },
+      fusedLocation: {
+        lat: 37.5569,
+        lng: 126.9075,
+        accuracy: 4.1,
+        confidence: 88,
+        algorithm: 'multimodal_fusion',
+        timestamp: new Date().toISOString()
+      }
+    }
+  },
+  {
+    id: 'p3492857394827',
+    name: '박영호',
+    age: 72,
+    birthDate: '1951-11-03',
+    bloodType: 'B+',
+    imageUrl: 'https://i.pravatar.cc/150?u=p3492857394827',
+    gender: 'M',
+    status: PatientStatus.CRITICAL,
+    location: '종로구 종로 1',
+    detailAddress: '종로구 종로 1 종각역 지하상가 2번 출구 인근',
+    lat: 37.5700 + (Math.random() - 0.5) * 0.01,
+    lng: 126.9850 + (Math.random() - 0.5) * 0.01,
+    symptoms: ['두부외상', '의식저하', '낙상사고'],
+    severityScore: 5,
+    aiAnalysis: `**🚨 외상 응급상황**
+
+📋 **주요 소견:**
+• 두부외상 및 의식저하
+• 낙상으로 인한 다발성 외상
+• 뇌압상승 가능성
+
+🔍 **분석 결과:**
+• 72세 고령 남성 중증외상
+• 외상성 뇌출혈 의심
+• 경추손상 위험도 높음
+
+📌 **권고 사항:**
+• 즉시 CT/MRI 촬영 필요
+• 신경외과 응급수술 대기
+• 외상센터 직행 필수
+
+🔴 **낙상 감지**
+
+📋 **위험요소:**
+• 고령자 다발성 외상
+• 뇌출혈 및 골절 동반 가능성
+
+🔍 **검토사항:**
+• 외상성 뇌손상 Grade III 이상
+• 경추 안정화 필요
+• 복강내 출혈 배제검사
+
+📌 **즉시 조치:**
+• 경추고정 유지
+• 외상센터 응급수술실 준비`,
+    vitals: {
+      heartRate: 98,
+      bloodPressure: '180/110',
+      oxygenLevel: 88,
+      bodyTemp: 36.8,
+      lastUpdated: new Date().toISOString(),
+      history: Array.from({ length: 15 }, (_, i) => ({
+        time: new Date(Date.now() - (15 - i) * 4000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        hr: 95 + Math.floor(Math.random() * 8),
+        spo2: 85 + Math.floor(Math.random() * 6)
+      })),
+      ecgPattern: 'Normal',
+      fallDetected: true,
+      activityContext: 'Fall Detected',
+      bloodGlucose: 160,
+      hrv: 25,
+      restingHR: 72,
+      pai: 20,
+      stressLevel: 70,
+      calories: 45,
+      steps: 80,
+      acc: { x: 0.8, y: 0.6, z: 0.2 },
+      gyro: { x: 5.2, y: 4.1, z: 3.8 },
+      networkStatus: 'Connected',
+      positioningStatus: 'Locked'
+    },
+    locationData: {
+      gpsLocation: {
+        lat: 37.5700,
+        lng: 126.9850,
+        accuracy: 6.8,
+        timestamp: new Date(Date.now() - 5000).toISOString(),
+        source: 'smartwatch'
+      },
+      cellularLocation: {
+        lat: 37.5697,
+        lng: 126.9853,
+        accuracy: 45.2,
+        timestamp: new Date(Date.now() - 4500).toISOString(),
+        cellTowerId: 'LG-JNR-002-1234',
+        signalStrength: -82
+      },
+      wifiLocation: {
+        lat: 37.5702,
+        lng: 126.9847,
+        accuracy: 18.9,
+        timestamp: new Date(Date.now() - 3800).toISOString(),
+        connectedBssid: '00:3B:9C:F6:AB:71',
+        nearbyAPs: 6
+      },
+      fusedLocation: {
+        lat: 37.5700,
+        lng: 126.9850,
+        accuracy: 5.3,
+        confidence: 85,
+        algorithm: 'multimodal_fusion',
+        timestamp: new Date().toISOString()
+      }
     }
   }
 ];

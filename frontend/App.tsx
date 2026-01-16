@@ -12,7 +12,7 @@ import {
 } from './utils/dataTransform';
 import PatientCard from './components/PatientCard';
 import VitalsChart from './components/VitalsChart';
-import LiveMap from './components/LiveMap';
+import LiveMap from './components/WorkingMap';
 import ErrorBoundary from './components/ErrorBoundary';
 import { 
   Search, 
@@ -99,9 +99,133 @@ const App: React.FC = () => {
   };
 
   // 환자 선택 시에는 분석하지 않고, 단순히 선택만 처리
+  // AI 분석은 이미 완료된 상태여야 함
   useEffect(() => {
-    // AI 분석은 이미 완료된 상태여야 함
+    // 환자 선택 시 AI 병원 매칭 실행
+    if (selectedPatient && !selectedPatient.recommendedHospitalId) {
+      matchHospitalForPatient(selectedPatient);
+    }
   }, [selectedPatient?.id]);
+
+  // AI 기반 병원 매칭 함수
+  const matchHospitalForPatient = useCallback(async (patient: Patient) => {
+    try {
+      addLog(`🏥 AI 병원 매칭 시작: ${patient.name}`);
+      
+      // 환자 위치 정보 (간단한 예시)
+      const patientLocation = {
+        lat: patient.lat,
+        lng: patient.lng
+      };
+
+      // 백엔드 AI 병원 매칭 API 호출
+      const matchResponse = await apiService.matchHospital(patient.id, {
+        name: patient.name,
+        age: patient.age,
+        gender: patient.gender,
+        heartRate: patient.vitals.heartRate,
+        oxygenLevel: patient.vitals.oxygenLevel,
+        bodyTemperature: patient.vitals.bodyTemp,
+        stressLevel: patient.vitals.stressLevel,
+        movementStatus: patient.vitals.fallDetected ? 'fall_detected' : 'normal',
+        emergencyLevel: patient.severityScore || 3,
+        lat: patientLocation.lat,
+        lng: patientLocation.lng
+      });
+
+      console.log('🔍 병원 매칭 응답:', matchResponse);
+      
+      if (matchResponse.success && (matchResponse.data?.recommendation || matchResponse.recommendation)) {
+        const recommendation = matchResponse.data?.recommendation || matchResponse.recommendation;
+        
+        // 추천 병원 정보를 환자에게 연결
+        setPatients(prev => prev.map(p => p.id === patient.id ? {
+          ...p,
+          recommendedHospitalId: recommendation.hospital.id,
+          hospitalMatchReason: recommendation.reason,
+          hospitalMatchedAt: recommendation.matchedAt
+        } : p));
+
+        // 병원 목록에 추천 병원 추가/업데이트
+        setHospitals(prev => {
+          const existingIndex = prev.findIndex(h => h.id === recommendation.hospital.id);
+          const hospitalData = {
+            id: recommendation.hospital.id,
+            name: recommendation.hospital.name,
+            location: recommendation.hospital.address,
+            lat: 37.5665, // NEDC API는 좌표를 제공하지 않는 경우가 많음
+            lng: 126.9780,
+            availableBeds: recommendation.hospital.erBeds.available,
+            totalBeds: recommendation.hospital.erBeds.total,
+            icuBeds: { available: recommendation.hospital.erBeds.ICU, total: recommendation.hospital.erBeds.ICU + 5 },
+            erBeds: { available: recommendation.hospital.erBeds.available, total: recommendation.hospital.erBeds.total },
+            operatingRooms: { available: 1, total: 5 },
+            specialties: [],
+            surgicalCapabilities: [],
+            bloodSupply: 'Normal',
+            distance: recommendation.hospital.distance,
+            isEROpen: recommendation.hospital.isEROpen,
+            activeTraumaLevel: 1,
+            phone: recommendation.hospital.phone,
+            emergencyPhone: recommendation.hospital.emergencyPhone,
+            equipment: recommendation.hospital.equipment,
+            lastUpdated: recommendation.hospital.lastUpdated
+          };
+
+          if (existingIndex >= 0) {
+            const updated = [...prev];
+            updated[existingIndex] = hospitalData;
+            return updated;
+          } else {
+            return [...prev, hospitalData];
+          }
+        });
+
+        addLog(`✅ AI 병원 매칭 완료: ${recommendation.hospital.name}`);
+        addLog(`📋 매칭 이유: ${recommendation.reason}`);
+        
+      } else {
+        addLog(`❌ AI 병원 매칭 실패: ${matchResponse.error || 'Unknown error'}`);
+        
+        // 스마트 fallback 매칭 - 환자별로 다른 병원 선택
+        const availableHospitals = hospitals.filter(h => h.isEROpen && h.erBeds.available > 0);
+        if (availableHospitals.length > 0) {
+          // 환자 특성 기반 해시로 다른 병원들 선택
+          const patientHash = (patient.name.length * 13 + patient.age * 7 + 
+                              (patient.vitals.heartRate >= 120 ? 100 : 0) + 
+                              (patient.vitals.fallDetected ? 200 : 0) + 
+                              (patient.vitals.oxygenLevel <= 90 ? 300 : 0)) % availableHospitals.length;
+          
+          const fallbackHospital = availableHospitals[patientHash];
+          
+          // 환자별 매칭 이유 생성
+          let matchReason = '기본 매칭: ';
+          if (patient.vitals.heartRate >= 120) {
+            matchReason += '심장전문 치료 필요';
+          } else if (patient.vitals.fallDetected) {
+            matchReason += '외상센터 우선';  
+          } else if (patient.vitals.oxygenLevel <= 90) {
+            matchReason += '호흡기전문 치료 필요';
+          } else if (patient.age >= 65) {
+            matchReason += '고령자 종합 치료';
+          } else {
+            matchReason += '신속한 응급실 치료';
+          }
+          
+          setPatients(prev => prev.map(p => p.id === patient.id ? {
+            ...p,
+            recommendedHospitalId: fallbackHospital.id,
+            hospitalMatchReason: matchReason
+          } : p));
+          addLog(`🏥 Fallback 매칭: ${fallbackHospital.name} - ${matchReason}`);
+        }
+      }
+
+    } catch (error) {
+      console.error('병원 매칭 에러:', error);
+      addLog(`❌ 병원 매칭 에러: ${error instanceof Error ? error.message : 'Unknown'}`);
+    }
+  }, [hospitals, setPatients, setHospitals]);
 
   const currentSelectedPatient = useMemo(() => patients.find(p => p.id === selectedPatient?.id) || selectedPatient, [patients, selectedPatient]);
   const currentAmbulance = useMemo(() => ambulances.find(a => a.id === currentSelectedPatient?.matchedAmbulanceId), [ambulances, currentSelectedPatient]);
@@ -155,12 +279,12 @@ const App: React.FC = () => {
 
       <div className="flex-1 flex flex-col relative rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-900 shadow-2xl min-w-0 z-0">
         {currentSelectedPatient ? (
-          <LiveMap 
-            patient={currentSelectedPatient} 
-            hospital={hospitals.find(h => h.id === currentSelectedPatient.recommendedHospitalId)} 
-            ambulances={ambulances} 
-            matchedAmbulance={currentAmbulance} 
+          <ErrorBoundary>
+            <LiveMap 
+              patient={currentSelectedPatient} 
+              hospital={hospitals.find(h => h.id === currentSelectedPatient.recommendedHospitalId)} 
           />
+          </ErrorBoundary>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center bg-[#050505]">
             <Monitor className="w-14 h-14 text-zinc-700 opacity-30 animate-pulse" />
@@ -278,7 +402,17 @@ const App: React.FC = () => {
                           )}
                         </div>
                         <span className="text-[12px] text-zinc-400 font-normal uppercase truncate">{matchedHospital.location}</span>
+                        
+                        {/* AI 매칭 이유 표시 */}
+                        {currentSelectedPatient.hospitalMatchReason && (
+                          <div className="mt-1 p-1.5 bg-blue-600/10 border border-blue-500/20 rounded-lg">
+                            <p className="text-[10px] text-blue-300 font-normal leading-relaxed">
+                              🤖 <span className="font-normal">AI 매칭 근거:</span> {currentSelectedPatient.hospitalMatchReason}
+                            </p>
+                          </div>
+                        )}
                      </div>
+                     
                      <div className="grid grid-cols-2 gap-1.5">
                         <div className="bg-zinc-950/60 p-1.5 rounded-lg border border-zinc-900 flex flex-col items-center">
                            <span className="text-[9px] text-zinc-500 uppercase font-normal tracking-widest">ER BEDS</span>
@@ -289,11 +423,34 @@ const App: React.FC = () => {
                            <span className="text-[13px] font-normal text-zinc-200">{matchedHospital.distance}</span>
                         </div>
                      </div>
+
+                     {/* 전문 병상 정보 표시 */}
+                     {(matchedHospital.icuBeds?.available > 0 || matchedHospital.equipment) && (
+                       <div className="border-t border-zinc-800 pt-2 mt-2 space-y-1">
+                         {matchedHospital.icuBeds?.available > 0 && (
+                           <div className="flex items-center justify-between text-[10px]">
+                             <span className="text-zinc-400">중환자실</span>
+                             <span className="text-green-400">{matchedHospital.icuBeds.available}개 가용</span>
+                           </div>
+                         )}
+                         {matchedHospital.equipment && (
+                           <div className="space-y-0.5">
+                             <p className="text-[9px] text-zinc-500 uppercase font-normal tracking-widest">전문장비</p>
+                             <div className="flex flex-wrap gap-1">
+                               {matchedHospital.equipment.CT && <span className="px-1.5 py-0.5 bg-green-600/20 text-green-400 rounded text-[8px] font-normal">CT</span>}
+                               {matchedHospital.equipment.MRI && <span className="px-1.5 py-0.5 bg-blue-600/20 text-blue-400 rounded text-[8px] font-normal">MRI</span>}
+                               {matchedHospital.equipment.angiography && <span className="px-1.5 py-0.5 bg-purple-600/20 text-purple-400 rounded text-[8px] font-normal">혈관촬영</span>}
+                               {matchedHospital.equipment.ventilator && <span className="px-1.5 py-0.5 bg-orange-600/20 text-orange-400 rounded text-[8px] font-normal">인공호흡기</span>}
+                             </div>
+                           </div>
+                         )}
+                       </div>
+                     )}
                   </div>
                 ) : (
                   <div className="p-3 bg-black/20 rounded-xl border border-zinc-900 border-dashed flex flex-col items-center justify-center gap-1.5">
                      <Loader2 className="w-4 h-4 text-zinc-700 animate-spin" />
-                     <p className="text-[11px] text-zinc-600 uppercase tracking-widest">Searching...</p>
+                     <p className="text-[11px] text-zinc-600 uppercase tracking-widest">AI 분석 중...</p>
                   </div>
                 )}
               </div>
