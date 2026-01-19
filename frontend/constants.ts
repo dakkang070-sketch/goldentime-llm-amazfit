@@ -320,14 +320,14 @@ export const INITIAL_PATIENTS: Patient[] = [
     bloodType: 'A+',
     imageUrl: 'https://i.pravatar.cc/150?u=p1768471409791',
     gender: 'M',
-    status: PatientStatus.CRITICAL,
+    status: PatientStatus.PENDING,
     location: '강남구 강남대로 396',
     detailAddress: '강남구 강남대로 396 강남파이낸스센터 12층 1205호',
     lat: 37.4979 + (Math.random() - 0.5) * 0.01,
     lng: 127.0276 + (Math.random() - 0.5) * 0.01,
     symptoms: ['심박 변이 감지', '충격 감지'],
     severityScore: 5,
-    aiAnalysis: `**🚨 응급상황**
+    aiAnalysis: `**🚨 응급상황 (병원 매칭 중...)**
 
 📋 **주요 소견:**
 • 심한 빈맥 163bpm (최대심박수 87%)
@@ -337,8 +337,8 @@ export const INITIAL_PATIENTS: Patient[] = [
 • 34세 남성 심혈관계 위험
 • 폐렴, 천식악화, 심부전 의심
 
-📌 **권고 사항:**
-• 즉시 응급실 이송 및 중환자실 준비`,
+📌 **시스템 조치:**
+• **최적 병원 실시간 탐색 및 수용 가능 여부 확인 중**`,
     vitals: {
       heartRate: 163,
       bloodPressure: '150/100',
@@ -407,24 +407,23 @@ export const INITIAL_PATIENTS: Patient[] = [
     bloodType: 'B+',
     imageUrl: 'https://i.pravatar.cc/150?u=p1768471409792',
     gender: 'F',
-    status: PatientStatus.STABLE,
+    status: PatientStatus.PENDING,
     location: '마포구 양화로 160',
     detailAddress: '마포구 양화로 160 한화비즈메트로 8층 803호',
     lat: 37.5575 + (Math.random() - 0.5) * 0.01,
     lng: 126.9245 + (Math.random() - 0.5) * 0.01,
     symptoms: ['정상 모니터링'],
     severityScore: 2,
-    aiAnalysis: `**✅ 안정적 상태**
+    aiAnalysis: `**✅ 안정적 상태 (관찰 중...)**
 
 📋 **주요 소견:**
 • 28세 여성 정상범위
 
 🔍 **분석 결과:**
 • 심박수 60-100bpm, 산소포화도 >95%
-• 연령대 기준 적절한 수준 유지
 
-📌 **권고 사항:**
-• 예방적 관찰 지속`,
+📌 **시스템 조치:**
+• **예방적 모니터링 및 인근 병원 현황 실시간 업데이트 중**`,
     vitals: {
       heartRate: 78,
       bloodPressure: '110/70',
@@ -493,14 +492,14 @@ export const INITIAL_PATIENTS: Patient[] = [
     bloodType: 'O+',
     imageUrl: 'https://i.pravatar.cc/150?u=p1768471409793',
     gender: 'M',
-    status: PatientStatus.URGENT,
+    status: PatientStatus.PENDING,
     location: '송파구 올림픽로 300',
     detailAddress: '송파구 올림픽로 300 롯데월드타워 오피스텔 42층 4205호',
     lat: 37.5126 + (Math.random() - 0.5) * 0.01,
     lng: 127.1025 + (Math.random() - 0.5) * 0.01,
     symptoms: ['경도 빈맥', '스트레스 반응'],
     severityScore: 3,
-    aiAnalysis: `**💡 주의 징후**
+    aiAnalysis: `**💡 주의 징후 (병원 대기 정보 확인 중...)**
 
 📋 **주요 소견:**
 • 경도 빈맥 112bpm (+37bpm)
@@ -508,10 +507,9 @@ export const INITIAL_PATIENTS: Patient[] = [
 
 🔍 **분석 결과:**
 • 탈수, 불안, 초기 감염 가능성
-• 불안장애 또는 환경 스트레스
 
-📌 **권고 사항:**
-• 지속 모니터링 및 관제 확인`,
+📌 **시스템 조치:**
+• **인근 응급실 병상 가용성 실시간 매칭 중**`,
     vitals: {
       heartRate: 112,
       bloodPressure: '130/85',
@@ -580,14 +578,14 @@ export const INITIAL_PATIENTS: Patient[] = [
     bloodType: 'AB+',
     imageUrl: 'https://i.pravatar.cc/150?u=p1768471409794',
     gender: 'F',
-    status: PatientStatus.CRITICAL,
+    status: PatientStatus.PENDING,
     location: '서대문구 연세로 13',
     detailAddress: '서대문구 연세로 13 연세의료원 신촌세브란스병원 응급의학과',
     lat: 37.5585 + (Math.random() - 0.5) * 0.01,
     lng: 126.9372 + (Math.random() - 0.5) * 0.01,
     symptoms: ['낙상 감지', '의식저하 의심'],
     severityScore: 4,
-    aiAnalysis: `**⚠️ 위급상황**
+    aiAnalysis: `**⚠️ 위급상황 (병원 긴급 매칭 중...)**
 
 📋 **주요 소견:**
 • 스트레스성 빈맥 127bpm (73%)
@@ -595,23 +593,10 @@ export const INITIAL_PATIENTS: Patient[] = [
 
 🔍 **분석 결과:**
 • 부정맥 또는 심부전 가능성
-• 폐렴, 천식악화, 심부전 의심
+• 낙상으로 인한 외상성 뇌손상 위험
 
-📌 **권고 사항:**
-• 신속한 의료진 평가 및 검사
-
-🔴 **낙상 감지**
-
-📋 **위험요소:**
-• 고령자 고위험군
-
-🔍 **검토사항:**
-• 외상성 뇌손상 가능성
-• 골절 및 내출혈 위험
-• 의식수준 평가 필요
-
-📌 **즉시 조치:**
-• 경추고정 및 영상검사 시행`,
+📌 **시스템 조치:**
+• **권역외상센터 긴급 수용 요청 및 구급차 배정 중**`,
     vitals: {
       heartRate: 127,
       bloodPressure: '160/95',
@@ -680,24 +665,23 @@ export const INITIAL_PATIENTS: Patient[] = [
     bloodType: 'A-',
     imageUrl: 'https://i.pravatar.cc/150?u=p1768471409795',
     gender: 'F',
-    status: PatientStatus.STABLE,
+    status: PatientStatus.PENDING,
     location: '종로구 종로 129',
     detailAddress: '종로구 종로 129 교보빌딩 지하2층 교보문고 카페',
     lat: 37.5704 + (Math.random() - 0.5) * 0.01,
     lng: 126.9922 + (Math.random() - 0.5) * 0.01,
     symptoms: ['정상 모니터링'],
     severityScore: 2,
-    aiAnalysis: `**✅ 안정적 상태**
+    aiAnalysis: `**✅ 안정적 상태 (매칭 대기...)**
 
 📋 **주요 소견:**
 • 35세 여성 정상범위
 
 🔍 **분석 결과:**
 • 심박수 60-100bpm, 산소포화도 >95%
-• 연령대 기준 적절한 수준 유지
 
-📌 **권고 사항:**
-• 예방적 관찰 지속`,
+📌 **시스템 조치:**
+• **인근 응급 의료기관 가용 병상 실시간 모니터링 중**`,
     vitals: {
       heartRate: 82,
       bloodPressure: '115/75',
@@ -766,29 +750,25 @@ export const INITIAL_PATIENTS: Patient[] = [
     bloodType: 'O-',
     imageUrl: 'https://i.pravatar.cc/150?u=p2901847329584',
     gender: 'F',
-    status: PatientStatus.CRITICAL,
+    status: PatientStatus.PENDING,
     location: '마포구 월드컵로 240',
     detailAddress: '마포구 월드컵로 240 월드컵파크 6단지 602동 1504호',
     lat: 37.5569 + (Math.random() - 0.5) * 0.01,
     lng: 126.9075 + (Math.random() - 0.5) * 0.01,
     symptoms: ['심한 호흡곤란', '천식 발작', '청색증'],
     severityScore: 4,
-    aiAnalysis: `**🚨 호흡기 응급상황**
+    aiAnalysis: `**🚨 호흡기 응급상황 (병원 긴급 탐색 중...)**
 
 📋 **주요 소견:**
 • 심한 저산소혈증 82%
 • 빈호흡 및 호흡곤란
-• 천식 급성악화 의심
 
 🔍 **분석 결과:**
 • 28세 여성 천식 발작
 • 기관지 경련 및 기도 폐쇄
-• 즉시 산소공급 및 기관지 확장제 필요
 
-📌 **권고 사항:**
-• 응급 기도확보 준비
-• 인공호흡기 대기
-• 중환자실 직행 필요`,
+📌 **시스템 조치:**
+• **호흡기 내과 전문의 상주 및 인공호흡기 가용 병원 실시간 매칭 중**`,
     vitals: {
       heartRate: 135,
       bloodPressure: '140/85',
@@ -857,44 +837,25 @@ export const INITIAL_PATIENTS: Patient[] = [
     bloodType: 'B+',
     imageUrl: 'https://i.pravatar.cc/150?u=p3492857394827',
     gender: 'M',
-    status: PatientStatus.CRITICAL,
+    status: PatientStatus.PENDING,
     location: '종로구 종로 1',
     detailAddress: '종로구 종로 1 종각역 지하상가 2번 출구 인근',
     lat: 37.5700 + (Math.random() - 0.5) * 0.01,
     lng: 126.9850 + (Math.random() - 0.5) * 0.01,
     symptoms: ['두부외상', '의식저하', '낙상사고'],
     severityScore: 5,
-    aiAnalysis: `**🚨 외상 응급상황**
+    aiAnalysis: `**🚨 외상 응급상황 (중증외상센터 매칭 중...)**
 
 📋 **주요 소견:**
 • 두부외상 및 의식저하
 • 낙상으로 인한 다발성 외상
-• 뇌압상승 가능성
 
 🔍 **분석 결과:**
 • 72세 고령 남성 중증외상
 • 외상성 뇌출혈 의심
-• 경추손상 위험도 높음
 
-📌 **권고 사항:**
-• 즉시 CT/MRI 촬영 필요
-• 신경외과 응급수술 대기
-• 외상센터 직행 필수
-
-🔴 **낙상 감지**
-
-📋 **위험요소:**
-• 고령자 다발성 외상
-• 뇌출혈 및 골절 동반 가능성
-
-🔍 **검토사항:**
-• 외상성 뇌손상 Grade III 이상
-• 경추 안정화 필요
-• 복강내 출혈 배제검사
-
-📌 **즉시 조치:**
-• 경추고정 유지
-• 외상센터 응급수술실 준비`,
+📌 **시스템 조치:**
+• **즉시 수술 가능한 신경외과 및 외상센터 실시간 매칭 중**`,
     vitals: {
       heartRate: 98,
       bloodPressure: '180/110',
@@ -965,36 +926,24 @@ export const INITIAL_PATIENTS: Patient[] = [
     bloodType: 'A+',
     imageUrl: 'https://i.pravatar.cc/150?u=p_alcohol_001',
     gender: 'M',
-    status: PatientStatus.URGENT,
+    status: PatientStatus.PENDING,
     location: '강남구 테헤란로 152',
     detailAddress: '강남구 테헤란로 152 강남파이낸스플라자 18층 회식장소',
     lat: 37.5040 + (Math.random() - 0.5) * 0.01,
     lng: 127.0395 + (Math.random() - 0.5) * 0.01,
     symptoms: ['음주 상태 감지', '심박수 증가', '체온 상승', '균형감각 저하'],
     severityScore: 3,
-    aiAnalysis: `**🍷 음주 상태 감지**
+    aiAnalysis: `**🍷 음주 상태 감지 (모니터링 및 매칭 중...)**
 
 📋 **주요 소견:**
 • 심박수 95bpm (평상시 대비 +31.9%)
-• 스트레스 지수 55/100 (+35 증가)
 • 체온 37.3°C (+0.8°C 상승)
-• HRV 30ms (33% 감소)
 
 🔍 **음주 분석 결과:**
 • 32세 남성 중등도 음주 상태
-• 알코올로 인한 교감신경계 활성화
-• 혈관 확장으로 인한 체온 상승
-• 심박변이도 현저한 감소
 
-📌 **권고 사항:**
-• 운전 및 위험 활동 절대 금지
-• 안전한 장소에서 휴식 필요
-• 수분 섭취 및 지속 모니터링
-• 추가 음주 절대 금지
-
-🚨 **즉시 조치:**
-• 보호자 연락 및 안전 확보
-• 생체신호 지속 모니터링`,
+📌 **시스템 조치:**
+• **안전 이송 가능한 구급차 및 인근 응급실 매칭 중**`,
     vitals: {
       heartRate: 95,
       bloodPressure: '135/88',
@@ -1065,14 +1014,14 @@ export const INITIAL_PATIENTS: Patient[] = [
     bloodType: 'O+',
     imageUrl: 'https://i.pravatar.cc/150?u=p_drug_002',
     gender: 'M',
-    status: PatientStatus.CRITICAL,
+    status: PatientStatus.PENDING, // 병원 매칭 중 상태
     location: '용산구 한강로3가 16-95',
     detailAddress: '용산구 한강로3가 16-95 용산역 화장실 근처',
     lat: 37.5299 + (Math.random() - 0.5) * 0.01,
     lng: 126.9649 + (Math.random() - 0.5) * 0.01,
     symptoms: ['각성제 사용 의심', '극심한 심박수 증가', '체온 급상승', '과다활동', '발한'],
     severityScore: 5,
-    aiAnalysis: `**💊 각성제 사용 응급상황**
+    aiAnalysis: `**💊 각성제 사용 응급상황 (병원 매칭 중...)**
 
 📋 **주요 소견:**
 • 심박수 145bpm (극심한 빈맥)
@@ -1086,11 +1035,10 @@ export const INITIAL_PATIENTS: Patient[] = [
 • 교감신경계 극도 활성화 상태
 • 심혈관계 응급상황 위험
 
-📌 **긴급 조치 필요:**
-• 즉시 응급실 이송
-• 심전도 및 체온 모니터링
-• 수액공급 및 체온조절
-• 중독 치료 전문의 상담
+📌 **시스템 조치:**
+• **현재 전문 독성학 센터 및 응급수술 가능 병원 실시간 탐색 중**
+• 주변 10km 이내 권역외상센터(서울대, 세브란스 등) 수용 가능 여부 통신 중
+• 구급차 배정 및 최적 이송 경로 시뮬레이션 중
 
 🚨 **위험 요소:**
 • 심근경색 위험 극대화
@@ -1168,37 +1116,24 @@ export const INITIAL_PATIENTS: Patient[] = [
     bloodType: 'B-',
     imageUrl: 'https://i.pravatar.cc/150?u=p_psychoactive_003',
     gender: 'F',
-    status: PatientStatus.URGENT,
+    status: PatientStatus.PENDING,
     location: '서초구 반포대로 222',
     detailAddress: '서초구 반포대로 222 래미안퍼스티지 101동 2304호',
     lat: 37.5049 + (Math.random() - 0.5) * 0.01,
     lng: 127.0034 + (Math.random() - 0.5) * 0.01,
     symptoms: ['의식 저하', '각성도 감소', '호흡 억제', '움직임 둔화', '반응성 저하'],
     severityScore: 4,
-    aiAnalysis: `**🧠 향정신성약물 사용 감지**
+    aiAnalysis: `**🧠 향정신성약물 사용 감지 (중독 치료 병원 매칭 중...)**
 
 📋 **주요 소견:**
 • 심박수 62bpm (점진적 감소)
-• 각성도 12/100 (현저한 저하)
 • 호흡수 11회/분 (호흡 억제)
-• 움직임 활동 90% 감소
 
 🔍 **CNS 억제 분석:**
 • 29세 여성 벤조디아제핀계 약물 의심
-• 중추신경계 억제 패턴 확인
-• 점진적 CNS 기능 저하
-• 호흡중추 억제 징후 관찰
 
-📌 **의료 조치 권고:**
-• 즉시 중독치료 전문의 상담
-• 호흡 상태 지속 모니터링 필수
-• 해독 치료 프로토콜 준비
-• 갑작스러운 약물 중단 금지
-
-🚨 **위험 요소:**
-• 호흡 억제로 인한 저산소증 위험
-• 의식수준 추가 저하 가능성
-• 금단 증상 발생 위험`,
+📌 **시스템 조치:**
+• **호흡 유지 보조가 가능한 해독 전문 의료기관 실시간 매칭 중**`,
     vitals: {
       heartRate: 62,
       bloodPressure: '105/68',

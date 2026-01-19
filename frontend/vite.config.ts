@@ -6,8 +6,14 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
       server: {
-        port: 3000,
-        host: '0.0.0.0',
+        port: 3001,
+        host: true, // 모든 네트워크 인터페이스 허용
+        allowedHosts: [
+          'localhost',
+          '.ngrok-free.dev',
+          '.ngrok.io',
+          'erodable-unexudative-marlys.ngrok-free.dev'
+        ],
       },
       plugins: [react()],
       define: {

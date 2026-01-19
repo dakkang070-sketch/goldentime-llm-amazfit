@@ -272,6 +272,7 @@ server.listen(PORT, () => {
   });
   console.log(`🚀 서버가 포트 ${PORT}에서 실행 중입니다.`);
   console.log(`📡 WebSocket 실시간 통신 활성화됨`);
+  console.log(`🌐 외부 접속을 원할 경우 ngrok 또는 터널링 서비스를 사용하세요.`);
 });
 
 module.exports = { app, server };

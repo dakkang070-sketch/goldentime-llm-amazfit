@@ -76,10 +76,10 @@ const PatientCard: React.FC<PatientCardProps> = memo(({ patient, onClick, isSele
       </div>
       
       <div className="mt-auto h-7 flex flex-col justify-end">
-        {isMatching ? (
+        {(isMatching || patient.status === PatientStatus.PENDING) ? (
           <div className="bg-purple-600/5 px-2 py-0.5 rounded-lg border border-purple-500/10">
              <div className="flex items-center justify-between mb-0.5">
-                <span className="text-[11px] font-normal text-purple-400 uppercase tracking-widest animate-pulse">Matching</span>
+                <span className="text-[11px] font-normal text-purple-400 uppercase tracking-widest animate-pulse">Matching Hospital</span>
                 <Loader2 className="w-3 h-3 text-purple-500 animate-spin" />
              </div>
              <div className="h-0.5 bg-zinc-950 rounded-full overflow-hidden">
@@ -101,9 +101,13 @@ const PatientCard: React.FC<PatientCardProps> = memo(({ patient, onClick, isSele
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-between bg-zinc-950/60 px-2 py-1 rounded-lg border border-zinc-800 border-dashed">
-             <span className="text-[12px] text-zinc-400 font-normal uppercase tracking-widest">Awaiting Analysis</span>
-             <div className="w-2 h-2 rounded-full bg-zinc-800"></div>
+          <div className="flex items-center justify-between bg-zinc-950/40 px-2 py-1 rounded-lg border border-zinc-800/50 border-dashed">
+             <span className="text-[12px] text-zinc-500 font-normal uppercase tracking-widest animate-pulse">Awaiting Analysis</span>
+             <div className="flex gap-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-500/50 animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-500/50 animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-500/50 animate-bounce" style={{ animationDelay: '300ms' }}></div>
+             </div>
           </div>
         )}
       </div>
