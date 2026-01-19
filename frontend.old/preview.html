@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>골든타임 LLM 관제센터 - 미리보기</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #0a0e27;
+            color: #e0e0e0;
+            overflow: hidden;
+        }
+        .header {
+            background: #1a1f3a;
+            padding: 1rem 2rem;
+            border-bottom: 2px solid #2a3f5f;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            color: #4fc3f7;
+            font-size: 1.5rem;
+        }
+        .status-indicator {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4caf50;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .main-container {
+            display: flex;
+            height: calc(100vh - 80px);
+            overflow: hidden;
+        }
+        .sidebar {
+            width: 350px;
+            background: #1a1f3a;
+            border-right: 2px solid #2a3f5f;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+        .map-container {
+            flex: 1;
+            background: #0f1420;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #888;
+            font-size: 1.2rem;
+        }
+        .search-input {
+            width: 100%;
+            padding: 0.75rem;
+            background: #252b42;
+            border: 1px solid #2a3f5f;
+            border-radius: 6px;
+            color: #e0e0e0;
+            margin-bottom: 0.5rem;
+        }
+        .filter-buttons {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .filter-select {
+            flex: 1;
+            padding: 0.5rem;
+            background: #252b42;
+            border: 1px solid #2a3f5f;
+            border-radius: 6px;
+            color: #e0e0e0;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .stat-card {
+            background: #252b42;
+            border: 1px solid #2a3f5f;
+            border-radius: 8px;
+            padding: 0.75rem;
+            text-align: center;
+        }
+        .stat-card .value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #4fc3f7;
+        }
+        .stat-card .label {
+            font-size: 0.75rem;
+            color: #b0b0b0;
+            margin-top: 0.25rem;
+        }
+        .case-card {
+            background: #252b42;
+            border: 1px solid #2a3f5f;
+            border-left: 4px solid #f44336;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .case-card:hover {
+            border-color: #4fc3f7;
+            transform: translateX(4px);
+        }
+        .case-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        .emergency-level {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            background: #f44336;
+            color: white;
+        }
+        .case-info {
+            font-size: 0.875rem;
+            color: #b0b0b0;
+        }
+        .case-info div {
+            margin-bottom: 0.25rem;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            background: #ff9800;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>골든타임 LLM 관제센터</h1>
+        <div class="status-indicator">
+            <div class="status-dot"></div>
+            <span>실시간 모니터링 중</span>
+            <button style="padding: 0.5rem 1rem; background: #2a3f5f; color: #e0e0e0; border: none; border-radius: 6px; cursor: pointer; margin-left: 1rem;">
+                로그아웃
+            </button>
+        </div>
+    </div>
+    
+    <div class="main-container">
+        <div class="sidebar">
+            <h3 style="margin-bottom: 1rem; color: #4fc3f7;">활성 응급 상황</h3>
+            
+            <!-- 검색 및 필터 -->
+            <input type="text" class="search-input" placeholder="검색 (이름, 전화번호, 병원명...)" />
+            <div class="filter-buttons">
+                <select class="filter-select">
+                    <option>전체 상태</option>
+                    <option>감지됨</option>
+                    <option>진행중</option>
+                </select>
+                <select class="filter-select">
+                    <option>전체 응급도</option>
+                    <option>5단계</option>
+                    <option>4단계</option>
+                </select>
+            </div>
+            
+            <!-- 통계 카드 -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="value">5</div>
+                    <div class="label">전체</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value" style="color: #f44336;">2</div>
+                    <div class="label">5단계</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value" style="color: #ff9800;">2</div>
+                    <div class="label">4단계</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value" style="color: #ffc107;">1</div>
+                    <div class="label">3단계</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value" style="color: #4fc3f7;">3</div>
+                    <div class="label">진행중</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value" style="color: #66bb6a;">1</div>
+                    <div class="label">이송중</div>
+                </div>
+            </div>
+            
+            <!-- 케이스 목록 -->
+            <div class="case-card">
+                <div class="case-header">
+                    <strong style="color: #e0e0e0;">홍길동</strong>
+                    <span class="emergency-level">5단계</span>
+                </div>
+                <div class="case-info">
+                    <div>
+                        <span class="status-badge">위급</span>
+                    </div>
+                    <div>
+                        <span style="color: #4fc3f7;">응급구조사:</span> 김응급 <span style="color: #888;">(수락)</span>
+                    </div>
+                    <div>
+                        <span style="color: #4caf50;">병원:</span> 서울대병원
+                    </div>
+                    <div style="margin-top: 0.5rem; font-size: 0.75rem; color: #888;">
+                        2024-01-14 16:30:00
+                    </div>
+                </div>
+            </div>
+            
+            <div class="case-card" style="border-left-color: #ff9800;">
+                <div class="case-header">
+                    <strong style="color: #e0e0e0;">이영희</strong>
+                    <span class="emergency-level" style="background: #ff9800;">4단계</span>
+                </div>
+                <div class="case-info">
+                    <div>
+                        <span class="status-badge" style="background: #2196f3;">진행중</span>
+                    </div>
+                    <div>
+                        <span style="color: #4fc3f7;">응급구조사:</span> 박구조 <span style="color: #888;">(도착)</span>
+                    </div>
+                    <div style="margin-top: 0.5rem; font-size: 0.75rem; color: #888;">
+                        2024-01-14 16:25:00
+                    </div>
+                </div>
+            </div>
+            
+            <div class="case-card" style="border-left-color: #ff9800;">
+                <div class="case-header">
+                    <strong style="color: #e0e0e0;">김철수</strong>
+                    <span class="emergency-level" style="background: #ff9800;">4단계</span>
+                </div>
+                <div class="case-info">
+                    <div>
+                        <span class="status-badge" style="background: #66bb6a;">이송중</span>
+                    </div>
+                    <div>
+                        <span style="color: #4caf50;">병원:</span> 세브란스병원
+                    </div>
+                    <div style="margin-top: 0.5rem; font-size: 0.75rem; color: #888;">
+                        2024-01-14 16:20:00
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="map-container">
+            <div style="text-align: center;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">🗺️</div>
+                <div>OpenStreetMap 지도 영역</div>
+                <div style="font-size: 0.875rem; color: #666; margin-top: 1rem;">
+                    🔴 환자 위치 | 🔵 응급구조사 | 🟢 병원
+                </div>
+                <div style="font-size: 0.875rem; color: #666; margin-top: 0.5rem;">
+                    실제 실행 시 지도와 마커가 표시됩니다
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
