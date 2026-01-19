@@ -954,5 +954,310 @@ export const INITIAL_PATIENTS: Patient[] = [
         timestamp: new Date().toISOString()
       }
     }
+  },
+
+  // 🍷 음주 환자 - 심박수 상승, 체온 상승, 스트레스 증가
+  {
+    id: 'p_alcohol_001',
+    name: '이주현',
+    age: 32,
+    birthDate: '1991-04-15',
+    bloodType: 'A+',
+    imageUrl: 'https://i.pravatar.cc/150?u=p_alcohol_001',
+    gender: 'M',
+    status: PatientStatus.URGENT,
+    location: '강남구 테헤란로 152',
+    detailAddress: '강남구 테헤란로 152 강남파이낸스플라자 18층 회식장소',
+    lat: 37.5040 + (Math.random() - 0.5) * 0.01,
+    lng: 127.0395 + (Math.random() - 0.5) * 0.01,
+    symptoms: ['음주 상태 감지', '심박수 증가', '체온 상승', '균형감각 저하'],
+    severityScore: 3,
+    aiAnalysis: `**🍷 음주 상태 감지**
+
+📋 **주요 소견:**
+• 심박수 95bpm (평상시 대비 +31.9%)
+• 스트레스 지수 55/100 (+35 증가)
+• 체온 37.3°C (+0.8°C 상승)
+• HRV 30ms (33% 감소)
+
+🔍 **음주 분석 결과:**
+• 32세 남성 중등도 음주 상태
+• 알코올로 인한 교감신경계 활성화
+• 혈관 확장으로 인한 체온 상승
+• 심박변이도 현저한 감소
+
+📌 **권고 사항:**
+• 운전 및 위험 활동 절대 금지
+• 안전한 장소에서 휴식 필요
+• 수분 섭취 및 지속 모니터링
+• 추가 음주 절대 금지
+
+🚨 **즉시 조치:**
+• 보호자 연락 및 안전 확보
+• 생체신호 지속 모니터링`,
+    vitals: {
+      heartRate: 95,
+      bloodPressure: '135/88',
+      oxygenLevel: 96,
+      bodyTemp: 37.3,
+      lastUpdated: new Date().toISOString(),
+      history: Array.from({ length: 15 }, (_, i) => ({
+        time: new Date(Date.now() - (15 - i) * 4000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        hr: 90 + Math.floor(Math.random() * 12), // 변동성 있는 상승 패턴
+        spo2: 95 + Math.floor(Math.random() * 3)
+      })),
+      ecgPattern: 'Mild Tachycardia',
+      fallDetected: false,
+      activityContext: 'Alcohol Influenced',
+      bloodGlucose: 85, // 알코올로 인한 저혈당 경향
+      hrv: 30, // 감소된 HRV
+      restingHR: 72,
+      pai: 45,
+      stressLevel: 55, // 상승된 스트레스
+      calories: 220, // 음주로 인한 칼로리
+      steps: 3200,
+      acc: { x: 0.3, y: 0.4, z: 0.7 }, // 불안정한 움직임
+      gyro: { x: 2.8, y: 3.2, z: 2.1 },
+      networkStatus: 'Connected',
+      positioningStatus: 'Locked'
+    },
+    locationData: {
+      gpsLocation: {
+        lat: 37.5040,
+        lng: 127.0395,
+        accuracy: 4.2,
+        timestamp: new Date(Date.now() - 1200).toISOString(),
+        source: 'smartwatch'
+      },
+      cellularLocation: {
+        lat: 37.5037,
+        lng: 127.0398,
+        accuracy: 18.3,
+        timestamp: new Date(Date.now() - 1800).toISOString(),
+        cellTowerId: 'SKT-GN-007-8899',
+        signalStrength: -69
+      },
+      wifiLocation: {
+        lat: 37.5042,
+        lng: 127.0392,
+        accuracy: 8.7,
+        timestamp: new Date(Date.now() - 1000).toISOString(),
+        connectedBssid: '00:7E:3A:C8:FF:92',
+        nearbyAPs: 28
+      },
+      fusedLocation: {
+        lat: 37.5040,
+        lng: 127.0395,
+        accuracy: 3.1,
+        confidence: 93,
+        algorithm: 'multimodal_fusion',
+        timestamp: new Date().toISOString()
+      }
+    }
+  },
+
+  // 💊 마약 환자 (각성제) - 심박수 급상승, 극도의 불규칙성, 과다활동
+  {
+    id: 'p_drug_002',
+    name: '김태민',
+    age: 26,
+    birthDate: '1997-09-08',
+    bloodType: 'O+',
+    imageUrl: 'https://i.pravatar.cc/150?u=p_drug_002',
+    gender: 'M',
+    status: PatientStatus.CRITICAL,
+    location: '용산구 한강로3가 16-95',
+    detailAddress: '용산구 한강로3가 16-95 용산역 화장실 근처',
+    lat: 37.5299 + (Math.random() - 0.5) * 0.01,
+    lng: 126.9649 + (Math.random() - 0.5) * 0.01,
+    symptoms: ['각성제 사용 의심', '극심한 심박수 증가', '체온 급상승', '과다활동', '발한'],
+    severityScore: 5,
+    aiAnalysis: `**💊 각성제 사용 응급상황**
+
+📋 **주요 소견:**
+• 심박수 145bpm (극심한 빈맥)
+• 체온 38.7°C (고열 상태)
+• HRV 18ms (심각한 감소)
+• 극도의 불규칙 패턴
+
+🔍 **마약 분석 결과:**
+• 26세 남성 각성제 사용 강력 의심
+• 메스암페타민 또는 코카인 패턴
+• 교감신경계 극도 활성화 상태
+• 심혈관계 응급상황 위험
+
+📌 **긴급 조치 필요:**
+• 즉시 응급실 이송
+• 심전도 및 체온 모니터링
+• 수액공급 및 체온조절
+• 중독 치료 전문의 상담
+
+🚨 **위험 요소:**
+• 심근경색 위험 극대화
+• 뇌출혈 가능성
+• 발작 위험 상존
+• 탈수 및 전해질 불균형`,
+    vitals: {
+      heartRate: 145,
+      bloodPressure: '165/105',
+      oxygenLevel: 93,
+      bodyTemp: 38.7,
+      lastUpdated: new Date().toISOString(),
+      history: Array.from({ length: 15 }, (_, i) => ({
+        time: new Date(Date.now() - (15 - i) * 4000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        // 불규칙한 스파이크 패턴 시뮬레이션
+        hr: 120 + Math.floor(Math.random() * 40) + (Math.random() > 0.7 ? 25 : 0), 
+        spo2: 91 + Math.floor(Math.random() * 4)
+      })),
+      ecgPattern: 'Severe Tachycardia',
+      fallDetected: false,
+      activityContext: 'Hyperactive',
+      bloodGlucose: 140, // 스트레스성 혈당 상승
+      hrv: 18, // 매우 낮은 HRV
+      restingHR: 75,
+      pai: 98, // 극도로 높은 활동지수
+      stressLevel: 95, // 최고 수준 스트레스
+      calories: 450, // 과다활동으로 높은 칼로리 소모
+      steps: 8500, // 과다활동
+      acc: { x: 0.8, y: 1.2, z: 0.4 }, // 격렬한 움직임
+      gyro: { x: 12.5, y: 8.7, z: 6.3 }, // 불규칙한 회전
+      networkStatus: 'Connected',
+      positioningStatus: 'Locked'
+    },
+    locationData: {
+      gpsLocation: {
+        lat: 37.5299,
+        lng: 126.9649,
+        accuracy: 8.5,
+        timestamp: new Date(Date.now() - 800).toISOString(),
+        source: 'smartwatch'
+      },
+      cellularLocation: {
+        lat: 37.5296,
+        lng: 126.9652,
+        accuracy: 35.7,
+        timestamp: new Date(Date.now() - 1200).toISOString(),
+        cellTowerId: 'KT-YS-001-5566',
+        signalStrength: -74
+      },
+      wifiLocation: {
+        lat: 37.5301,
+        lng: 126.9646,
+        accuracy: 22.4,
+        timestamp: new Date(Date.now() - 900).toISOString(),
+        connectedBssid: '00:A4:2B:E9:CC:44',
+        nearbyAPs: 12
+      },
+      fusedLocation: {
+        lat: 37.5299,
+        lng: 126.9649,
+        accuracy: 6.8,
+        confidence: 87,
+        algorithm: 'multimodal_fusion',
+        timestamp: new Date().toISOString()
+      }
+    }
+  },
+
+  // 🧠 향정신성약물 환자 (벤조디아제핀) - 심박수 감소, 각성도 저하, 움직임 억제
+  {
+    id: 'p_psychoactive_003',
+    name: '한예린',
+    age: 29,
+    birthDate: '1994-02-20',
+    bloodType: 'B-',
+    imageUrl: 'https://i.pravatar.cc/150?u=p_psychoactive_003',
+    gender: 'F',
+    status: PatientStatus.URGENT,
+    location: '서초구 반포대로 222',
+    detailAddress: '서초구 반포대로 222 래미안퍼스티지 101동 2304호',
+    lat: 37.5049 + (Math.random() - 0.5) * 0.01,
+    lng: 127.0034 + (Math.random() - 0.5) * 0.01,
+    symptoms: ['의식 저하', '각성도 감소', '호흡 억제', '움직임 둔화', '반응성 저하'],
+    severityScore: 4,
+    aiAnalysis: `**🧠 향정신성약물 사용 감지**
+
+📋 **주요 소견:**
+• 심박수 62bpm (점진적 감소)
+• 각성도 12/100 (현저한 저하)
+• 호흡수 11회/분 (호흡 억제)
+• 움직임 활동 90% 감소
+
+🔍 **CNS 억제 분석:**
+• 29세 여성 벤조디아제핀계 약물 의심
+• 중추신경계 억제 패턴 확인
+• 점진적 CNS 기능 저하
+• 호흡중추 억제 징후 관찰
+
+📌 **의료 조치 권고:**
+• 즉시 중독치료 전문의 상담
+• 호흡 상태 지속 모니터링 필수
+• 해독 치료 프로토콜 준비
+• 갑작스러운 약물 중단 금지
+
+🚨 **위험 요소:**
+• 호흡 억제로 인한 저산소증 위험
+• 의식수준 추가 저하 가능성
+• 금단 증상 발생 위험`,
+    vitals: {
+      heartRate: 62,
+      bloodPressure: '105/68',
+      oxygenLevel: 94,
+      bodyTemp: 36.2, // 약간 낮은 체온
+      lastUpdated: new Date().toISOString(),
+      history: Array.from({ length: 15 }, (_, i) => ({
+        time: new Date(Date.now() - (15 - i) * 4000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        // 점진적 감소 패턴
+        hr: Math.max(58, 72 - Math.floor(i * 0.8) + Math.floor(Math.random() * 4)),
+        spo2: 94 + Math.floor(Math.random() * 3)
+      })),
+      ecgPattern: 'Mild Bradycardia',
+      fallDetected: false,
+      activityContext: 'Sedated', // 진정 상태
+      bloodGlucose: 88,
+      hrv: 38, // 약간 감소된 HRV
+      restingHR: 72,
+      pai: 15, // 매우 낮은 활동 지수
+      stressLevel: 12, // 극도로 낮은 스트레스 (각성도 저하)
+      calories: 45, // 낮은 활동으로 낮은 칼로리
+      steps: 180, // 매우 적은 걸음수
+      acc: { x: 0.01, y: 0.02, z: 0.99 }, // 거의 정적인 상태
+      gyro: { x: 0.1, y: 0.1, z: 0.1 }, // 미미한 움직임
+      networkStatus: 'Connected',
+      positioningStatus: 'Locked'
+    },
+    locationData: {
+      gpsLocation: {
+        lat: 37.5049,
+        lng: 127.0034,
+        accuracy: 3.8,
+        timestamp: new Date(Date.now() - 2000).toISOString(),
+        source: 'smartwatch'
+      },
+      cellularLocation: {
+        lat: 37.5046,
+        lng: 127.0037,
+        accuracy: 19.4,
+        timestamp: new Date(Date.now() - 2500).toISOString(),
+        cellTowerId: 'LG-SC-004-7788',
+        signalStrength: -71
+      },
+      wifiLocation: {
+        lat: 37.5051,
+        lng: 127.0031,
+        accuracy: 12.1,
+        timestamp: new Date(Date.now() - 1500).toISOString(),
+        connectedBssid: '00:5D:7C:A9:BB:63',
+        nearbyAPs: 16
+      },
+      fusedLocation: {
+        lat: 37.5049,
+        lng: 127.0034,
+        accuracy: 3.2,
+        confidence: 89,
+        algorithm: 'multimodal_fusion',
+        timestamp: new Date().toISOString()
+      }
+    }
   }
 ];

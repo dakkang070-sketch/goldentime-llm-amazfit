@@ -115,20 +115,20 @@ if (true) { // process.env.ENABLE_HOSPITAL_MATCHING === 'true'
   }, 9000);
 }
 
-// 물질 남용 탐지 시스템 시작 (자동 활성화)
-if (process.env.ENABLE_SUBSTANCE_DETECTION !== 'false') {
-  setTimeout(async () => {
-    try {
-      const SubstanceDetectionSystem = require('./services/substanceDetectionSystem');
-      const substanceSystem = new SubstanceDetectionSystem();
-      await substanceSystem.initialize();
-      
-      logger.info('🧠 물질 남용 탐지 시스템 활성화됨 (4개 독립 LLM 병렬 구조)');
-    } catch (error) {
-      logger.error('❌ 물질 탐지 시스템 시작 실패', { error });
-    }
-  }, 10000); // 병원 매칭 시스템 후 1초 대기
-}
+// 물질 남용 탐지 시스템 시작 (TensorFlow 의존성 문제로 일시 비활성화)
+// if (process.env.ENABLE_SUBSTANCE_DETECTION !== 'false') {
+//   setTimeout(async () => {
+//     try {
+//       const SubstanceDetectionSystem = require('./services/substanceDetectionSystem');
+//       const substanceSystem = new SubstanceDetectionSystem();
+//       await substanceSystem.initialize();
+//       
+//       logger.info('🧠 물질 남용 탐지 시스템 활성화됨 (4개 독립 LLM 병렬 구조)');
+//     } catch (error) {
+//       logger.error('❌ 물질 탐지 시스템 시작 실패', { error });
+//     }
+//   }, 10000); // 병원 매칭 시스템 후 1초 대기
+// }
 
 const app = express();
 const server = http.createServer(app);
@@ -167,7 +167,8 @@ app.use('/api/quality', require('./api/qualityManagement'));
 app.use('/api/realtime-biosignal', require('./api/realtimeBiosignal'));
 app.use('/api/hospital-matching', require('./api/hospitalMatching'));
 app.use('/api/system-monitoring', require('./api/systemMonitoring'));
-app.use('/api/substance-detection', require('./api/substanceDetection'));
+// 물질 탐지 시스템 (TensorFlow 의존성 문제로 일시 비활성화)
+// app.use('/api/substance-detection', require('./api/substanceDetection'));
 
 // Swagger API 문서
 if (process.env.NODE_ENV !== 'production') {
