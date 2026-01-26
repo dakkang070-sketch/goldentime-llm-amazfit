@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo, useMemo } from "react";
+import React, { useState, useEffect, memo, useMemo, useRef } from "react";
 import {
   ShieldAlert,
   Siren,
@@ -45,30 +45,75 @@ import ErrorBoundary from "./ErrorBoundary";
 import { apiService } from "../services/apiService";
 import { socketService } from "../services/socketService";
 
-const AudioPlayer = ({ url }: { url: string }) => {
+const AudioPlayer = ({ url, initialDuration = 0 }: { url: string; initialDuration?: number }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
+  const [duration, setDuration] = useState(initialDuration);
   const [currentTime, setCurrentTime] = useState(0);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
 
-  const togglePlay = () => {
-    if (!audioRef.current) return;
-    if (isPlaying) {
-      audioRef.current.pause();
-    } else {
-      audioRef.current.play();
+  // Reset state when URL changes
+  useEffect(() => {
+    setIsPlaying(false);
+    setProgress(0);
+    setDuration(initialDuration || 0);
+    setCurrentTime(0);
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.load();
     }
-    setIsPlaying(!isPlaying);
+  }, [url, initialDuration]);
+
+  const togglePlay = async () => {
+    if (!audioRef.current) return;
+    try {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          await playPromise;
+        }
+      }
+      setIsPlaying(!isPlaying);
+    } catch (error) {
+      console.error("Audio playback error:", error);
+      setIsPlaying(false);
+    }
   };
 
   const handleTimeUpdate = (e: React.SyntheticEvent<HTMLAudioElement>) => {
     const current = e.currentTarget.currentTime;
     const dur = e.currentTarget.duration;
     setCurrentTime(current);
-    if (dur) {
+    
+    if (Number.isFinite(dur) && dur > 0) {
       setDuration(dur);
       setProgress((current / dur) * 100);
+    } else if (initialDuration > 0) {
+      // Fallback to initialDuration if metadata duration is invalid
+      // This happens with WebM files from MediaRecorder
+      setDuration(initialDuration);
+      setProgress((current / initialDuration) * 100);
+    } else {
+      // Handle cases where duration is Infinity and no initialDuration
+      // We can't calculate progress percentage accurately without duration
+      setDuration(0); 
+      setProgress(0);
+    }
+  };
+
+  const handleLoadedMetadata = (e: React.SyntheticEvent<HTMLAudioElement>) => {
+    const dur = e.currentTarget.duration;
+    if (Number.isFinite(dur) && dur > 0) {
+      setDuration(dur);
+    } else if (initialDuration > 0) {
+      setDuration(initialDuration);
+    } else {
+      // If duration is Infinity, we might need to fetch the file blob to get duration
+      // or just accept it's a stream-like file.
+      // For now, setting to 0 to avoid Infinity display
+      setDuration(0);
     }
   };
 
@@ -99,8 +144,11 @@ const AudioPlayer = ({ url }: { url: string }) => {
         ref={audioRef}
         src={url}
         onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+        onLoadedMetadata={handleLoadedMetadata}
         onEnded={() => setIsPlaying(false)}
+        onPause={() => setIsPlaying(false)}
+        onPlay={() => setIsPlaying(true)}
+        onError={(e) => console.error("Audio loading error:", e.currentTarget.error, url)}
         className="hidden"
       />
       <button
@@ -123,7 +171,7 @@ const AudioPlayer = ({ url }: { url: string }) => {
             음성 증거물
           </span>
           <span className="text-[10px] text-zinc-500 font-mono tracking-tight">
-            {formatTime(currentTime)} / {formatTime(duration)}
+            {formatTime(currentTime)} / {duration > 0 ? formatTime(duration) : "--:--"}
           </span>
         </div>
         <div
@@ -133,11 +181,13 @@ const AudioPlayer = ({ url }: { url: string }) => {
             const rect = e.currentTarget.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const percent = x / rect.width;
-            audioRef.current.currentTime = percent * duration;
+            if (Number.isFinite(duration)) {
+               audioRef.current.currentTime = percent * duration;
+            }
           }}
         >
           <div
-            className="h-full bg-indigo-500 rounded-full relative"
+            className="h-full bg-indigo-500 rounded-full relative transition-all duration-100 ease-linear"
             style={{ width: `${progress}%` }}
           >
             <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full shadow-lg scale-0 group-hover:scale-100 transition-transform"></div>
@@ -175,6 +225,7 @@ interface SchoolViolenceCase {
       emotion: string;
       backgroundNoise?: string;
       speakerCount?: number;
+      duration?: number; // Added duration from backend
     };
   };
   detectedAt: string;
@@ -231,7 +282,9 @@ const BioMetricCard = memo(
         </div>
         <div className="flex items-baseline gap-0.5 ml-2">
           <span className="text-[12px] font-light text-zinc-200">
-            {value ?? "--"}
+            {typeof value === "number" && !Number.isFinite(value)
+              ? "--"
+              : value ?? "--"}
           </span>
           {unit && (
             <span className="text-[10px] text-zinc-500 font-normal uppercase">
@@ -397,12 +450,14 @@ const CrimeCaseCard = memo(
   },
 );
 
-const CrimeDashboard: React.FC = () => {
+const CrimeDashboard: React.FC<{ initialSelectedCaseId?: string }> = ({ initialSelectedCaseId }) => {
   const [cases, setCases] = useState<SchoolViolenceCase[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCase, setSelectedCase] = useState<SchoolViolenceCase | null>(
     null,
   );
+  const selectedCaseIdRef = useRef<string | null>(null);
+  const hasAppliedInitialSelectionRef = useRef(false);
   const [activeTab, setActiveTab] = useState<"active" | "resolved">("active");
   const [feedbackMode, setFeedbackMode] = useState<string | null>(null); // 'correct' | 'incorrect'
   const [correctionCategory, setCorrectionCategory] = useState("Normal");
@@ -410,6 +465,11 @@ const CrimeDashboard: React.FC = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [isVitalsExpanded, setIsVitalsExpanded] = useState(false);
   const [isAgencyExpanded, setIsAgencyExpanded] = useState(false);
+
+  useEffect(() => {
+    selectedCaseIdRef.current =
+      selectedCase?.id || selectedCase?._id || null;
+  }, [selectedCase]);
 
   const handleFeedbackSubmit = async (isCorrect: boolean) => {
     if (!selectedCase) return;
@@ -550,12 +610,29 @@ const CrimeDashboard: React.FC = () => {
               new Date(b.detectedAt).getTime() -
               new Date(a.detectedAt).getTime(),
           );
-          setCases(sortedCases);
 
-          // Auto-select first case if none selected
-          if (!selectedCase && sortedCases.length > 0) {
-            setSelectedCase(sortedCases[0]);
+          const resolveCaseById = (id: string) =>
+            sortedCases.find((c) => c._id === id || c.id === id);
+
+          let nextSelected: SchoolViolenceCase | null = null;
+          if (initialSelectedCaseId && !hasAppliedInitialSelectionRef.current) {
+            nextSelected =
+              resolveCaseById(initialSelectedCaseId) || sortedCases[0] || null;
+            hasAppliedInitialSelectionRef.current = true;
+          } else if (selectedCaseIdRef.current) {
+            nextSelected = resolveCaseById(selectedCaseIdRef.current);
           }
+
+          if (!nextSelected && sortedCases.length > 0) {
+            nextSelected = sortedCases[0];
+          }
+
+          const nextSelectedId = nextSelected?.id || nextSelected?._id || null;
+          if (nextSelectedId !== selectedCaseIdRef.current) {
+            setSelectedCase(nextSelected);
+          }
+          
+          setCases(sortedCases);
         }
       } catch (error) {
         console.error("Failed to fetch crime cases:", error);
@@ -758,22 +835,25 @@ const CrimeDashboard: React.FC = () => {
                             }`}
                           >
                             {selectedCase.analysisResult.severity === "Critical"
-                              ? "CRITICAL"
+                              ? "긴급"
                               : selectedCase.analysisResult.severity ===
                                     "Caution" ||
                                   selectedCase.analysisResult.severity ===
                                     "Warning"
-                                ? "WARNING"
+                                ? "주의"
                                 : selectedCase.analysisResult.severity === "Uncertain"
-                                ? "UNCERTAIN"
-                                : "NORMAL"}
+                                ? "불확실"
+                                : "정상"}
                           </span>
                         </div>
                       </div>
                     </div>
 
                     {selectedCase.audioUrl && (
-                      <AudioPlayer url={selectedCase.audioUrl} />
+                      <AudioPlayer 
+                        url={selectedCase.audioUrl} 
+                        initialDuration={selectedCase.analysisResult.audioFeatures?.duration}
+                      />
                     )}
                   </div>
 
@@ -893,8 +973,7 @@ const CrimeDashboard: React.FC = () => {
                           {[
                             {
                               label: "감정 상태",
-                              val: selectedCase.analysisResult.audioFeatures
-                                .emotion,
+                              val: selectedCase.analysisResult.primaryEmotion || selectedCase.analysisResult.audioFeatures?.emotion || "분석 중",
                               icon: Heart,
                               color: "text-red-400",
                             },
@@ -948,7 +1027,10 @@ const CrimeDashboard: React.FC = () => {
                                 {item.label}
                               </span>
                               <span className="text-[10px] text-zinc-300 font-normal truncate w-full text-center tracking-tight">
-                                {item.val}
+                                {typeof item.val === "number" &&
+                                !Number.isFinite(item.val)
+                                  ? "--"
+                                  : item.val}
                               </span>
                             </div>
                           ))}
@@ -995,10 +1077,20 @@ const CrimeDashboard: React.FC = () => {
                         <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
                           <div className="text-[13px] text-zinc-300 leading-relaxed font-normal tracking-tight">
                             {(() => {
-                              const text =
+                              let text: any =
                                 selectedCase.analysisResult.reasoning ||
                                 "분석 대기 중...";
                               
+                              if (typeof text === 'object' && text !== null) {
+                                if (text.situation || text.psychology || text.danger) {
+                                  text = `[상황 분석]: ${text.situation || ''}\n[심리 분석]: ${text.psychology || ''}\n[위험 요소]: ${text.danger || ''}`;
+                                } else {
+                                  text = JSON.stringify(text, null, 2);
+                                }
+                              }
+                              
+                              text = String(text);
+
                               // Clean up initial text
                               const cleanText = text.replace(/^(List of \d+-\d+ keywords:|Reasoning:|Explanation:)\s*/i, "").trim();
 

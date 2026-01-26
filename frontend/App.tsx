@@ -65,9 +65,12 @@ import {
   RefreshCw,
   UserPlus,
   List,
-
+  UserMinus,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import MobileRecorder from "./components/MobileRecorder";
+import CrimeList from "./components/CrimeList";
 
 const Emblem119 = ({ color = "#ef4444", className = "w-6 h-6" }) => (
   <svg
@@ -194,6 +197,7 @@ const App: React.FC = () => {
     | "crime-list"
     | "mobile"
   >(window.location.pathname === "/mobile" ? "mobile" : "crime");
+  const [selectedCrimeId, setSelectedCrimeId] = useState<string | undefined>(undefined);
   const [searchTerm, setSearchTerm] = useState("");
   const [isAiMatchingEnabled, setIsAiMatchingEnabled] = useState(true);
   const [expandedHospitalIds, setExpandedHospitalIds] = useState<Set<string>>(
@@ -211,7 +215,35 @@ const App: React.FC = () => {
   >("all");
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isAlertVoiceEnabled, setIsAlertVoiceEnabled] = useState(true);
+  const isAlertVoiceEnabledRef = useRef(true);
+
+  const handleDeleteAll = useCallback(async () => {
+    if (!confirm("범죄 관제 회원을 모두 삭제하시겠습니까?\n이 작업은 되돌릴 수 없으며 모든 데이터가 영구적으로 삭제됩니다.")) return;
+    
+    try {
+      const res = await fetch("/api/school-violence/cases", {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("모든 회원이 삭제되었습니다.");
+        window.location.reload();
+      } else {
+        alert("삭제 실패: " + (data.error || "Unknown error"));
+      }
+    } catch (error) {
+      console.error("Delete failed", error);
+      alert("서버 통신 오류가 발생했습니다.");
+    }
+  }, []);
   const spokenAlertsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    isAlertVoiceEnabledRef.current = isAlertVoiceEnabled;
+    if (!isAlertVoiceEnabled && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+  }, [isAlertVoiceEnabled]);
 
   const [selectedHospital, setSelectedHospital] = useState<Hospital | null>(
     null,
@@ -361,7 +393,7 @@ const App: React.FC = () => {
         newPatient.status === PatientStatus.DANGER
       ) {
         if (!spokenAlertsRef.current.has(newPatient.id)) {
-          if ("speechSynthesis" in window) {
+          if (isAlertVoiceEnabledRef.current && "speechSynthesis" in window) {
             const message =
               newPatient.status === PatientStatus.CRITICAL
                 ? "긴급환자발생. 응급 단계."
@@ -1518,6 +1550,22 @@ const App: React.FC = () => {
       </div>
 
       <div className="flex-1 flex flex-col relative rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-900 shadow-2xl min-w-0 z-0">
+        <button
+          type="button"
+          onClick={() => setIsAlertVoiceEnabled((prev) => !prev)}
+          className={`absolute top-3 right-3 z-[999] pointer-events-auto flex items-center gap-2 px-3 py-2 rounded-full border text-[12px] transition-all backdrop-blur shadow-lg ${
+            isAlertVoiceEnabled
+              ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-200"
+              : "bg-zinc-900/90 border-zinc-700 text-zinc-200"
+          }`}
+        >
+          {isAlertVoiceEnabled ? (
+            <Volume2 className="w-3.5 h-3.5" />
+          ) : (
+            <VolumeX className="w-3.5 h-3.5" />
+          )}
+          <span>음성 알림</span>
+        </button>
         {currentSelectedPatient ? (
           <ErrorBoundary>
             <LiveMap
@@ -1781,8 +1829,9 @@ const App: React.FC = () => {
               { id: "hospitals", icon: HospitalIcon, label: "병원" },
               { type: "divider" },
               { id: "crime", icon: ShieldAlert, label: "범죄 관제" },
-              { id: "crime-list", icon: List, label: "범죄 목록" },
-
+              { id: "crime-list", icon: List, label: "유저 목록" },
+              { type: "divider" },
+              { id: "delete-members", icon: UserMinus, label: "회원 삭제", action: handleDeleteAll, isDestructive: true },
             ].map((item, idx) =>
               item.type === "divider" ? (
                 <div
@@ -1792,9 +1841,15 @@ const App: React.FC = () => {
               ) : (
                 <button
                   key={item.id}
-                  onClick={() => setActiveTab(item.id as any)}
+                  onClick={() => item.action ? item.action() : setActiveTab(item.id as any)}
                   title={item.label}
-                  className={`w-full flex items-center justify-center p-3.5 rounded-xl transition-all ${activeTab === item.id ? "bg-red-600 text-white shadow-[0_0_15px_rgba(239,68,68,0.3)]" : "text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300"}`}
+                  className={`w-full flex items-center justify-center p-3.5 rounded-xl transition-all ${
+                    item.isDestructive 
+                      ? "text-zinc-600 hover:bg-red-900/20 hover:text-red-500"
+                      : activeTab === item.id 
+                        ? "bg-red-600 text-white shadow-[0_0_15px_rgba(239,68,68,0.3)]" 
+                        : "text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300"
+                  }`}
                 >
                   {/* @ts-ignore */}
                   <item.icon className="w-6.5 h-6.5 shrink-0" />
@@ -1911,12 +1966,9 @@ const App: React.FC = () => {
           {activeTab === "dashboard" && renderDashboard()}
           {activeTab === "patients" && renderPatients()}
           {activeTab === "hospitals" && renderHospitals()}
-          {activeTab === "crime" && <CrimeDashboard />}
+          {activeTab === "crime" && <CrimeDashboard initialSelectedCaseId={selectedCrimeId} />}
           {activeTab === "crime-list" && (
-            <div className="flex flex-col items-center justify-center h-full text-zinc-500">
-              <List className="w-16 h-16 mb-4 opacity-20" />
-              <p>범죄 목록 준비 중...</p>
-            </div>
+            <CrimeList />
           )}
         </div>
       </main>

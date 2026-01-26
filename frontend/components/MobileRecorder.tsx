@@ -26,8 +26,29 @@ const MobileRecorder = ({ onBack }: { onBack?: () => void }) => {
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Random Korean Name Generator
+  const generateRandomIdentity = () => {
+    const lastNames = ["김", "이", "박", "최", "정", "강", "조", "윤", "장", "임", "한", "오", "서", "신", "권", "황", "안", "송", "류", "전"];
+    const firstNames = ["민준", "서준", "도윤", "예준", "시우", "하준", "주원", "지호", "지후", "준우", "서윤", "서연", "지우", "하은", "지아", "수아", "하윤", "민서", "채원", "지유"];
+    
+    const randomLast = lastNames[Math.floor(Math.random() * lastNames.length)];
+    const randomFirst = firstNames[Math.floor(Math.random() * firstNames.length)];
+    const randomAge = Math.floor(Math.random() * (19 - 13 + 1)) + 13; // 13-19세
+    
+    return {
+      name: `${randomLast}${randomFirst}`,
+      age: randomAge.toString()
+    };
+  };
 
   const startRecording = async () => {
+    // Generate new identity for each recording session
+    const newIdentity = generateRandomIdentity();
+    setName(newIdentity.name);
+    setAge(newIdentity.age);
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
@@ -65,14 +86,19 @@ const MobileRecorder = ({ onBack }: { onBack?: () => void }) => {
         });
         setAudioBlob(blob);
         setAudioUrl(URL.createObjectURL(blob));
+        
+        // Automatically submit the recording
+        handleSubmit(blob);
       };
 
       mediaRecorderRef.current.start();
       setIsRecording(true);
       setResult(null);
+      setSentBiometrics(null);
 
       // Auto stop after 3 minutes
-      setTimeout(() => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
           stopRecording();
           alert("최대 녹음 시간(3분)이 초과되어 녹음이 자동 종료됩니다.");
@@ -85,6 +111,11 @@ const MobileRecorder = ({ onBack }: { onBack?: () => void }) => {
   };
 
   const stopRecording = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
@@ -97,26 +128,20 @@ const MobileRecorder = ({ onBack }: { onBack?: () => void }) => {
   };
 
   const generateRandomBiometrics = () => {
-    // Generate random biometrics to simulate a device
-    // HR: 80-140 (Active range)
-    // Stress: 40-90 (Variable)
-    const hr = Math.floor(Math.random() * (140 - 80 + 1)) + 80;
-    const stress = Math.floor(Math.random() * (90 - 40 + 1)) + 40;
-    const movement = Math.floor(Math.random() * 10) + 1;
-
     return {
-      heartRate: hr,
-      stressLevel: stress,
-      movementIntensity: movement,
+      heartRate: Math.floor(Math.random() * (110 - 65 + 1)) + 65, // Normal range
+      stressLevel: Math.floor(Math.random() * (70 - 20 + 1)) + 20, // Normal to moderate stress
+      movementIntensity: parseFloat((Math.random() * 5).toFixed(1)), // Moderate movement
       timestamp: new Date().toISOString(),
     };
   };
 
-  const handleSubmit = async () => {
-    if (!audioBlob) return;
+  const handleSubmit = async (blobToSubmit?: Blob) => {
+    const blob = blobToSubmit || audioBlob;
+    if (!blob) return;
 
     // Check file size (Client-side check)
-    const fileSizeMB = audioBlob.size / (1024 * 1024);
+    const fileSizeMB = blob.size / (1024 * 1024);
     if (fileSizeMB > 10) {
       alert("파일 크기가 너무 큽니다 (10MB 제한). 짧게 녹음해주세요.");
       return;
@@ -125,13 +150,15 @@ const MobileRecorder = ({ onBack }: { onBack?: () => void }) => {
     setIsAnalyzing(true);
 
     try {
+      // User Request: Use random biometrics only, do not map to audio
+      const biometrics = generateRandomBiometrics();
+      setSentBiometrics(biometrics);
+
       // Convert Blob to Base64
       const reader = new FileReader();
-      reader.readAsDataURL(audioBlob);
+      reader.readAsDataURL(blob);
       reader.onloadend = async () => {
         const base64Audio = reader.result?.toString().split(",")[1];
-        const biometrics = generateRandomBiometrics();
-        setSentBiometrics(biometrics);
 
         try {
           // Use fetch directly to ensure we hit the correct endpoint
@@ -183,7 +210,7 @@ const MobileRecorder = ({ onBack }: { onBack?: () => void }) => {
         <div className="hidden sm:block absolute top-0 left-1/2 -translate-x-1/2 w-32 h-7 bg-zinc-800 rounded-b-xl z-50"></div>
 
         <div className="flex-1 flex flex-col overflow-hidden w-full h-full relative">
-          <header className="shrink-0 px-5 pt-4 pb-4 sm:pt-10 flex items-center justify-between border-b border-zinc-900 z-10 bg-black/80 backdrop-blur-md">
+          <header className="shrink-0 px-5 pt-4 pb-4 sm:pt-6 flex items-center justify-between border-b border-zinc-900 z-10 bg-black/80 backdrop-blur-md">
             <h1 className="text-lg font-bold flex items-center gap-2">
               <ShieldAlert className="text-red-500 w-5 h-5" />
               골든타임 모바일 신고
@@ -206,14 +233,14 @@ const MobileRecorder = ({ onBack }: { onBack?: () => void }) => {
           <main className="flex-1 flex flex-col gap-4 overflow-y-auto p-5 pb-8 scrollbar-hide">
 
             {/* Recording Section */}
-            <section className="shrink-0 h-[240px] flex flex-col items-center justify-center bg-zinc-900/30 rounded-2xl border border-zinc-800 relative overflow-hidden">
+            <section className="shrink-0 min-h-[220px] flex flex-col items-center justify-center bg-zinc-900/30 rounded-2xl border border-zinc-800 relative overflow-hidden p-6">
               {isRecording && (
                 <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
                   <div className="w-32 h-32 bg-red-500 rounded-full animate-ping"></div>
                 </div>
               )}
 
-              <div className="z-10 flex flex-col items-center gap-4">
+              <div className="z-10 flex flex-col items-center gap-4 mb-2">
                 <button
                   onClick={isRecording ? stopRecording : startRecording}
                   className={`w-20 h-20 rounded-full flex items-center justify-center transition-all ${
@@ -240,7 +267,7 @@ const MobileRecorder = ({ onBack }: { onBack?: () => void }) => {
               </div>
 
               {audioUrl && !isRecording && (
-                <div className="absolute bottom-4 left-4 right-4 bg-black/80 p-3 rounded-lg border border-zinc-800 flex flex-col gap-2">
+                <div className="w-full mt-4 bg-black/80 p-3 rounded-lg border border-zinc-800 flex flex-col gap-2 z-20">
                   <div className="flex items-center justify-between text-[10px] text-zinc-400">
                     <span>형식: {mimeType.split(";")[0]} (Opus)</span>
                     <span>
@@ -252,28 +279,20 @@ const MobileRecorder = ({ onBack }: { onBack?: () => void }) => {
               )}
             </section>
 
-            {/* Action Button */}
-            <button
-              onClick={handleSubmit}
-              disabled={!audioBlob || isRecording || isAnalyzing}
-              className={`shrink-0 w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all ${
-                !audioBlob || isRecording
-                  ? "bg-zinc-800 text-zinc-500 cursor-not-allowed"
-                  : "bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/20"
-              }`}
-            >
-              {isAnalyzing ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  분석 중...
-                </>
-              ) : (
-                <>
-                  <Send className="w-5 h-5" />
-                  분석 요청 전송
-                </>
-              )}
-            </button>
+            {/* Status & Analysis Info */}
+            {!isRecording && isAnalyzing && (
+              <div className="shrink-0 w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 bg-red-600/20 text-red-500 border border-red-500/30 animate-pulse">
+                <Loader2 className="w-6 h-6 animate-spin" />
+                서버로 자동 전송 및 분석 중...
+              </div>
+            )}
+
+            {!isRecording && !isAnalyzing && audioBlob && !result && (
+              <div className="shrink-0 w-full py-3 rounded-xl font-medium text-sm flex items-center justify-center gap-2 bg-zinc-900 text-zinc-400 border border-zinc-800">
+                <ShieldCheck className="w-4 h-4 text-green-500" />
+                전송 완료 (분석 결과를 기다려주세요)
+              </div>
+            )}
 
             {/* Result Section */}
             {result && (
@@ -293,12 +312,14 @@ const MobileRecorder = ({ onBack }: { onBack?: () => void }) => {
                       className={`px-3 py-1 rounded-full text-xs font-bold ${
                         result.data?.analysisResult?.severity === "Critical"
                           ? "bg-red-500 text-white"
-                          : result.data?.analysisResult?.severity === "Warning"
+                          : result.data?.analysisResult?.severity === "Warning" || result.data?.analysisResult?.severity === "Caution"
                           ? "bg-orange-500 text-white"
                           : "bg-green-500 text-white"
                       }`}
                     >
-                      {result.data?.analysisResult?.severity || "Unknown"}
+                      {result.data?.analysisResult?.severity === "Critical" ? "긴급 🚨" : 
+                       result.data?.analysisResult?.severity === "Warning" || result.data?.analysisResult?.severity === "Caution" ? "주의 ⚠️" : 
+                       result.data?.analysisResult?.severity === "Normal" ? "정상 🟢" : "분석됨"}
                     </span>
                   </div>
 
@@ -312,13 +333,23 @@ const MobileRecorder = ({ onBack }: { onBack?: () => void }) => {
                       </p>
                     </div>
 
-                    <div className="bg-black/40 p-3 rounded-lg">
-                      <span className="text-xs text-zinc-500 block mb-1">
-                        AI 분석 내용
-                      </span>
-                      <p className="text-sm text-zinc-300 leading-relaxed">
-                        {result.data?.analysisResult?.reasoning || "-"}
-                      </p>
+                    <div className="bg-zinc-900/50 p-4 rounded-xl border border-zinc-800">
+                      <h3 className="text-sm font-bold text-zinc-400 mb-2">
+                        AI 상황 분석
+                      </h3>
+                      <div className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">
+                        {(() => {
+                          const reasoning = result.data?.analysisResult?.reasoning;
+                          if (!reasoning) return "-";
+                          if (typeof reasoning === 'object') {
+                            if (reasoning.situation || reasoning.psychology) {
+                              return `[상황 분석]: ${reasoning.situation || ''}\n[심리 분석]: ${reasoning.psychology || ''}\n[위험 요소]: ${reasoning.danger || ''}`;
+                            }
+                            return JSON.stringify(reasoning, null, 2);
+                          }
+                          return reasoning;
+                        })()}
+                      </div>
                     </div>
 
                     <div className="bg-black/40 p-3 rounded-lg">
@@ -347,7 +378,7 @@ const MobileRecorder = ({ onBack }: { onBack?: () => void }) => {
                           음성 인식 결과 (STT)
                         </span>
                         <p className="text-xs text-zinc-400 italic">
-                          "{result.transcript}"
+                          "{result.transcript.replace(/<\|.*?\|>/g, '').replace(/\[keywords\]\s*:\s*.*$/gim, '').replace(/\[키워드\]\s*:\s*.*$/gim, '').trim()}"
                         </p>
                       </div>
                     )}

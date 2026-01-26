@@ -44,27 +44,53 @@ class SchoolViolenceDetectionService {
    */
   async analyzeSituation(data) {
     try {
-      const { transcript, location, studentId, audioUrl, biometrics, preComputedAnalysis, audioFeatures } = data;
+      const input = (data && data.data) ? data.data : (data || {});
+      const { 
+        transcript, 
+        location, 
+        studentId, 
+        audioUrl, 
+        preComputedAnalysis, 
+        audioFeatures, 
+        biometrics 
+      } = input;
+
+      const cleanedTranscript = this._normalizeTranscript(transcript);
+
       logger.info(
-        `[SchoolViolence] Analyzing transcript: ${transcript.substring(0, 50)}...`,
+        `[SchoolViolence] Analyzing transcript: ${cleanedTranscript.substring(0, 50)}...`,
       );
       
       // 1. LLM Analysis
       // Use pre-computed analysis if available to save time (avoid double inference)
       let analysis;
-      if (preComputedAnalysis) {
+      if (preComputedAnalysis && preComputedAnalysis.category && preComputedAnalysis.reasoning) {
         logger.info("[SchoolViolence] Using pre-computed analysis from STT service");
         analysis = preComputedAnalysis;
+        
+        // Fix for [object Object] issue: Ensure reasoning is a string
+        if (typeof analysis.reasoning === 'object') {
+             logger.warn("[SchoolViolence] Reasoning is an object, converting to string");
+             // If it has specific fields, join them
+             if (analysis.reasoning.situation || analysis.reasoning.psychology) {
+                 analysis.reasoning = `[상황 분석]: ${analysis.reasoning.situation || ''}\n[심리 분석]: ${analysis.reasoning.psychology || ''}\n[위험 요소]: ${analysis.reasoning.danger || ''}`;
+             } else {
+                 analysis.reasoning = JSON.stringify(analysis.reasoning, null, 2);
+             }
+        }
       } else {
-        analysis = await this._callLLMOrHeuristic(transcript, biometrics);
+        if (preComputedAnalysis) {
+          logger.warn("[SchoolViolence] Pre-computed analysis invalid or missing fields, re-analyzing...");
+        }
+        analysis = await this._callLLMOrHeuristic(cleanedTranscript, biometrics);
       }
 
       // Merge audio features if provided
       if (audioFeatures) {
         analysis.audioFeatures = audioFeatures;
         
-        // Map audio feature intensity to a simple emotion if primaryEmotion is missing
-        if (!analysis.primaryEmotion) {
+        // Map audio feature intensity to a simple emotion ONLY if primaryEmotion is missing or "Unknown"
+        if (!analysis.primaryEmotion || analysis.primaryEmotion === "Unknown") {
              if (audioFeatures.intensity === "High") analysis.primaryEmotion = "격앙됨/흥분";
              else if (audioFeatures.intensity === "Low") analysis.primaryEmotion = "위축됨/불안";
              else analysis.primaryEmotion = "평이함";
@@ -76,7 +102,17 @@ class SchoolViolenceDetectionService {
       if (!analysis.tone) analysis.tone = "Neutral";
       if (!analysis.atmosphere) analysis.atmosphere = "Unknown";
       
-      // Update reasoning with atmosphere if available
+      // Update reasoning with atmosphere if available (Ensure reasoning is string first)
+      if (typeof analysis.reasoning === 'object') {
+          if (analysis.reasoning.situation || analysis.reasoning.psychology) {
+              analysis.reasoning = `[상황 분석]: ${analysis.reasoning.situation || ''}\n[심리 분석]: ${analysis.reasoning.psychology || ''}\n[위험 요소]: ${analysis.reasoning.danger || ''}`;
+          } else {
+              analysis.reasoning = JSON.stringify(analysis.reasoning, null, 2);
+          }
+      } else if (typeof analysis.reasoning !== 'string') {
+          analysis.reasoning = String(analysis.reasoning || "");
+      }
+
       if (analysis.tone !== "Neutral" || analysis.atmosphere !== "Unknown") {
         analysis.reasoning = `${analysis.reasoning} (분위기: ${analysis.atmosphere}, 어조: ${analysis.tone})`;
       }
@@ -92,18 +128,28 @@ class SchoolViolenceDetectionService {
       const isSeriousExtortion = foundExtortion.length > 0 && (transcript.includes("가져와") || transcript.includes("내놔") || transcript.includes("뺏"));
       const isSeriousThreat = foundThreat.length > 0 && (transcript.includes("옥상") || transcript.includes("따라와") || transcript.includes("죽여"));
 
-      if (isSeriousExtortion && analysis.category !== "Extortion") {
-        analysis.category = "Extortion";
+      if (isSeriousExtortion && analysis.category !== "금품 갈취") {
+        analysis.category = "금품 갈취";
         analysis.severity = "Critical";
-        analysis.reasoning = "금전 요구 및 갈취 의심 키워드가 검출되어 긴급 분석되었습니다. (시스템 보정)";
+        // Append warning instead of replacing, and remove "(기존 분석 보완)"
+        const warningMsg = `[시스템 긴급 진단]: 대화 내용 중 '${foundExtortion.join("', '")}' 등 금품 갈취와 관련된 치명적 키워드가 검출되었습니다. 이에 따라 위험 등급을 '긴급'으로 상향합니다.`;
+        analysis.reasoning = analysis.reasoning ? `${analysis.reasoning}\n\n${warningMsg}` : warningMsg;
         analysis.keywords = [...new Set([...(analysis.keywords || []), ...foundExtortion])];
+        analysis.primaryEmotion = "위협/공포";
         analysis.confidence = 99;
-      } else if (isSeriousThreat && analysis.category !== "Threat/Coercion") {
-        analysis.category = "Threat/Coercion";
+      } else if (isSeriousThreat && analysis.category !== "협박 및 강요") {
+        analysis.category = "협박 및 강요";
         analysis.severity = "Critical";
-        analysis.reasoning = "특정 장소 유인 및 신체적 위협 키워드가 검출되어 긴급 분석되었습니다. (시스템 보정)";
+        // Append warning instead of replacing, and remove "(기존 분석 보완)"
+        const warningMsg = `[시스템 긴급 진단]: 특정 장소 유인 및 신체적 위협 키워드('${foundThreat.join("', '")}')가 검출되었습니다. 2차 피해 위험이 높아 즉각적인 개입이 필요합니다.`;
+        analysis.reasoning = analysis.reasoning ? `${analysis.reasoning}\n\n${warningMsg}` : warningMsg;
         analysis.keywords = [...new Set([...(analysis.keywords || []), ...foundThreat])];
+        analysis.primaryEmotion = "공포/절박함";
         analysis.confidence = 99;
+      }
+
+      if (analysis.reasoning && typeof analysis.reasoning === "string") {
+        analysis.reasoning = this._sanitizeReasoning(analysis.reasoning);
       }
 
       // 3. Sanitize severity to ensure it matches schema
@@ -141,7 +187,7 @@ class SchoolViolenceDetectionService {
       const newCase = new SchoolViolenceCase({
         studentId,
         location: safeLocation,
-        transcript,
+        transcript: cleanedTranscript,
         audioUrl,
         biometrics,
         analysisResult: analysis,
@@ -183,7 +229,8 @@ class SchoolViolenceDetectionService {
 
     try {
       // 2. Try Ollama (if configured)
-      const llmResult = await this._callOllama(transcript, biometrics);
+      // User Request: Remove biometrics from context analysis
+      const llmResult = await this._callOllama(transcript);
       if (llmResult) {
         return llmResult;
       }
@@ -220,45 +267,37 @@ class SchoolViolenceDetectionService {
     const prankKeywords = ["ㅋㅋㅋ", "장난", "미안", "쏘리", "뻥이야"];
 
     let score = 0;
-    let category = "Normal";
+    let category = "일상 대화";
     let severity = "Normal";
     let reasoning = "특이사항 없음";
 
     // Simple keyword matching for demo purposes
-    const hasViolence = violenceKeywords.some((k) => transcript.includes(k));
-    const hasPrank = prankKeywords.some((k) => transcript.includes(k));
-
-    // Biometric Analysis
-    const isHighStress =
-      biometrics && (biometrics.heartRate > 100 || biometrics.stressLevel > 60);
+    const foundViolenceKeywords = violenceKeywords.filter((k) => transcript.includes(k));
+    const foundPrankKeywords = prankKeywords.filter((k) => transcript.includes(k));
+    
+    const hasViolence = foundViolenceKeywords.length > 0;
+    const hasPrank = foundPrankKeywords.length > 0;
 
     if (hasViolence) {
-      if (hasPrank && !isHighStress) {
-        category = "Prank";
+      if (hasPrank) {
+        category = "장난";
         severity = "Caution";
-        reasoning =
-          "폭력적인 언어가 감지되었으나, 장난스러운 문맥과 안정적인 생체신호가 감지됨.";
+        reasoning = `[상황 분석]: 폭력적인 단어('${foundViolenceKeywords.join("', '")}')가 사용되었으나, 장난을 암시하는 표현('${foundPrankKeywords.join("', '")}')이 함께 감지되었습니다.\n[심리 분석]: 친구 사이의 거친 장난이나 농담 상황으로 추정됩니다.\n[위험 요소]: 즉각적인 위험은 낮으나, 언어 습관에 대한 주의가 필요합니다.`;
         score = 40;
       } else {
-        category = "Physical Violence";
+        category = "신체 폭력";
         severity = "Critical";
-        reasoning = isHighStress
-          ? "폭력적 언어와 함께 급격한 스트레스 상승이 감지됨. 실제 위협 상황으로 판단."
-          : "직접적인 폭력 행사 및 위협적인 언어 감지됨. 즉각적인 개입 필요.";
+        reasoning = `[상황 분석]: 대화 중 폭력 및 위협과 관련된 직접적인 표현('${foundViolenceKeywords.join("', '")}')이 다수 감지되었습니다.\n[심리 분석]: 발화자의 공격적인 태도와 상대방에 대한 위협 의도가 뚜렷합니다.\n[위험 요소]: 신체적 폭력이나 강압적인 행위가 발생하고 있을 가능성이 매우 높아 즉각적인 개입이 필요합니다.`;
         score = 95;
       }
-    } else if (isHighStress) {
-      // No obvious violence keywords but high stress
-      category = "Conflict";
-      severity = "Warning";
-      reasoning =
-        "명확한 폭력 언어는 감지되지 않았으나, 비정상적인 생체 신호(높은 스트레스/심박수)가 감지되어 주의가 필요함.";
-      score = 75;
     } else if (hasPrank) {
-      category = "Prank";
+      category = "장난";
       severity = "Normal";
-      reasoning = "친구 간의 일상적인 장난으로 판단됨.";
+      reasoning = `[상황 분석]: 친구 간의 일상적인 대화나 가벼운 농담('${foundPrankKeywords.join("', '")}')이 감지되었습니다.\n[심리 분석]: 긍정적이고 우호적인 관계가 형성되어 있습니다.\n[위험 요소]: 학교 폭력 위험 징후는 발견되지 않았습니다.`;
       score = 10;
+    } else {
+      // Default case for no keywords
+      reasoning = `[상황 분석]: 특이한 폭력 징후나 위험 키워드가 발견되지 않은 일상적인 대화입니다.\n[심리 분석]: 발화자들 간의 평이한 감정 상태가 유지되고 있습니다.\n[위험 요소]: 없음`;
     }
 
     // Return structured result
@@ -267,8 +306,49 @@ class SchoolViolenceDetectionService {
       severity,
       confidence: score,
       reasoning,
-      keywords: violenceKeywords.filter((k) => transcript.includes(k)),
+      keywords: foundViolenceKeywords,
+      primaryEmotion: category === "신체 폭력" ? "분노/공포" : "즐거움/평이함"
     };
+  }
+
+  _normalizeTranscript(transcript) {
+    const value = typeof transcript === "string" ? transcript : String(transcript || "");
+    return value
+      .replace(/<\|.*?\|>/g, "")
+      .replace(/\[.*?\]/g, "")
+      .replace(/\|{2,}/g, " ")
+      .replace(/(팟캐스트|인터페이스)/g, "")
+      .replace(/[_=~\-]{3,}/g, " ")
+      .replace(/[^0-9a-zA-Z가-힣\s.,?!'"()%]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  _sanitizeReasoning(reasoning) {
+    if (typeof reasoning !== "string") return "";
+    const lines = reasoning
+      .replace(/<\|.*?\|>/g, "")
+      .replace(/\[keywords\]\s*:\s*.*$/gim, "")
+      .replace(/\[키워드\]\s*:\s*.*$/gim, "")
+      .replace(/\|{2,}/g, " ")
+      .split("\n")
+      .map((line) => {
+        const hasUiNoise = /(팟캐스트|인터페이스|\|\|\|)/.test(line);
+        let cleaned = line.replace(/(팟캐스트|인터페이스|\|\|\|)/g, "");
+        if (hasUiNoise) {
+          cleaned = cleaned.replace(/프로그램/g, "");
+        }
+        return cleaned.replace(/\s+/g, " ").trim();
+      })
+      .filter((line) => line);
+    return lines
+      .join("\n")
+      .replace(/\bCritical\b/g, "긴급")
+      .replace(/\bWarning\b/g, "주의")
+      .replace(/\bCaution\b/g, "주의")
+      .replace(/\bNormal\b/g, "정상")
+      .replace(/\bUncertain\b/g, "불확실")
+      .trim();
   }
 
   async _callLocalInferenceServer(transcript) {
@@ -299,7 +379,7 @@ class SchoolViolenceDetectionService {
     return null;
   }
 
-  async _callOllama(transcript, biometrics) {
+  async _callOllama(transcript) {
     try {
       // Construct Few-Shot Prompt
       let fewShotExamples = "";
@@ -319,38 +399,40 @@ class SchoolViolenceDetectionService {
           "\n";
       }
 
-      let biometricContext = "";
-      if (biometrics) {
-        biometricContext = `
-        Biometric Data:
-        - Heart Rate: ${Math.round(biometrics.heartRate)} bpm
-        - Stress Level: ${Math.round(biometrics.stressLevel)}/100
-        - Movement Intensity: ${biometrics.movementIntensity.toFixed(1)}/10
-        
-        Consider these biometrics. High heart rate (>100) and stress (>60) usually indicate real danger, fear, or excitement.
-        Normal levels with aggressive language might indicate a prank or game.
-        `;
-      }
+      // User Request: Biometrics removed from context analysis
+      // const biometricContext = ... (Removed)
 
       const prompt = `
-      You are an expert in detecting school violence from audio transcripts (involving 2-4 speakers) and biometric data.
+      You are an expert in detecting school violence from audio transcripts (involving 2-4 speakers).
       Analyze the conversation flow, power dynamics, and interaction between speakers to distinguish between playful banter and actual violence/harassment.
+      Use only the transcript content. Do not speculate about UI, interfaces, sound effects, or metadata.
+      If information is insufficient or ambiguous, clearly say "정보 부족" and avoid assumptions.
       
       ${fewShotExamples}
-      ${biometricContext}
       
       Target Transcript: "${transcript}"
       
-      Determine if this is "Normal", "Prank", "Verbal Abuse", "Threat/Coercion", "Extortion", "Bullying", "Cyber Bullying", "Sexual Harassment", or "Physical Violence".
+      Determine if this is "일상 대화", "장난", "언어 폭력", "협박 및 강요", "금품 갈취", "따돌림", "사이버 폭력", "성희롱", or "신체 폭력".
       Assess severity as "Normal", "Caution", or "Critical".
-      Provide a confidence score (0-100) and a brief reasoning in Korean, mentioning speaker dynamics if relevant.
+      
+      Analyze the situation in detail:
+      1. Situation Analysis: What is happening? Who is doing what?
+      2. Psychological Analysis: What are the speakers feeling? What is the power dynamic?
+      3. Risk Factors: What are the specific threats or dangerous elements?
+      4. Primary Emotion: What is the dominant emotion (e.g., Fear, Anger, Joy, Sadness, Neutral)? Provide in Korean.
+      Keep sentences short and natural in Korean.
       
       Respond in JSON format:
       {
-        "category": "String",
+        "category": "String (Korean)",
         "severity": "String",
         "confidence": Number,
-        "reasoning": "String (Korean)"
+        "reasoning": {
+            "situation": "String (Korean, detailed)",
+            "psychology": "String (Korean, detailed)",
+            "danger": "String (Korean, detailed)"
+        },
+        "primaryEmotion": "String (Korean)"
       }
       `;
 
@@ -363,11 +445,22 @@ class SchoolViolenceDetectionService {
 
       if (response.data && response.data.response) {
         const result = JSON.parse(response.data.response);
+        
+        // Format structured reasoning into string for frontend compatibility
+        let formattedReasoning = "";
+        if (typeof result.reasoning === 'object') {
+            formattedReasoning = `[상황 분석]: ${result.reasoning.situation || ''}\n[심리 분석]: ${result.reasoning.psychology || ''}\n[위험 요소]: ${result.reasoning.danger || ''}`;
+        } else {
+            formattedReasoning = result.reasoning;
+        }
+        formattedReasoning = this._sanitizeReasoning(String(formattedReasoning || ""));
+
         return {
           category: result.category,
           severity: result.severity,
           confidence: result.confidence,
-          reasoning: result.reasoning,
+          reasoning: formattedReasoning,
+          primaryEmotion: result.primaryEmotion,
           keywords: [], // LLM might not return keywords easily without more complex prompting
         };
       }

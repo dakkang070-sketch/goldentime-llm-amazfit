@@ -88,6 +88,52 @@ router.post("/report", async (req, res) => {
 
 const modelTrainingService = require("../services/modelTrainingService");
 
+// Get all cases (with optional filtering)
+router.get("/cases", async (req, res) => {
+  try {
+    const { status, severity, category, limit = 50 } = req.query;
+    
+    let query = {};
+    if (status) query.status = status;
+    if (severity) query["analysisResult.severity"] = severity;
+    if (category) query["analysisResult.category"] = category;
+
+    const cases = await SchoolViolenceCase.find(query)
+      .sort({ detectedAt: -1 })
+      .limit(parseInt(limit));
+
+    res.json({ success: true, data: cases });
+  } catch (error) {
+    logger.error("Error fetching cases:", error);
+    res.status(500).json({ error: "Failed to fetch cases" });
+  }
+});
+
+// Delete a specific case
+router.delete("/cases/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deletedCase = await SchoolViolenceCase.findByIdAndDelete(id);
+    
+    if (!deletedCase) {
+      return res.status(404).json({ error: "Case not found" });
+    }
+
+    // Optionally delete the associated audio file
+    if (deletedCase.audioUrl) {
+      const filePath = path.join(__dirname, "..", deletedCase.audioUrl);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+
+    res.json({ success: true, message: "Case deleted successfully" });
+  } catch (error) {
+    logger.error("Error deleting case:", error);
+    res.status(500).json({ error: "Failed to delete case" });
+  }
+});
+
 // Delete all cases (for testing)
 router.delete("/cases", async (req, res) => {
   try {

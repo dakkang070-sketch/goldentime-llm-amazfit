@@ -150,8 +150,35 @@ const CrimeMap: React.FC<CrimeMapProps> = ({
       }
 
       // Format reasoning text for better readability with headers
-      const reasoning = c.analysisResult?.reasoning || "실시간 상황 데이터를 분석하고 있습니다...";
+      let reasoning: any = c.analysisResult?.reasoning || "실시간 상황 데이터를 분석하고 있습니다...";
       
+      // Handle case where reasoning is an object (legacy data or direct API response)
+      if (typeof reasoning === 'object' && reasoning !== null) {
+        if (reasoning.situation || reasoning.psychology || reasoning.danger) {
+          reasoning = `[상황 분석]: ${reasoning.situation || ''}\n[심리 분석]: ${reasoning.psychology || ''}\n[위험 요소]: ${reasoning.danger || ''}`;
+        } else {
+          reasoning = JSON.stringify(reasoning, null, 2);
+        }
+      }
+
+      // Ensure reasoning is a string and clean technical tokens
+      reasoning = String(reasoning).replace(/<\|.*?\|>/g, '').trim();
+      
+      // Clean up [keywords] or [키워드] and any other bracketed technical tags if they exist in the reasoning
+      // But keep our structured headers like [상황 분석]
+      reasoning = reasoning
+        .replace(/\[keywords\]\s*:\s*.*$/gim, '')
+        .replace(/\[키워드\]\s*:\s*.*$/gim, '')
+        .replace(/<\|.*?\|>/g, '') // Redundant but safe
+        .trim();
+
+      // Ensure transcript is also cleaned for display
+      let displayTranscript = String(c.transcript || "음성 인식 결과가 없습니다.")
+        .replace(/<\|.*?\|>/g, '')
+        .replace(/\[keywords\]\s*:\s*.*$/gim, '')
+        .replace(/\[키워드\]\s*:\s*.*$/gim, '')
+        .trim();
+
       // Headers to detect and highlight (supporting both with and without space)
       const headerPatterns = [
         { key: "[상황 분석]", alternatives: ["[상황 분석]", "[상황분석]"] },
@@ -188,95 +215,112 @@ const CrimeMap: React.FC<CrimeMapProps> = ({
           }
           
     // Add each header and its following content
-    for (let i = 0; i < foundHeaders.length; i++) {
-      const current = foundHeaders[i];
-      const nextPos = (i + 1 < foundHeaders.length) ? foundHeaders[i + 1].pos : reasoning.length;
-      const content = reasoning.substring(current.pos + current.length, nextPos).trim();
-      
-      reasoningHtml += `
-        <div style="margin-bottom: 12px; border-left: 2px solid #6366f1; padding-left: 10px;">
-          <div style="color: #818cf8; font-weight: 700; font-size: 12px; margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between;">
-            <div style="display: flex; align-items: center; gap: 4px;">
-              <span style="width: 6px; height: 6px; border-radius: 50%; background-color: #6366f1;"></span>
-              ${current.key}
+      for (let i = 0; i < foundHeaders.length; i++) {
+        const current = foundHeaders[i];
+        const nextPos = (i + 1 < foundHeaders.length) ? foundHeaders[i + 1].pos : reasoning.length;
+        const content = reasoning.substring(current.pos + current.length, nextPos).trim();
+        
+        reasoningHtml += `
+          <div style="margin-bottom: 12px; border-left: 2px solid #6366f1; padding-left: 10px;">
+            <div style="color: #818cf8; font-weight: normal; font-size: 12px; margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between;">
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <span style="width: 6px; height: 6px; border-radius: 50%; background-color: #6366f1;"></span>
+                ${current.key}
+              </div>
             </div>
-            ${current.key === "[위험 요소]" || current.key === "[위험요소]" ? `
-              <span style="font-size: 10px; background-color: rgba(239, 68, 68, 0.2); color: #f87171; padding: 1px 6px; border-radius: 4px; border: 1px solid rgba(239, 68, 68, 0.3);">CRITICAL</span>
-            ` : ""}
+            <div style="color: #e4e4e7; line-height: 1.5;">${content}</div>
           </div>
-          <div style="color: #e4e4e7; line-height: 1.5;">${content}</div>
-        </div>
-      `;
-    }
-        } else {
-          // If no headers were actually found despite having brackets
-          reasoningHtml = `<div style="color: #e4e4e7; line-height: 1.5;">${reasoning.trim()}</div>`;
-        }
-      } else {
-        // Fallback for old format or no headers
-        reasoningHtml = reasoning.includes('\n') 
-          ? reasoning.split('\n').filter(s => s.trim()).map(s => `<div style="margin-bottom: 6px; display: flex; gap: 6px;"><span style="color: #6366f1; font-weight: bold;">•</span><span>${s.trim()}</span></div>`).join('')
-          : reasoning.split('. ').filter(s => s.trim()).map(s => `<div style="margin-bottom: 6px; display: flex; gap: 6px;"><span style="color: #6366f1; font-weight: bold;">•</span><span>${s.trim()}${s.endsWith('.') ? '' : '.'}</span></div>`).join('');
+        `;
       }
+    } else {
+      // If no headers were actually found despite having brackets
+      reasoningHtml = `<div style="color: #e4e4e7; line-height: 1.5;">${reasoning.trim()}</div>`;
+    }
+  } else {
+    // Fallback for old format or no headers
+    reasoningHtml = reasoning.includes('\n') 
+      ? reasoning.split('\n').filter(s => s.trim()).map(s => `<div style="margin-bottom: 6px; display: flex; gap: 6px;"><span style="color: #6366f1; font-weight: normal;">•</span><span>${s.trim()}</span></div>`).join('')
+      : reasoning.split('. ').filter(s => s.trim()).map(s => `<div style="margin-bottom: 6px; display: flex; gap: 6px;"><span style="color: #6366f1; font-weight: normal;">•</span><span>${s.trim()}${s.endsWith('.') ? '' : '.'}</span></div>`).join('');
+  }
 
-      const popupContent = `
-        <div style="width: 750px; background-color: #18181b; color: white; border-radius: 12px; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-          <!-- Main Horizontal Layout -->
-          <div style="display: flex; flex-direction: row; min-height: 320px;">
-            
-            <!-- Left Panel: User Info & Status (approx 30%) -->
-            <div style="width: 30%; border-right: 1px solid #27272a; display: flex; flex-direction: column; background-color: #1c1c1f;">
-              <!-- Header -->
-              <div style="padding: 16px 20px; background-color: #27272a; border-bottom: 1px solid #3f3f46;">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <div style="width: 10px; height: 10px; border-radius: 50%; background-color: ${markerColor}; box-shadow: 0 0 10px ${markerColor};"></div>
-                    <span style="font-weight: 700; font-size: 18px; white-space: nowrap;">${c.name || "미확인"}</span>
-                    <span style="color: #a1a1aa; font-size: 14px;">(${c.age || "?"}세)</span>
-                  </div>
-                </div>
-                <div style="display: flex; gap: 4px;">
-                  <span style="font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 9999px; background-color: ${severityBg}; color: ${severityColor}; border: 1px solid ${severityBorder};">
-                    ${severityLabel}
-                  </span>
-                </div>
-              </div>
-
-              <!-- Status Info -->
-              <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; flex-grow: 1;">
-                <div style="display: flex; flex-direction: column; gap: 2px;">
-                  <span style="color: #71717a; font-size: 11px; font-weight: 600;">감지된 유형</span>
-                  <span style="color: ${isCritical ? "#fca5a5" : "#e4e4e7"}; font-size: 15px; font-weight: 700;">
-                    ${category || "분석 중..."}
-                  </span>
-                </div>
-                <div style="display: flex; flex-direction: column; gap: 2px;">
-                  <span style="color: #71717a; font-size: 11px; font-weight: 600;">핵심 감지 정서</span>
-                  <span style="color: #e4e4e7; font-size: 14px;">
-                    ${c.analysisResult?.primaryEmotion || "분석 중..."}
-                  </span>
-                </div>
-                <div style="display: flex; flex-direction: column; gap: 2px;">
-                  <span style="color: #71717a; font-size: 11px; font-weight: 600;">접수 상태</span>
-                  <span style="color: #e4e4e7; font-size: 14px; display: flex; align-items: center; gap: 6px;">
-                    <span style="width: 6px; height: 6px; border-radius: 50%; background-color: #10b981;"></span>
-                    ${c.id?.includes('report') ? '전화접수' : '모바일 신고 자동접수'}
-                  </span>
-                </div>
+  const popupContent = `
+    <div style="width: 750px; background-color: #18181b; color: white; border-radius: 12px; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+      <!-- Main Horizontal Layout -->
+      <div style="display: flex; flex-direction: row; min-height: 320px;">
+        
+        <!-- Left Panel: User Info & Status (approx 30%) -->
+        <div style="width: 30%; border-right: 1px solid #27272a; display: flex; flex-direction: column; background-color: #1c1c1f;">
+          <!-- Header -->
+          <div style="padding: 16px 20px; background-color: #27272a; border-bottom: 1px solid #3f3f46;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 10px; height: 10px; border-radius: 50%; background-color: ${markerColor}; box-shadow: 0 0 10px ${markerColor};"></div>
+                <span style="font-weight: normal; font-size: 18px; white-space: nowrap;">${c.name || "미확인"}</span>
+                <span style="color: #a1a1aa; font-size: 14px;">(${c.age || "?"}세)</span>
               </div>
             </div>
+            <div style="display: flex; gap: 4px;">
+              <span style="font-size: 11px; font-weight: normal; padding: 2px 10px; border-radius: 9999px; background-color: ${severityBg}; color: ${severityColor}; border: 1px solid ${severityBorder};">
+                ${severityLabel}
+              </span>
+            </div>
+          </div>
 
-            <!-- Right Panel: AI Reasoning & Location (approx 70%) -->
-            <div style="width: 70%; display: flex; flex-direction: column; background-color: #18181b;">
-              <div style="padding: 16px 20px; flex-grow: 1; display: flex; flex-direction: column; gap: 12px;">
-                <!-- AI Analysis Context -->
-                <div style="display: flex; flex-direction: column; gap: 6px; flex-grow: 1;">
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                    <span style="color: #a1a1aa; font-size: 12px; font-weight: 600;">AI 상황 맥락 분석</span>
-                  </div>
-                  <div style="margin: 0; font-size: 13.5px; color: #d4d4d8; line-height: 1.6; background-color: #27272a; padding: 12px 15px; border-radius: 8px; border: 1px solid #3f3f46; min-height: 200px; max-height: 350px; overflow-y: auto;">
-                    ${reasoningHtml}
+          <!-- Status Info -->
+          <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; flex-grow: 1;">
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="color: #71717a; font-size: 11px; font-weight: normal;">감지된 유형</span>
+              <span style="color: ${isCritical ? "#fca5a5" : "#e4e4e7"}; font-size: 15px; font-weight: normal;">
+                ${category || "분석 중..."}
+              </span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="color: #71717a; font-size: 11px; font-weight: normal;">핵심 감지 정서</span>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-size: 15px; font-weight: normal; color: #e4e4e7;">
+                  ${c.analysisResult?.primaryEmotion || "분석 중..."}
+                </span>
+                ${c.analysisResult?.primaryEmotion === "격앙됨/흥분" || c.analysisResult?.primaryEmotion === "공포" ? 
+                  `<span style="width: 6px; height: 6px; background-color: #ef4444; border-radius: 50%; display: inline-block;"></span>` : 
+                  c.analysisResult?.primaryEmotion === "위축됨/불안" ?
+                  `<span style="width: 6px; height: 6px; background-color: #f59e0b; border-radius: 50%; display: inline-block;"></span>` : 
+                  `<span style="width: 6px; height: 6px; background-color: #10b981; border-radius: 50%; display: inline-block;"></span>`
+                }
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="color: #71717a; font-size: 11px; font-weight: normal;">접수 상태</span>
+              <span style="color: #e4e4e7; font-size: 14px; display: flex; align-items: center; gap: 6px;">
+                <span style="width: 6px; height: 6px; border-radius: 50%; background-color: #10b981;"></span>
+                ${c.id?.includes('report') ? '전화접수' : '모바일 신고 자동접수'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Panel: AI Reasoning & Location (approx 70%) -->
+        <div style="width: 70%; display: flex; flex-direction: column; background-color: #18181b;">
+          <div style="padding: 16px 20px; flex-grow: 1; display: flex; flex-direction: column; gap: 12px;">
+            
+            <!-- STT Transcript Box (New) -->
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                <span style="color: #a1a1aa; font-size: 12px; font-weight: normal;">음성 인식 내용 (STT)</span>
+              </div>
+              <div style="font-size: 13px; color: #e4e4e7; line-height: 1.5; background-color: rgba(39, 39, 42, 0.5); padding: 10px 12px; border-radius: 8px; border: 1px solid #27272a; font-style: italic;">
+              "${displayTranscript}"
+            </div>
+            </div>
+
+            <!-- AI Analysis Context -->
+            <div style="display: flex; flex-direction: column; gap: 6px; flex-grow: 1;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                <span style="color: #a1a1aa; font-size: 12px; font-weight: normal;">AI 상황 맥락 분석</span>
+              </div>
+              <div style="margin: 0; font-size: 13.5px; color: #d4d4d8; line-height: 1.6; background-color: #27272a; padding: 12px 15px; border-radius: 8px; border: 1px solid #3f3f46; min-height: 200px; max-height: 350px; overflow-y: auto;">
+                ${reasoningHtml}
                   </div>
                 </div>
 

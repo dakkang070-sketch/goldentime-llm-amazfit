@@ -74,7 +74,8 @@ const schoolViolenceCaseSchema = new mongoose.Schema({
       max_rms: Number,
       mean_rms: Number,
       zcr: Number,
-      centroid: Number
+      centroid: Number,
+      duration: Number
     },
   },
   status: {
