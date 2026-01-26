@@ -1,0 +1,152 @@
+[
+  {
+    "transcript": "야 돈 내놓으라고. 안 주면 뒤진다 진짜. 아 이 XX가 말이 많네? (퍽 퍽 소리) 야, 지갑 뒤져봐.",
+    "category": "Physical Violence",
+    "severity": "Critical",
+    "description": "금품 갈취 및 직접적인 신체 폭력 상황"
+  },
+  {
+    "transcript": "너 오늘 마치고 옥상으로 따라와라. 선생님한테 이르면 죽여버린다. 알았어? 대답 안 해?",
+    "category": "Intimidation",
+    "severity": "Critical",
+    "description": "방과 후 폭력 예고 및 협박"
+  },
+  {
+    "transcript": "야 찐따야, 빵 좀 사와라. 매점 가서 우유랑 빵 사오라고. 돈은 네가 내고. ㅋㅋㅋ",
+    "category": "Bullying",
+    "severity": "Warning",
+    "description": "빵셔틀 및 언어적 괴롭힘"
+  },
+  {
+    "transcript": "너네 엄마 없냐? 가정교육을 그따위로 받았어? 아 냄새나 저리 좀 가라.",
+    "category": "Verbal Abuse",
+    "severity": "Warning",
+    "description": "패드립 및 인격 모독"
+  },
+  {
+    "transcript": "아 진짜 웃겨 ㅋㅋㅋ 야 너 그 표정 뭐냐? 개그맨이네 완전. (웃음 소리) 장난이야 장난, 왜 정색하고 그래?",
+    "category": "Prank",
+    "severity": "Normal",
+    "description": "다소 거친 장난이나 학교폭력으로 보기 어려운 상황"
+  },
+  {
+    "transcript": "이거 놔! 놓으라고! 아 진짜 짜증나게 하지 말고 내 거 돌려줘!",
+    "category": "Conflict",
+    "severity": "Warning",
+    "description": "학생 간의 물건 다툼"
+  },
+  {
+    "transcript": "살려주세요! 사람 살려! 여기 누가 좀 도와주세요! (다급한 비명 소리)",
+    "category": "Emergency",
+    "severity": "Critical",
+    "description": "긴급 구조 요청 및 비명"
+  },
+  {
+    "transcript": "야 우리 오늘 PC방 갈래? 내가 쏠게. 아 진짜? 대박 ㅋㅋ 빨리 가자.",
+    "category": "Normal",
+    "severity": "Normal",
+    "description": "일상적인 대화"
+  },
+  {
+    "transcript": "야 이 X신아, 눈 깔아라. 뭘 꼬라보는데? 눈알을 확 파버릴라.",
+    "category": "Intimidation",
+    "severity": "Critical",
+    "description": "심각한 욕설 및 신체 훼손 협박"
+  },
+  {
+    "transcript": "제발 그만해... 나 너무 아파... 하지 마...",
+    "category": "Physical Violence",
+    "severity": "Critical",
+    "description": "피해자의 고통 호소 및 지속적인 폭력 상황"
+  },
+  {
+    "transcript": "너 이번 시험 몇 점 맞았냐? 아 나 망했어 진짜... 엄마한테 죽었다.",
+    "category": "Normal",
+    "severity": "Normal",
+    "description": "성적 관련 일상 대화"
+  },
+  {
+    "transcript": "야 너 일베하냐? 말투가 왜 그따위냐? ㅋㅋㅋ 완전 벌레네 이거.",
+    "category": "Cyber Bullying",
+    "severity": "Warning",
+    "description": "온라인 용어 사용 및 비하 발언"
+  },
+  {
+    "transcript": "(쿵 쿵 소리) 야 문 열어! 안에 있는 거 다 알아! 나오라고! (발로 차는 소리)",
+    "category": "Intimidation",
+    "severity": "Critical",
+    "description": "화장실이나 교실 등에 가두거나 위협하는 상황"
+  },
+  {
+    "transcript": "선배님 죄송합니다. 제가 잘 몰라서 그랬습니다. 한 번만 봐주세요...",
+    "category": "Hierarchical Violence",
+    "severity": "Warning",
+    "description": "선후배 간의 강압적인 분위기"
+  },
+  {
+    "transcript": "너네 반에 전학생 왔대? 예쁘냐? ㅋㅋㅋ 가서 구경 가자.",
+    "category": "Normal",
+    "severity": "Normal",
+    "description": "친구들 간의 호기심 대화"
+  },
+  {
+    "transcript": "야 너네 둘이 싸우지 말고 말로 해. 주먹질은 안 돼!",
+    "category": "Conflict",
+    "severity": "Warning",
+    "description": "싸움을 말리는 상황이나 초기 다툼"
+  },
+  {
+    "transcript": "(우당탕 소리) 야 이 새끼 잡아! 도망 못 가게 잡아! 밟아버려!",
+    "category": "Physical Violence",
+    "severity": "Critical",
+    "description": "집단 구타 상황"
+  },
+  {
+    "transcript": "야 칼 있다. 조심해. 너 그거 내려놔. 찌르지 마!",
+    "category": "Physical Violence",
+    "severity": "Critical",
+    "description": "흉기 소지 및 위협 상황"
+  },
+  {
+    "transcript": "매달 5만원씩 상납하라고 했지? 왜 안 가져왔어? 맞고 줄래 그냥 줄래?",
+    "category": "Physical Violence",
+    "severity": "Critical",
+    "description": "금품 갈취 및 상습적 폭행"
+  },
+  {
+    "transcript": "야, 얘 묶어. 동영상 찍어. 이거 뿌리면 너 학교 못 다닌다. ㅋㅋㅋ",
+    "category": "Cyber Bullying",
+    "severity": "Critical",
+    "description": "불법 촬영 및 유포 협박"
+  },
+  {
+    "transcript": "너 내가 우습냐? 어? 대답 안 해? (뺨 때리는 소리)",
+    "category": "Physical Violence",
+    "severity": "Critical",
+    "description": "일방적인 폭행 및 위협"
+  },
+  {
+    "transcript": "우리가 너 친구 해준다니까? 대신 우리 숙제 좀 해줘. 거절하면 알지?",
+    "category": "Bullying",
+    "severity": "Warning",
+    "description": "강제 심부름 및 은근한 협박"
+  },
+  {
+    "transcript": "야 담배 있냐? 하나만 줘봐. 아 없다고? 뒤져서 나오면 10원에 한 대다.",
+    "category": "Bullying",
+    "severity": "Warning",
+    "description": "금품 갈취 시도"
+  },
+  {
+    "transcript": "아 씨발 짜증나게 하네. 야 옥상으로 튀어와. 맞짱 뜨자.",
+    "category": "Physical Violence",
+    "severity": "Critical",
+    "description": "싸움 신청 및 결투 조장"
+  },
+  {
+    "transcript": "제발 용서해주세요... 다시는 안 그럴게요... 윽... (신음 소리)",
+    "category": "Physical Violence",
+    "severity": "Critical",
+    "description": "지속적인 폭행에 대한 피해자의 애원"
+  }
+]

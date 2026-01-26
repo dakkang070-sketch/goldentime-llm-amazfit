@@ -16,7 +16,7 @@ if [ -d ~/.npm ] && [ ! -w ~/.npm ]; then
 fi
 
 # 프론트엔드 디렉토리로 이동
-cd "$(dirname "$0")/frontend"
+cd "$(dirname "$0")/goldentime-monitoring-dashboard"
 
 # 환경 변수 파일 확인
 if [ ! -f ".env" ]; then
@@ -29,7 +29,7 @@ EOF
 fi
 
 # 의존성 확인
-if [ ! -d "node_modules" ]; then
+if false; then
     echo "📦 의존성 설치 중..."
     npm install
     if [ $? -ne 0 ]; then
@@ -40,7 +40,7 @@ fi
 
 # 서버 실행
 echo "✅ 대시보드 서버 시작 중..."
-echo "🌐 브라우저에서 http://localhost:5173 접속하세요"
+echo "🌐 브라우저에서 http://localhost:3001 접속하세요"
 echo "📧 로그인: controller@test.com / test1234"
 echo ""
 npm run dev

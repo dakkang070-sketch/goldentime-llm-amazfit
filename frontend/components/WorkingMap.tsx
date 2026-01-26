@@ -1,507 +1,657 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Patient, Hospital } from '../types';
+import React, { useEffect, useRef, useState, useCallback } from "react";
+import {
+  Patient,
+  Hospital,
+  Ambulance,
+  AmbulanceStatus,
+  PatientStatus,
+} from "../types";
+
+declare var window: Window & typeof globalThis & { L: any };
+
+import "leaflet/dist/leaflet.css";
 
 interface LiveMapProps {
   patient: Patient;
   hospital?: Hospital;
+  ambulances?: Ambulance[];
+  patients?: Patient[];
+  onArrival?: (patientId: string) => void;
 }
 
-const WorkingMap: React.FC<LiveMapProps> = ({ patient, hospital }) => {
+enum TransportPhase {
+  WAITING = "WAITING",
+  TO_PATIENT = "TO_PATIENT",
+  TO_HOSPITAL = "TO_HOSPITAL",
+  ARRIVED = "ARRIVED",
+}
+
+const WorkingMap: React.FC<LiveMapProps> = ({
+  patient: initialPatient,
+  hospital,
+  ambulances: externalAmbulances,
+  patients: allPatients,
+  onArrival,
+}) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
-  const markersRef = useRef<any[]>([]);
-  const [hospitalData, setHospitalData] = useState<any[]>([]);
+  const [mapReady, setMapReady] = useState(false);
 
-  // 병원 데이터 가져오기
+  const patientMarkerRef = useRef<any>(null);
+  const ambulanceMarkerRef = useRef<any>(null);
+  const staticGroupRef = useRef<any>(null);
+  const pathGroupRef = useRef<any>(null);
+
+  const [hospitalData, setHospitalData] = useState<any[]>([]);
+  const [matchedAmbulance, setMatchedAmbulance] = useState<Ambulance | null>(
+    null,
+  );
+  const [hospitalPath, setHospitalPath] = useState<any[]>([]);
+  const [currentPatient, setCurrentPatient] = useState<Patient>(initialPatient);
+  const [phase, setPhase] = useState<TransportPhase>(TransportPhase.WAITING);
+
+  // 모든 환자의 애니메이션 위치를 관리하는 Ref
+  const allPatientsAnimPosRef = useRef<
+    Record<string, { lat: number; lng: number }>
+  >({});
+  // 현재 선택된 환자 애니메이션 위치
+  const animPosRef = useRef<{ lat: number; lng: number } | null>(null);
+
+  const displayAmbulances = externalAmbulances || [];
+
+  // 1. 레이어 및 마커 동기화 함수
+  const syncLayers = useCallback(() => {
+    if (!mapRef.current || !window.L || !mapReady) return;
+
+    try {
+      // 1-1. 경로선 레이어 관리 (깜빡임 최소화)
+      if (!pathGroupRef.current) {
+        pathGroupRef.current = window.L.layerGroup().addTo(mapRef.current);
+      }
+
+      const assignedAmb = displayAmbulances.find(
+        (a) => a.id === currentPatient.matchedAmbulanceId,
+      );
+
+      const pathKey =
+        (assignedAmb?.id || "none") +
+        assignedAmb?.activity +
+        (assignedAmb?.patrolPath?.length || 0) +
+        (assignedAmb?.patrolIndex || 0);
+
+      if (pathGroupRef.current._lastPathKey !== pathKey) {
+        pathGroupRef.current.clearLayers();
+
+        // 1-1-1. 선택된 차량의 단계별 경로 표시
+        if (
+          assignedAmb?.patrolPath &&
+          assignedAmb.dispatchPathLen !== undefined
+        ) {
+          const fullPath = assignedAmb.patrolPath;
+          const splitIdx = assignedAmb.dispatchPathLen;
+          const currentIdx = assignedAmb.patrolIndex || 0;
+
+          if (assignedAmb.activity === "heading_to_patient") {
+            // 출동 중: 구급차 위치부터 환자 위치까지만 파란색으로 표시
+            const toPatientPath = fullPath.slice(currentIdx, splitIdx + 1);
+            if (toPatientPath.length > 1) {
+              window.L.polyline(
+                toPatientPath.map((p: any) => [p.lat, p.lng]),
+                {
+                  color: "#3b82f6",
+                  weight: 6,
+                  opacity: 0.8,
+                  dashArray: "10, 10",
+                },
+              ).addTo(pathGroupRef.current);
+            }
+          } else if (
+            assignedAmb.activity === "boarding" ||
+            assignedAmb.activity === "transporting_to_hospital"
+          ) {
+            // 이송 조치 중 또는 이송 중: 현재 위치부터 병원까지만 빨간색으로 표시
+            const toHospitalPath = fullPath.slice(currentIdx);
+            if (toHospitalPath.length > 1) {
+              window.L.polyline(
+                toHospitalPath.map((p: any) => [p.lat, p.lng]),
+                {
+                  color: "#ef4444",
+                  weight: 6,
+                  opacity: 0.8,
+                  dashArray: "10, 10",
+                },
+              ).addTo(pathGroupRef.current);
+            }
+          }
+        }
+
+        // 1-1-2. 배경의 다른 차량 경로 표시 (현재 가야 할 구간만 표시)
+        displayAmbulances.forEach((amb) => {
+          if (assignedAmb && amb.id === assignedAmb.id) return;
+          if (amb.patrolPath && amb.patrolIndex !== undefined) {
+            const isHeading = amb.activity === "heading_to_patient";
+            const isBoarding = amb.activity === "boarding";
+            const isTransporting = amb.activity === "transporting_to_hospital";
+
+            if (isHeading || isBoarding || isTransporting) {
+              const currentIdx = amb.patrolIndex;
+              const targetIdx = isHeading
+                ? amb.dispatchPathLen || amb.patrolPath.length
+                : amb.patrolPath.length;
+              const remainingPath = amb.patrolPath.slice(currentIdx, targetIdx);
+
+              if (remainingPath.length > 1) {
+                window.L.polyline(
+                  remainingPath.map((p: any) => [p.lat, p.lng]),
+                  {
+                    color: isHeading
+                      ? "#3b82f6"
+                      : isBoarding
+                        ? "#f59e0b"
+                        : "#ef4444",
+                    weight: 2,
+                    opacity: 0.2,
+                    dashArray: "5, 5",
+                  },
+                ).addTo(pathGroupRef.current);
+              }
+            }
+          }
+        });
+
+        pathGroupRef.current._lastPathKey = pathKey;
+      }
+
+      // 1-2. 정적 레이어 그룹
+      if (!staticGroupRef.current) {
+        staticGroupRef.current = window.L.layerGroup().addTo(mapRef.current);
+      }
+
+      // 1-3. 병원 마커
+      if (!mapRef.current._hMarkers) {
+        mapRef.current._hMarkers = {};
+        if (hospitalData && hospitalData.length > 0) {
+          hospitalData.forEach((h) => {
+            if (!h.lat || !h.lng) return;
+            const isM = hospital && h.id === hospital.id;
+            const hIcon = window.L.divIcon({
+              className: "h-icon",
+              html: `<div style="width:22px;height:22px;background-color:${isM ? "#ef4444" : "#1e293b"};border:2px solid #fff;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;${isM ? "animation:pulse 2s infinite;" : ""}">H</div>`,
+            });
+            const m = window.L.marker([h.lat, h.lng], { icon: hIcon }).addTo(
+              staticGroupRef.current,
+            );
+            mapRef.current._hMarkers[h.id] = m;
+          });
+        }
+      }
+
+      // 1-4. 구급차 마커 통합 관리 (깜빡임 방지)
+      if (!mapRef.current._ambMarkers) mapRef.current._ambMarkers = {};
+      const currentAmbIds = new Set((displayAmbulances || []).map((a) => a.id));
+
+      if (displayAmbulances && displayAmbulances.length > 0) {
+        displayAmbulances.forEach((amb) => {
+          if (!amb.lat || !amb.lng) return;
+
+          const isSelected = currentPatient.matchedAmbulanceId === amb.id;
+          const patientBeingTransported = (allPatients || []).find(
+            (p) =>
+              p.matchedAmbulanceId === amb.id &&
+              p.status !== PatientStatus.TRANSPORTED,
+          );
+          const isTransportingInBg = !!patientBeingTransported && !isSelected;
+
+          // 전역 상태에서 직접 좌표 가져옴
+          const targetLat = amb.lat;
+          const targetLng = amb.lng;
+
+          // 상태별 라벨 및 색상 정의
+          let statusLabel = "대기";
+          let statusColor = "#10b981";
+
+          if (amb.activity === "transporting_to_hospital") {
+            statusLabel = "이송중";
+            statusColor = "#ef4444";
+          } else if (amb.activity === "boarding") {
+            statusLabel = "이송조치중";
+            statusColor = "#f59e0b"; // 주황색으로 강조
+          } else if (
+            amb.activity === "heading_to_patient" ||
+            amb.status === AmbulanceStatus.DISPATCHED
+          ) {
+            statusLabel = "출동중";
+            statusColor = "#3b82f6";
+          } else if (
+            amb.activity === "patrolling" ||
+            amb.activity === "returning"
+          ) {
+            statusLabel = "대기";
+            statusColor = "#10b981";
+          } else if (amb.status === AmbulanceStatus.BUSY) {
+            statusLabel = "운행중";
+            statusColor = "#f59e0b";
+          }
+
+          // 선택된 차량 특수 스타일
+          const finalStatusLabel = isSelected
+            ? assignedAmb?.activity === "transporting_to_hospital"
+              ? "이송중"
+              : assignedAmb?.activity === "boarding"
+                ? "이송조치중"
+                : assignedAmb?.activity === "heading_to_patient"
+                  ? "출동중"
+                  : statusLabel
+            : statusLabel;
+          const finalColor = isSelected
+            ? assignedAmb?.activity === "transporting_to_hospital"
+              ? "#ef4444"
+              : assignedAmb?.activity === "boarding"
+                ? "#f59e0b"
+                : "#3b82f6"
+            : statusColor;
+
+          const iconHtml = `
+            <div class="ambulance-marker-wrapper flex flex-col items-center justify-center" style="width: 48px; height: 48px;">
+              <div class="ambulance-label" style="position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: ${finalColor}; color: white; padding: ${isSelected ? "2px 6px" : "1px 5px"}; border-radius: ${isSelected ? "4px" : "3px"}; font-size: ${isSelected ? "10px" : "9px"}; margin-bottom: 4px; white-space: nowrap; border: 1px solid rgba(255,255,255,${isSelected ? "0.2" : "0.1"}); font-weight: ${isSelected ? "700" : "400"}; z-index: 1001;">
+                ${amb.unitName} (${finalStatusLabel})
+              </div>
+              <div style="width:${isSelected ? "34px" : "26px"}; height:${isSelected ? "34px" : "26px"}; background-color:${finalColor}; border:${isSelected ? "3px" : "2px"} solid #fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:${isSelected ? "20px" : "16px"}; box-shadow:0 2px 10px rgba(0,0,0,0.3); transition: all 0.2s; ${isSelected ? "animation:pulse 2s infinite;" : ""}">🚑</div>
+            </div>`;
+
+          const aPopupContent = `
+            <div style="padding: 10px; min-width: 150px;">
+              <div style="font-weight: bold; font-size: 14px; margin-bottom: 5px; color: #1e293b;">${amb.unitName}</div>
+              <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">상태: <span style="color: ${finalColor}; font-weight: 600;">${finalStatusLabel}</span></div>
+              <div style="font-size: 11px; color: #64748b;">기종: ${amb.type}</div>
+            </div>`;
+
+          if (mapRef.current._ambMarkers[amb.id]) {
+            const m = mapRef.current._ambMarkers[amb.id];
+            m.setLatLng([amb.lat, amb.lng]);
+
+            const stateKey = finalStatusLabel + finalColor + isSelected;
+            if (m._lastStateKey !== stateKey) {
+              const aIcon = window.L.divIcon({
+                className: isSelected ? "a-icon-m-hover" : "a-icon-static",
+                html: iconHtml,
+                iconSize: [48, 48],
+                iconAnchor: [24, 24], // 중심축을 정확히 중앙으로 고정 (도로 이탈 방지)
+              });
+              m.setIcon(aIcon);
+              m.setPopupContent(aPopupContent);
+              m._lastStateKey = stateKey;
+              if (isSelected) m.setZIndexOffset(1000);
+              else m.setZIndexOffset(0);
+            }
+          } else {
+            const aIcon = window.L.divIcon({
+              className: isSelected ? "a-icon-m-hover" : "a-icon-static",
+              html: iconHtml,
+              iconSize: [48, 48],
+              iconAnchor: [24, 24], // 중심축을 정확히 중앙으로 고정
+            });
+            const m = window.L.marker([targetLat, targetLng], { icon: aIcon })
+              .addTo(mapRef.current)
+              .bindPopup(aPopupContent, {
+                closeButton: false,
+                offset: [0, -10],
+              });
+            m._lastStateKey = finalStatusLabel + finalColor + isSelected;
+            if (isSelected) m.setZIndexOffset(1000);
+            mapRef.current._ambMarkers[amb.id] = m;
+          }
+
+          if (isSelected) {
+            ambulanceMarkerRef.current = mapRef.current._ambMarkers[amb.id];
+          }
+        });
+      }
+
+      // 없어진 구급차 마커 제거
+      Object.keys(mapRef.current._ambMarkers).forEach((id) => {
+        if (!currentAmbIds.has(id)) {
+          mapRef.current._ambMarkers[id].remove();
+          delete mapRef.current._ambMarkers[id];
+        }
+      });
+
+      // 1-5. 환자 마커 통합 관리 (모든 환자 표시 및 구급차 밀착 동기화)
+      if (!mapRef.current._patientMarkers) mapRef.current._patientMarkers = {};
+      const currentPatientIds = new Set(
+        (allPatients || [])
+          .filter((p) => p.status !== PatientStatus.TRANSPORTED)
+          .map((p) => p.id),
+      );
+
+      (allPatients || []).forEach((p) => {
+        if (p.status === PatientStatus.TRANSPORTED) return;
+
+        const isSelected = currentPatient?.id === p.id;
+        const matchedAmb = displayAmbulances?.find(
+          (a) => a.id === p.matchedAmbulanceId,
+        );
+        const isBeingTransported =
+          matchedAmb &&
+          (matchedAmb.activity === "boarding" ||
+            matchedAmb.activity === "transporting_to_hospital");
+
+        // 이송 중이면 구급차 위치를 실시간으로 100% 동기화 (오차 0)
+        const displayLat = isBeingTransported ? matchedAmb.lat : p.lat;
+        const displayLng = isBeingTransported ? matchedAmb.lng : p.lng;
+
+        const triageLevel =
+          p.status === PatientStatus.CRITICAL
+            ? "응급"
+            : p.status === PatientStatus.DANGER
+              ? "위험"
+              : p.status === PatientStatus.WARNING
+                ? "경고"
+                : p.status === PatientStatus.CAUTION
+                  ? "주의"
+                  : p.status === PatientStatus.NORMAL
+                    ? "정상"
+                    : "매칭 대기";
+        const statusColor =
+          triageLevel === "응급"
+            ? "#ef4444"
+            : triageLevel === "위험"
+              ? "#f97316"
+              : triageLevel === "경고"
+                ? "#eab308"
+                : triageLevel === "주의"
+                  ? "#3b82f6"
+                  : triageLevel === "정상"
+                    ? "#10b981"
+                    : "#64748b";
+        let statusLabelText =
+          p.status === PatientStatus.PENDING
+            ? "매칭 대기"
+            : `${triageLevel}(${p.status})`;
+
+        const pIconHtml = `
+            <div class="flex flex-col items-center" style="transform: translateY(${isBeingTransported ? "-22px" : "-15px"}); transition: transform 0.1s;">
+              <div style="background: rgba(15, 23, 42, 0.95); color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-bottom: 4px; white-space: nowrap; border: 1px solid rgba(255,255,255,0.3); box-shadow: 0 4px 12px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 4px; z-index: 2000;">
+                <span style="font-weight: 800;">${p.name}</span>
+                <span style="opacity: 0.7;">${p.age}세</span>
+                <span style="background: ${statusColor}; color: white; padding: 0px 4px; border-radius: 2px; font-size: 9px; font-weight: 900;">${statusLabelText}</span>
+              </div>
+              ${
+                isBeingTransported
+                  ? ""
+                  : `
+              <div class="relative flex items-center justify-center">
+                <div class="absolute w-12 h-12 bg-red-600/30 rounded-full animate-ping"></div>
+                <div class="w-6 h-6 bg-red-600 rounded-full border-2 border-white shadow-xl"></div>
+              </div>`
+              }
+            </div>`;
+
+        const pPopupContent = `
+          <div style="padding: 10px; min-width: 150px;">
+            <div style="font-weight: bold; font-size: 14px; margin-bottom: 5px; color: #1e293b;">${p.name} (${p.age}세)</div>
+            <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">${p.location}</div>
+          </div>`;
+
+        if (mapRef.current._patientMarkers[p.id]) {
+          const m = mapRef.current._patientMarkers[p.id];
+          m.setLatLng([displayLat, displayLng]);
+
+          const stateKey = p.status + isBeingTransported + isSelected;
+          if (m._lastStateKey !== stateKey) {
+            const pIcon = window.L.divIcon({
+              className: "p-icon",
+              html: pIconHtml,
+              iconSize: [120, 60],
+              iconAnchor: [60, 60],
+            });
+            m.setIcon(pIcon);
+            m._lastStateKey = stateKey;
+            if (isSelected) m.setZIndexOffset(2000);
+            else m.setZIndexOffset(100);
+          }
+        } else {
+          const pIcon = window.L.divIcon({
+            className: "p-icon",
+            html: pIconHtml,
+            iconSize: [120, 60],
+            iconAnchor: [60, 60],
+          });
+          const m = window.L.marker([displayLat, displayLng], { icon: pIcon })
+            .addTo(mapRef.current)
+            .bindPopup(pPopupContent, { closeButton: false, offset: [0, -30] });
+          m._lastStateKey = p.status + isBeingTransported + isSelected;
+          if (isSelected) m.setZIndexOffset(2000);
+          mapRef.current._patientMarkers[p.id] = m;
+        }
+      });
+
+      // 없어진 환자 마커 제거
+      Object.keys(mapRef.current._patientMarkers).forEach((id) => {
+        if (!currentPatientIds.has(id)) {
+          mapRef.current._patientMarkers[id].remove();
+          delete mapRef.current._patientMarkers[id];
+        }
+      });
+    } catch (e) {
+      console.error("syncLayers error:", e);
+    }
+  }, [
+    currentPatient,
+    matchedAmbulance,
+    hospital,
+    hospitalData,
+    displayAmbulances,
+    allPatients,
+    mapReady,
+    hospitalPath,
+  ]);
+
+  // 2. 지도 초기화
   useEffect(() => {
-    const getHospitals = async () => {
+    if (!mapContainerRef.current || mapRef.current) return;
+
+    const initMap = () => {
+      if (!window.L) {
+        setTimeout(initMap, 100);
+        return;
+      }
+
+      mapRef.current = window.L.map(mapContainerRef.current, {
+        center: [initialPatient.lat, initialPatient.lng],
+        zoom: 16,
+        attributionControl: false,
+      });
+
+      window.L.tileLayer(
+        "https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}",
+        {
+          subdomains: ["0", "1", "2", "3"],
+        },
+      ).addTo(mapRef.current);
+
+      setMapReady(true);
+    };
+
+    initMap();
+
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.off();
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  }, []);
+
+  // 3. 환자 데이터 동기화 및 지도 이동
+  useEffect(() => {
+    // ID 또는 배정된 구급차가 바뀌면 상태 초기화
+    if (
+      currentPatient.id !== initialPatient.id ||
+      currentPatient.matchedAmbulanceId !== initialPatient.matchedAmbulanceId
+    ) {
+      if (currentPatient.id !== initialPatient.id) {
+        // 환자 자체가 바뀌면 전체 리셋
+        setPhase(TransportPhase.WAITING);
+        setMatchedAmbulance(null);
+        setHospitalPath([]);
+        animPosRef.current = null;
+
+        if (mapRef.current && mapReady) {
+          mapRef.current.flyTo([initialPatient.lat, initialPatient.lng], 16, {
+            duration: 1.2,
+          });
+        }
+      } else {
+        // 같은 환자인데 구급차만 바뀐 경우 (재배정)
+        setMatchedAmbulance(null);
+        setPhase(TransportPhase.WAITING);
+      }
+    }
+
+    // 데이터 상시 동기화
+    setCurrentPatient(initialPatient);
+
+    if (mapReady) {
+      setTimeout(syncLayers, 100);
+    }
+  }, [initialPatient, mapReady]);
+
+  // 4. 데이터 로드 (병원)
+  useEffect(() => {
+    const loadHospitals = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/emergency/hospitals/map-data');
-        const data = await response.json();
+        const res = await fetch(
+          "http://localhost:5000/api/emergency/hospitals/map-data",
+        );
+        const data = await res.json();
         if (data.success && data.data?.hospitals) {
-          console.log(`✅ ${data.data.hospitals.length}개 병원 데이터 로드`);
           setHospitalData(data.data.hospitals.slice(0, 30));
         } else {
-          console.log('⚠️ 백업 병원 데이터 사용');
-          setHospitalData([
-            { id: '1', name: '서울대학교병원', lat: 37.5796, lng: 127.0007 },
-            { id: '2', name: '삼성서울병원', lat: 37.4882, lng: 127.0851 },
-            { id: '3', name: '세브란스병원', lat: 37.5623, lng: 126.9408 },
-            { id: '4', name: '서울아산병원', lat: 37.5266, lng: 127.1082 },
-            { id: '5', name: '고려대학교의료원', lat: 37.5902, lng: 127.0263 }
-          ]);
+          throw new Error("Fallback");
         }
-      } catch (error) {
-        console.error('API 에러, 백업 데이터 사용:', error);
+      } catch (e) {
         setHospitalData([
-          { id: '1', name: '서울대학교병원', lat: 37.5796, lng: 127.0007 },
-          { id: '2', name: '삼성서울병원', lat: 37.4882, lng: 127.0851 },
-          { id: '3', name: '세브란스병원', lat: 37.5623, lng: 126.9408 },
-          { id: '4', name: '서울아산병원', lat: 37.5266, lng: 127.1082 },
-          { id: '5', name: '고려대학교의료원', lat: 37.5902, lng: 127.0263 }
+          { id: "h1", name: "서울대학교병원", lat: 37.5796, lng: 127.0007 },
+          { id: "h4", name: "삼성서울병원", lat: 37.4882, lng: 127.0851 },
+          { id: "h2", name: "세브란스병원", lat: 37.5623, lng: 126.9408 },
+          { id: "h3", name: "서울아산병원", lat: 37.5266, lng: 127.1082 },
         ]);
       }
     };
-    
-    getHospitals();
+    loadHospitals();
   }, []);
 
-  // 지도 초기화
-  useEffect(() => {
-    if (!mapContainerRef.current || !window.L) {
-      console.error('지도 컨테이너 또는 Leaflet 없음');
-      return;
-    }
+  // 5. 도로 경로 Fetch
+  const fetchPath = useCallback(
+    async (
+      s: { lat: number; lng: number },
+      e: { lat: number; lng: number },
+    ) => {
+      try {
+        const url = `https://routing.openstreetmap.de/routed-car/route/v1/driving/${s.lng},${s.lat};${e.lng},${e.lat}?overview=full&geometries=geojson`;
+        const res = await fetch(url);
+        const data = await res.json();
+        const points = data.routes?.[0]?.geometry?.coordinates?.map(
+          (c: any) => ({ lat: c[1], lng: c[0] }),
+        );
 
-    console.log('🗺️ 지도 초기화 시작');
-
-    // 기존 지도 완전 제거
-    if (mapRef.current) {
-      mapRef.current.remove();
-      mapRef.current = null;
-    }
-
-    // 기존 마커들 제거
-    markersRef.current = [];
-
-    try {
-      // 새 지도 생성 (환자 위치 중심, 줌 레벨 18, 한국 경계 제한)
-      mapRef.current = window.L.map(mapContainerRef.current, {
-        center: [patient.lat, patient.lng],
-        zoom: 18, // 줌 레벨 18로 설정
-        minZoom: 7, // 최소 줌 (한국 전체가 보이는 레벨)
-        maxZoom: 18, // 최대 줌 (약 20km 상공에서 보는 레벨)
-        zoomControl: true,
-        attributionControl: false,
-        // 한국 경계 제한 (위도: 33.0~38.9, 경도: 124.0~132.0)
-        maxBounds: [
-          [33.0, 124.0], // 남서쪽 끝 (제주도 남단)
-          [38.9, 132.0]  // 북동쪽 끝 (함경북도 동단)
-        ],
-        maxBoundsViscosity: 1.0 // 경계를 벗어날 수 없도록 강제
-      });
-
-      // 구글 지도 타일 레이어
-      window.L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
-        subdomains: ['0', '1', '2', '3'],
-        attribution: ''
-      }).addTo(mapRef.current);
-
-      console.log('✅ 지도 생성 완료');
-
-      // 1초 후 마커 추가 (지도 완전 로딩 대기)
-      setTimeout(() => {
-        addAllMarkers();
-      }, 1000);
-
-    } catch (error) {
-      console.error('❌ 지도 생성 실패:', error);
-    }
-  }, [patient.id, patient.lat, patient.lng]); // patient.id 변경시에도 반응
-
-  // 소방서 격자 코드 생성 (위도/경도를 기반으로)
-  const generateGridCode = (lat: number, lng: number) => {
-    const latGrid = Math.floor((lat - 33.0) * 1000).toString().padStart(4, '0');
-    const lngGrid = Math.floor((lng - 124.0) * 1000).toString().padStart(4, '0');
-    return `G${latGrid}${lngGrid}`;
-  };
-
-  // 소방서 구역 코드 생성
-  const generateFireCode = (location: string) => {
-    const districts = {
-      '서울': 'SEL', '부산': 'PUS', '대구': 'DAE', '인천': 'ICN',
-      '광주': 'GWJ', '대전': 'DAJ', '울산': 'ULS', '세종': 'SEJ',
-      '경기': 'GYG', '강원': 'GWN', '충북': 'CHB', '충남': 'CHN',
-      '전북': 'JNB', '전남': 'JNN', '경북': 'GYB', '경남': 'GYN',
-      '제주': 'JEJ'
-    };
-    
-    for (const [key, code] of Object.entries(districts)) {
-      if (location.includes(key)) {
-        const subCode = location.includes('구') ? location.match(/(\w+구)/)?.[1]?.substring(0, 2) || '01' : '01';
-        return `${code}-${subCode}`;
+        if (points && points.length > 0) return points;
+        throw new Error("No route points");
+      } catch (err) {
+        console.warn("Routing API failed, using straight line fallback:", err);
+        // 직선 경로라도 반환하여 시스템이 멈추지 않게 함
+        return [
+          { lat: s.lat, lng: s.lng },
+          { lat: e.lat, lng: e.lng },
+        ];
       }
-    }
-    return 'UNK-01';
-  };
+    },
+    [],
+  );
 
-  // 주변 랜드마크 생성
-  const generateLandmark = (location: string) => {
-    const landmarks = [
-      '지하철역', '버스정류장', '편의점', '은행', '병원', '학교', 
-      '공원', '아파트단지', '상가건물', '주유소', '마트'
-    ];
-    const randomLandmark = landmarks[Math.floor(Math.random() * landmarks.length)];
-    return `${randomLandmark} 근처`;
-  };
-
-  // 건물 정보 생성
-  const generateBuildingInfo = (location: string) => {
-    const buildingTypes = [
-      '아파트 102동 1501호', '상가건물 3층', '단독주택', 
-      '오피스텔 B동 804호', '연립주택 2층', '상업건물 1층'
-    ];
-    const randomBuilding = buildingTypes[Math.floor(Math.random() * buildingTypes.length)];
-    return randomBuilding;
-  };
-
-  // 마커 추가 함수
-  const addAllMarkers = () => {
-    if (!mapRef.current || !window.L) return;
-
-    console.log('🎯 마커 추가 시작');
-
-    try {
-      // 1. 환자 마커 (빨간색, 중간 크기) - 상세한 정보 포함
-      const patientMarker = window.L.circleMarker([patient.lat, patient.lng], {
-        radius: 12, // 크기 축소 (20 → 12)
-        fillColor: '#ff0000',
-        color: '#ffffff',
-        weight: 3, // 테두리도 살짝 축소
-        opacity: 1,
-        fillOpacity: 1
-      }).addTo(mapRef.current);
-
-      // 가로 레이아웃 환자 정보 팝업 (사용자 디자인 기반)
-      const patientPopupContent = `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; width: 650px; background: #fff; border-radius: 12px; overflow: hidden;">
-          
-          <!-- 환자 기본 정보 헤더 (풀폭) -->
-          <div style="padding: 20px 20px 16px 20px; border-bottom: 1px solid #f1f5f9;">
-            <div style="display: flex; align-items: center; margin-bottom: 12px;">
-              <div style="width: 20px; height: 20px; background: #64748b; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 8px;">
-                <span style="color: white; font-size: 11px;">👤</span>
-              </div>
-              <h3 style="margin: 0; font-size: 14px; color: #64748b; font-weight: 500;">환자 기본 정보</h3>
-            </div>
-            
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <div style="border-left: 4px solid #3b82f6; padding-left: 16px;">
-                <h2 style="margin: 0 0 4px 0; font-size: 20px; color: #1e293b; font-weight: 600;">${patient.name} <span style="font-size: 14px; color: #64748b; font-weight: 400;">${patient.age}세, ${patient.gender === 'M' ? '남성' : patient.gender === 'F' ? '여성' : '기타'} • ${patient.bloodType}형</span></h2>
-              </div>
-              
-              <div style="background: ${patient.status === 'Critical' ? '#fef2f2' : patient.status === 'Serious' ? '#fff7ed' : '#f0fdf4'}; border: 1px solid ${patient.status === 'Critical' ? '#fecaca' : patient.status === 'Serious' ? '#fed7aa' : '#bbf7d0'}; border-radius: 6px; padding: 8px 16px;">
-                <span style="color: ${patient.status === 'Critical' ? '#dc2626' : patient.status === 'Serious' ? '#ea580c' : '#16a34a'}; font-size: 14px; font-weight: 600;">
-                  ${patient.status === 'Critical' ? '위급상태' : patient.status === 'Serious' ? '심각상태' : '안정상태'}
-                  ${patient.severityScore ? ` (위험도 ${patient.severityScore}/10)` : ''}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <!-- 메인 컨텐츠 2열 -->
-          <div style="display: flex; gap: 20px; padding: 16px 20px 20px 20px;">
-            
-            <!-- 좌측: 위치 정보 -->
-            <div style="flex: 1;">
-              <div style="margin-bottom: 16px;">
-                <div style="display: flex; align-items: center; margin-bottom: 10px;">
-                  <div style="width: 20px; height: 20px; background: #64748b; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 8px;">
-                    <span style="color: white; font-size: 11px;">📍</span>
-                  </div>
-                  <h4 style="margin: 0; font-size: 14px; color: #64748b; font-weight: 500;">현재 위치</h4>
-                </div>
-                
-                <div style="margin-bottom: 10px;">
-                  <p style="margin: 0; font-size: 15px; color: #1e293b; line-height: 1.4;">${patient.detailAddress || patient.location}</p>
-                </div>
-                
-                <div style="font-size: 12px; color: #64748b; line-height: 1.5;">
-                  <div><strong>GPS</strong> ±${patient.locationData?.gpsLocation?.accuracy || '3.2'}m</div>
-                  <div><strong>Cellular</strong> ±${patient.locationData?.cellularLocation?.accuracy || '15.7'}m</div>
-                  <div><strong>WiFi</strong> ±${patient.locationData?.wifiLocation?.accuracy || '8.3'}m</div>
-                </div>
-              </div>
-
-              <!-- 추가 정보 (있는 경우) -->
-              ${patient.symptoms && patient.symptoms.length > 0 ? `
-              <div>
-                <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                  <div style="width: 20px; height: 20px; background: #64748b; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 8px;">
-                    <span style="color: white; font-size: 11px;">🏥</span>
-                  </div>
-                  <h4 style="margin: 0; font-size: 14px; color: #64748b; font-weight: 500;">증상</h4>
-                </div>
-                <div style="display: flex; flex-wrap: wrap; gap: 4px;">
-                  ${patient.symptoms.map(symptom => `
-                    <span style="display: inline-block; background: #fef2f2; color: #991b1b; padding: 4px 8px; border-radius: 12px; font-size: 11px; border: 1px solid #fecaca;">${symptom}</span>
-                  `).join('')}
-                </div>
-              </div>
-              ` : ''}
-            </div>
-
-            <!-- 우측: 생체 데이터 -->
-            <div style="flex: 1;">
-              <div style="display: flex; align-items: center; margin-bottom: 14px;">
-                <div style="width: 20px; height: 20px; background: #64748b; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 8px;">
-                  <span style="color: white; font-size: 11px;">📊</span>
-                </div>
-                <h4 style="margin: 0; font-size: 14px; color: #64748b; font-weight: 500;">생체 데이터</h4>
-              </div>
-              
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                <!-- 심박수 -->
-                <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; text-align: center;">
-                  <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 6px;">
-                    <span style="color: #dc2626; font-size: 14px; margin-right: 4px;">♥</span>
-                    <span style="font-size: 12px; color: #64748b;">심박수</span>
-                  </div>
-                  <div style="font-size: 28px; font-weight: 700; color: #dc2626; margin-bottom: 2px;">${patient.vitals.heartRate}</div>
-                  <div style="font-size: 11px; color: #64748b;">BPM</div>
-                </div>
-                
-                <!-- 산소포화도 -->
-                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; text-align: center;">
-                  <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 6px;">
-                    <span style="color: #2563eb; font-size: 14px; margin-right: 4px;">💧</span>
-                    <span style="font-size: 12px; color: #64748b;">산소포화도</span>
-                  </div>
-                  <div style="font-size: 28px; font-weight: 700; color: #2563eb; margin-bottom: 2px;">${patient.vitals.oxygenLevel}</div>
-                  <div style="font-size: 11px; color: #64748b;">%</div>
-                </div>
-                
-                <!-- 혈압 -->
-                <div style="background: #faf5ff; border: 1px solid #d8b4fe; border-radius: 8px; padding: 16px; text-align: center;">
-                  <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 6px;">
-                    <span style="color: #7c3aed; font-size: 14px; margin-right: 4px;">🩸</span>
-                    <span style="font-size: 12px; color: #64748b;">혈압</span>
-                  </div>
-                  <div style="font-size: 24px; font-weight: 700; color: #7c3aed; margin-bottom: 2px;">${patient.vitals.bloodPressure}</div>
-                  <div style="font-size: 11px; color: #64748b;">mmHg</div>
-                </div>
-                
-                <!-- 체온 -->
-                <div style="background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 16px; text-align: center;">
-                  <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 6px;">
-                    <span style="color: #ea580c; font-size: 14px; margin-right: 4px;">🌡</span>
-                    <span style="font-size: 12px; color: #64748b;">체온</span>
-                  </div>
-                  <div style="font-size: 28px; font-weight: 700; color: #ea580c; margin-bottom: 2px;">${patient.vitals.bodyTemp}</div>
-                  <div style="font-size: 11px; color: #64748b;">°C</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-
-      // 클릭 시 팝업 제어
-      patientMarker.bindPopup(patientPopupContent, {
-        maxWidth: 680,
-        minWidth: 650,
-        autoPan: true,
-        autoPanPadding: [15, 15],
-        keepInView: true,
-        closeButton: true,
-        className: 'patient-popup-horizontal'
-      });
-      
-      // 자동으로 팝업 열기 (환자 클릭 시 즉시 표시)
-      patientMarker.openPopup();
-
-      markersRef.current.push(patientMarker);
-      console.log(`✅ 환자 마커 생성: ${patient.name}`);
-
-      // 2. 병원 마커들 ('H' 글자 포함, 작은 크기)
-      hospitalData.forEach((hosp, index) => {
-        if (hosp.lat && hosp.lng && !isNaN(hosp.lat) && !isNaN(hosp.lng)) {
-          
-          // 'H' 글자가 들어간 작은 마커 아이콘 생성
-          const hospitalIcon = window.L.divIcon({
-            className: 'hospital-marker',
-            html: `
-              <div style="
-                width: 20px;
-                height: 20px;
-                background-color: #000000;
-                border: 2px solid #ffffff;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 11px;
-                font-weight: bold;
-                color: #ffffff;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-              ">H</div>
-            `,
-            iconSize: [20, 20],
-            iconAnchor: [10, 10]
-          });
-
-          const hospitalMarker = window.L.marker([hosp.lat, hosp.lng], {
-            icon: hospitalIcon
-          }).addTo(mapRef.current);
-
-          // 클릭시 팝업 (병원 정보도 화면 안에 보이도록)
-          hospitalMarker.bindPopup(`
-            <div style="text-align: center; min-width: 180px; max-width: 220px;">
-              <h4 style="margin: 0 0 8px 0; color: #333;">🏥 ${hosp.name}</h4>
-              <p style="margin: 4px 0; font-size: 13px;">상태: ${hosp.status || '정상'}</p>
-              <p style="margin: 4px 0; font-size: 12px; color: #666;">좌표: ${hosp.lat.toFixed(4)}, ${hosp.lng.toFixed(4)}</p>
-              ${hosp.address ? `<p style="margin: 4px 0; font-size: 12px; color: #666;">주소: ${hosp.address}</p>` : ''}
-            </div>
-          `, {
-            maxWidth: 250,
-            autoPan: true,
-            autoPanPadding: [10, 10],
-            keepInView: true
-          });
-
-          // 마우스 오버 이벤트 - 툴팁 표시
-          hospitalMarker.on('mouseover', function(e) {
-            // 간단한 툴팁 생성
-            const tooltip = window.L.tooltip({
-              permanent: false,
-              direction: 'top',
-              className: 'hospital-tooltip'
-            }).setContent(`
-              <div style="
-                background: rgba(0,0,0,0.8);
-                color: white;
-                padding: 6px 10px;
-                border-radius: 4px;
-                font-size: 12px;
-                white-space: nowrap;
-                border: none;
-              ">
-                🏥 ${hosp.name}
-              </div>
-            `);
-            
-            this.bindTooltip(tooltip).openTooltip();
-          });
-
-          // 마우스 아웃 이벤트 - 툴팁 제거
-          hospitalMarker.on('mouseout', function(e) {
-            this.closeTooltip();
-          });
-
-          markersRef.current.push(hospitalMarker);
-          console.log(`✅ 병원 마커 ${index + 1}: ${hosp.name}`);
-        }
-      });
-
-      console.log(`🎉 총 ${markersRef.current.length}개 마커 생성 완료!`);
-
-      // 환자 마커 중심으로 줌 레벨 18 설정 (병원들은 범위 조정하지 않음)
-      mapRef.current.setView([patient.lat, patient.lng], 18);
-
-    } catch (error) {
-      console.error('❌ 마커 생성 실패:', error);
-    }
-  };
-
-  // 병원 데이터 변경시 마커 재생성
+  // 6. 매칭 로직 (상위에서 배정된 구급차 확인)
   useEffect(() => {
-    if (hospitalData.length > 0 && mapRef.current) {
-      console.log(`🔄 병원 데이터 변경: ${hospitalData.length}개`);
-      // 기존 마커들 제거 후 재생성
-      markersRef.current.forEach(marker => {
-        mapRef.current.removeLayer(marker);
-      });
-      markersRef.current = [];
-      
-      setTimeout(() => {
-        addAllMarkers();
-      }, 500);
-    }
-  }, [hospitalData]);
+    if (
+      !currentPatient?.matchedAmbulanceId ||
+      !externalAmbulances ||
+      phase !== TransportPhase.WAITING
+    )
+      return;
 
-  // 동 기준 축척으로 축소하는 함수
-  const zoomToDistrict = () => {
-    if (mapRef.current) {
-      // 말풍선 닫기
-      mapRef.current.closePopup();
-      // 현재 환자 위치를 중심으로 동 레벨 (줌 레벨 15)로 축소
-      mapRef.current.setView([patient.lat, patient.lng], 15);
+    // 상위에서 배정된 구급차 찾기
+    const assignedAmb = externalAmbulances.find(
+      (a) => a.id === currentPatient.matchedAmbulanceId,
+    );
+
+    if (assignedAmb && !matchedAmbulance) {
+      const startJourney = async () => {
+        const p1 = await fetchPath(assignedAmb, currentPatient);
+        if (p1) {
+          setMatchedAmbulance({
+            ...assignedAmb,
+            path: p1,
+            status: AmbulanceStatus.DISPATCHED,
+          });
+          setPhase(TransportPhase.TO_PATIENT);
+        }
+      };
+      startJourney();
     }
-  };
+  }, [
+    currentPatient.matchedAmbulanceId,
+    externalAmbulances,
+    phase,
+    matchedAmbulance,
+  ]);
+
+  const hospitalRef = useRef<Hospital | undefined>(hospital);
+  useEffect(() => {
+    hospitalRef.current = hospital;
+  }, [hospital]);
+
+  // 7. 애니메이션 루프 (전역 상태에 의한 이동으로 단순화)
+  useEffect(() => {
+    // 이제 개별 애니메이션 루프 대신 syncLayers만 호출하여 전역 좌표 동기화
+    if (mapReady) syncLayers();
+  }, [displayAmbulances, syncLayers, mapReady]);
+
+  // 8. 정기적인 레이어 갱신
+  useEffect(() => {
+    if (mapReady) syncLayers();
+  }, [mapReady, currentPatient, displayAmbulances, hospitalData, syncLayers]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (mapReady) syncLayers();
+    }, 100); // 100ms 주기로 대폭 단축하여 건물 가로지름 방지 및 부드러운 이동 구현
+    return () => clearInterval(timer);
+  }, [syncLayers, mapReady]);
 
   return (
-    <div className="relative w-full h-full bg-gray-100">
-      {/* 지도 컨트롤 버튼 */}
-      <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2">
-        <button
-          onClick={zoomToDistrict}
-          className="bg-white hover:bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 shadow-md transition-all duration-200 hover:shadow-lg text-sm font-medium text-gray-700 hover:text-gray-900"
-          style={{ minWidth: '60px' }}
-          title="동 단위로 축소"
-        >
-          📍 축소
-        </button>
-      </div>
-
-      {/* 병원 마커 및 환자 팝업 스타일 */}
+    <div className="relative w-full h-full">
+      <div ref={mapContainerRef} className="absolute inset-0 w-full h-full" />
       <style jsx global>{`
-        .hospital-marker {
+        .leaflet-marker-icon {
           background: transparent !important;
           border: none !important;
         }
-        
-        .hospital-tooltip {
-          background: transparent !important;
-          border: none !important;
-          box-shadow: none !important;
-        }
-        
-        .hospital-tooltip .leaflet-tooltip-content {
-          background: transparent !important;
-          border: none !important;
-          padding: 0 !important;
-          margin: 0 !important;
-        }
-
-        .patient-popup-horizontal .leaflet-popup-content {
-          margin: 0 !important;
-          padding: 0 !important;
-          width: 650px !important;
-          max-width: 95vw !important;
-          overflow: visible !important;
-          font-size: 13px !important;
-        }
-
-        .patient-popup-horizontal .leaflet-popup-content-wrapper {
-          border-radius: 12px !important;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.08) !important;
-          border: 1px solid #e2e8f0 !important;
-          background: #ffffff !important;
-          padding: 0 !important;
-        }
-
-        .patient-popup-horizontal .leaflet-popup-tip {
-          background: #ffffff !important;
-          border: 1px solid #e2e8f0 !important;
-        }
-
-        .patient-popup-horizontal .leaflet-popup-close-button {
-          color: #94a3b8 !important;
-          font-size: 16px !important;
-          font-weight: 400 !important;
-          padding: 6px !important;
-          width: 26px !important;
-          height: 26px !important;
-          margin: 10px !important;
-          line-height: 1 !important;
-          text-decoration: none !important;
-          background: rgba(148, 163, 184, 0.1) !important;
-          border-radius: 6px !important;
-          transition: all 0.2s ease !important;
-        }
-
-        .patient-popup-horizontal .leaflet-popup-close-button:hover {
-          background: rgba(148, 163, 184, 0.2) !important;
-          color: #64748b !important;
+        @keyframes pulse {
+          0% {
+            transform: scale(1);
+            opacity: 1;
+          }
+          50% {
+            transform: scale(1.15);
+            opacity: 0.8;
+          }
+          100% {
+            transform: scale(1);
+            opacity: 1;
+          }
         }
       `}</style>
-
-      {/* 지도 컨테이너 */}
-      <div 
-        ref={mapContainerRef}
-        className="absolute inset-0 w-full h-full"
-        style={{ minHeight: '400px' }}
-      />
     </div>
   );
 };

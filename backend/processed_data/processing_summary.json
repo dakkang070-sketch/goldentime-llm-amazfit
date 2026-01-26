@@ -1,0 +1,21 @@
+{
+  "processing_date": "2026-01-22T19:03:10.344054",
+  "results_summary": {
+    "psychoactive": {
+      "total_samples": 971,
+      "features_extracted": 8,
+      "class_distribution": [
+        184,
+        210,
+        204,
+        174,
+        199
+      ],
+      "cv_mean_accuracy": 0.23273063706053393,
+      "test_accuracy": 0.88
+    }
+  },
+  "total_samples": 971,
+  "total_features": 0,
+  "cross_validation_scores": {}
+}

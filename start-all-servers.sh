@@ -80,5 +80,46 @@ echo ""
 echo "🎮 서버가 실행 중입니다. Ctrl+C로 종료하세요."
 echo "===================================="
 
-# 무한 대기 (Ctrl+C로 종료하기 전까지)
-wait
+    # 무한 대기 (Ctrl+C로 종료하기 전까지)
+    # Zepp OS 시뮬레이터 시작
+    echo "⌚ Zepp OS 시뮬레이터 시작 (백그라운드)"
+    (cd zepp-app/my-zepp-app && zeus dev > ../../zepp-simulator.log 2>&1) &
+    ZAPP_DEV_PID=$!
+    echo "   Zepp OS 시뮬레이터 PID: $ZAPP_DEV_PID"
+
+    echo "⏳ Zepp OS 시뮬레이터 시작 대기 중..."
+    sleep 10 # 시뮬레이터가 완전히 로드될 때까지 충분히 대기
+    echo "✅ Zepp OS 시뮬레이터 시작 완료!"
+    echo ""
+    echo "🎉 모든 서버 및 시뮬레이터 시작 완료!"
+    echo "===================================="
+    echo "📡 백엔드:     http://localhost:3000"
+    echo "🎨 프론트엔드: http://localhost:3001"
+    echo "⌚ Zepp 시뮬레이터: http://127.0.0.1:7650 또는 별도 앱"
+    echo ""
+    echo "🌐 ngrok URL이 있다면 그 주소로도 접속 가능합니다!"
+    echo ""
+    echo "❌ 종료하려면 다음 명령어 사용:"
+    echo "   kill $BACKEND_PID $FRONTEND_PID $ZAPP_DEV_PID"
+    echo ""
+    echo "📋 로그 확인:"
+    echo "   tail -f backend.log       (백엔드 로그)"
+    echo "   tail -f frontend.log      (프론트엔드 로그)"
+    echo "   tail -f zepp-simulator.log  (Zepp 시뮬레이터 로그)"
+    
+    # 종료 시 정리 함수
+    cleanup() {
+        echo ""
+        echo "🛑 서버 및 시뮬레이터 종료 중..."
+        kill $BACKEND_PID $FRONTEND_PID $ZAPP_DEV_PID 2>/dev/null || true
+        exit 0
+    }
+
+    # 신호 처리
+    trap cleanup SIGINT SIGTERM
+
+    echo ""
+    echo "🎮 시스템이 실행 중입니다. Ctrl+C로 종료하세요."
+    echo "===================================="
+
+    wait

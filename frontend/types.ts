@@ -1,8 +1,10 @@
 
 export enum PatientStatus {
   CRITICAL = 'Critical',
-  SERIOUS = 'Serious',
-  STABLE = 'Stable',
+  DANGER = 'Danger',
+  WARNING = 'Warning',
+  CAUTION = 'Caution',
+  NORMAL = 'Normal',
   PENDING = 'Pending',
   TRANSPORTED = 'Transported'
 }
@@ -20,10 +22,14 @@ export interface Ambulance {
   lng: number;
   status: AmbulanceStatus;
   type: 'ALS' | 'BLS';
-  path?: [number, number][];
+  path?: { lat: number, lng: number }[];
   pathStep?: number;
+  patrolPath?: { lat: number, lng: number }[];
+  patrolIndex?: number;
+  dispatchPathLen?: number; // 추가: 환자 도착 지점 인덱스
+  boardingCountdown?: number; // 추가: 환자 탑승 대기 시간
   // 상세 활동 상태 추가
-  activity?: 'heading_to_patient' | 'transporting_to_hospital' | 'returning';
+  activity?: 'heading_to_patient' | 'boarding' | 'transporting_to_hospital' | 'returning' | 'patrolling';
   targetHospitalId?: string;
   targetPatientId?: string;
 }

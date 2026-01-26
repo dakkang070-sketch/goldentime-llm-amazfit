@@ -1,0 +1,1710 @@
+
+> goldentime-llm@2.0.0 start
+> node backend/server.js
+
+⚠️  ZEPP_CLIENT_ID가 설정되지 않았습니다. Zepp API 연동이 불가능합니다.
+⚠️  ZEPP_CLIENT_SECRET가 설정되지 않았습니다. Zepp API 연동이 불가능합니다.
+✅ 환경변수 검증 완료
+[2026-01-20T06:52:27.430Z] [INFO] 🔬 실시간 생체신호 분석 엔진 초기화 완료
+🏥 HIRA API 서비스 초기화 (30분 캐시)
+Not all input has been taken into account at your final specification.
+Here's the report: 
+
+
+ Error in ./backend/api/emergencyHospital.js :
+YAMLSemanticError: Nested mappings are not allowed in compact mappings at line 10, column 22:
+
+        description: 시도명 (예: 서울특별시)
+                     ^^^^^^^^^^^^^^…
+
+YAMLSemanticError: Nested mappings are not allowed in compact mappings at line 15, column 22:
+
+        description: 시군구명 (예: 강남구)
+                     ^^^^^^^^^^^^^…
+
+[2026-01-20T06:52:27.569Z] [INFO] Swagger API 문서 활성화: /api-docs
+[2026-01-20T06:52:27.571Z] [INFO] 서버 시작 {"port":"3000","environment":"development","websocket":"활성화됨"}
+🚀 서버가 포트 3000에서 실행 중입니다.
+📡 WebSocket 실시간 통신 활성화됨
+🌐 외부 접속을 원할 경우 ngrok 또는 터널링 서비스를 사용하세요.
+MongoDB Connected: localhost
+[2026-01-20T06:52:29.370Z] [INFO] 서버 시작 체크 시작...
+[2026-01-20T06:52:29.371Z] [INFO] 환경변수 확인 완료
+[2026-01-20T06:52:29.371Z] [INFO] MongoDB 연결 확인됨
+[2026-01-20T06:52:29.380Z] [INFO] 필수 컬렉션 확인 완료
+[2026-01-20T06:52:29.380Z] [INFO] Ollama가 비활성화되어 있습니다.
+[2026-01-20T06:52:29.380Z] [INFO] 모든 시작 체크 완료
+[2026-01-20T06:52:32.384Z] [INFO] 🚀 완전 자동 학습 시스템 시작
+[2026-01-20T06:52:32.389Z] [INFO] 📅 배치 학습 스케줄: 0 2 * * *
+[2026-01-20T06:52:32.390Z] [INFO] 📊 실시간 학습 임계치: 50개
+[2026-01-20T06:52:32.390Z] [INFO] 🤖 완전 자동 학습 시스템 활성화됨
+[2026-01-20T06:52:33.428Z] [INFO] 리소스 풀 초기화 시작
+[2026-01-20T06:52:33.440Z] [INFO] 리소스 풀 초기화 완료 {"paramedics":0,"hospitals":0}
+[2026-01-20T06:52:33.440Z] [INFO] 실시간 리소스 모니터링 시작
+[2026-01-20T06:52:33.440Z] [INFO] 응급 워크플로우 시스템 모니터링 시작
+[2026-01-20T06:52:33.440Z] [INFO] 🚨 응급 워크플로우 자동화 시스템 활성화됨
+[2026-01-20T06:52:34.430Z] [INFO] 🎯 품질 관리 시스템 시작
+[2026-01-20T06:52:34.434Z] [WARN] AI 품질 지표 수집 실패
+[2026-01-20T06:52:34.459Z] [INFO] 개선 작업 3건 추가됨
+[2026-01-20T06:52:34.459Z] [WARN] 품질 임계치 위반 감지: 3건 {"violations":["ai_accuracy","response_time","user_satisfaction"]}
+[2026-01-20T06:52:34.459Z] [INFO] 품질 지표 수집 완료 {"aiAccuracy":0,"workflowEfficiency":0,"userSatisfaction":0,"systemUptime":0.00008509092207175925}
+[2026-01-20T06:52:34.459Z] [INFO] ✅ 품질 관리 시스템 활성화 완료
+[2026-01-20T06:52:34.459Z] [INFO] 🎯 종합 품질 관리 시스템 활성화됨
+[2026-01-20T06:52:35.431Z] [INFO] 🔬 실시간 생체신호 분석 엔진 활성화됨
+[2026-01-20T06:52:36.433Z] [INFO] 🔄 국립중앙의료원 API 자동 갱신 스케줄러 시작
+[2026-01-20T06:52:36.433Z] [INFO] ✅ 국립중앙의료원 API 자동 갱신 스케줄러 활성화 완료
+✅ HIRA API 자동 갱신 스케줄러 시작 (30분 주기)
+[2026-01-20T06:52:36.434Z] [INFO] 🏥 지능형 병원 매칭 시스템 및 API 자동 갱신 활성화됨
+🚀 [HIRA API 스케줄러] 초기 전국 병원 정보 로딩 시작
+🔄 HIRA API 전국 병원 정보 로딩 시작
+🔍 서울특별시 병원 데이터 로딩 중...
+🔍 HIRA API 병원 목록 조회 시작: {
+  ServiceKey: 'your_hira_api_key_here',
+  numOfRows: 100,
+  pageNo: 1,
+  _type: 'json',
+  sidoCd: '110000'
+}
+❌ HIRA API 병원 목록 조회 실패: Request failed with status code 401
+✅ 서울특별시 완료: 0페이지, 총 병원 수 확인 중...
+🔍 부산광역시 병원 데이터 로딩 중...
+🔍 HIRA API 병원 목록 조회 시작: {
+  ServiceKey: 'your_hira_api_key_here',
+  numOfRows: 100,
+  pageNo: 1,
+  _type: 'json',
+  sidoCd: '260000'
+}
+❌ HIRA API 병원 목록 조회 실패: Request failed with status code 401
+✅ 부산광역시 완료: 0페이지, 총 병원 수 확인 중...
+🔍 대구광역시 병원 데이터 로딩 중...
+🔍 HIRA API 병원 목록 조회 시작: {
+  ServiceKey: 'your_hira_api_key_here',
+  numOfRows: 100,
+  pageNo: 1,
+  _type: 'json',
+  sidoCd: '270000'
+}
+❌ HIRA API 병원 목록 조회 실패: Request failed with status code 401
+✅ 대구광역시 완료: 0페이지, 총 병원 수 확인 중...
+🔍 인천광역시 병원 데이터 로딩 중...
+🔍 HIRA API 병원 목록 조회 시작: {
+  ServiceKey: 'your_hira_api_key_here',
+  numOfRows: 100,
+  pageNo: 1,
+  _type: 'json',
+  sidoCd: '280000'
+}
+❌ HIRA API 병원 목록 조회 실패: Request failed with status code 401
+✅ 인천광역시 완료: 0페이지, 총 병원 수 확인 중...
+🔍 광주광역시 병원 데이터 로딩 중...
+🔍 HIRA API 병원 목록 조회 시작: {
+  ServiceKey: 'your_hira_api_key_here',
+  numOfRows: 100,
+  pageNo: 1,
+  _type: 'json',
+  sidoCd: '290000'
+}
+❌ HIRA API 병원 목록 조회 실패: Request failed with status code 401
+✅ 광주광역시 완료: 0페이지, 총 병원 수 확인 중...
+🔍 대전광역시 병원 데이터 로딩 중...
+🔍 HIRA API 병원 목록 조회 시작: {
+  ServiceKey: 'your_hira_api_key_here',
+  numOfRows: 100,
+  pageNo: 1,
+  _type: 'json',
+  sidoCd: '300000'
+}
+❌ HIRA API 병원 목록 조회 실패: Request failed with status code 401
+✅ 대전광역시 완료: 0페이지, 총 병원 수 확인 중...
+🔍 울산광역시 병원 데이터 로딩 중...
+🔍 HIRA API 병원 목록 조회 시작: {
+  ServiceKey: 'your_hira_api_key_here',
+  numOfRows: 100,
+  pageNo: 1,
+  _type: 'json',
+  sidoCd: '310000'
+}
+❌ HIRA API 병원 목록 조회 실패: Request failed with status code 401
+✅ 울산광역시 완료: 0페이지, 총 병원 수 확인 중...
+🔍 세종특별자치시 병원 데이터 로딩 중...
+🔍 HIRA API 병원 목록 조회 시작: {
+  ServiceKey: 'your_hira_api_key_here',
+  numOfRows: 100,
+  pageNo: 1,
+  _type: 'json',
+  sidoCd: '360000'
+}
+❌ HIRA API 병원 목록 조회 실패: Request failed with status code 401
+✅ 세종특별자치시 완료: 0페이지, 총 병원 수 확인 중...
+🔍 경기도 병원 데이터 로딩 중...
+🔍 HIRA API 병원 목록 조회 시작: {
+  ServiceKey: 'your_hira_api_key_here',
+  numOfRows: 100,
+  pageNo: 1,
+  _type: 'json',
+  sidoCd: '410000'
+}
+❌ HIRA API 병원 목록 조회 실패: Request failed with status code 401
+✅ 경기도 완료: 0페이지, 총 병원 수 확인 중...
+🔍 강원특별자치도 병원 데이터 로딩 중...
+🔍 HIRA API 병원 목록 조회 시작: {
+  ServiceKey: 'your_hira_api_key_here',
+  numOfRows: 100,
+  pageNo: 1,
+  _type: 'json',
+  sidoCd: '420000'
+}
+❌ HIRA API 병원 목록 조회 실패: Request failed with status code 401
+✅ 강원특별자치도 완료: 0페이지, 총 병원 수 확인 중...
+🔍 충청북도 병원 데이터 로딩 중...
+🔍 HIRA API 병원 목록 조회 시작: {
+  ServiceKey: 'your_hira_api_key_here',
+  numOfRows: 100,
+  pageNo: 1,
+  _type: 'json',
+  sidoCd: '430000'
+}
+❌ HIRA API 병원 목록 조회 실패: Request failed with status code 401
+✅ 충청북도 완료: 0페이지, 총 병원 수 확인 중...
+🔍 충청남도 병원 데이터 로딩 중...
+🔍 HIRA API 병원 목록 조회 시작: {
+  ServiceKey: 'your_hira_api_key_here',
+  numOfRows: 100,
+  pageNo: 1,
+  _type: 'json',
+  sidoCd: '440000'
+}
+❌ HIRA API 병원 목록 조회 실패: Request failed with status code 401
+✅ 충청남도 완료: 0페이지, 총 병원 수 확인 중...
+🔍 전북특별자치도 병원 데이터 로딩 중...
+🔍 HIRA API 병원 목록 조회 시작: {
+  ServiceKey: 'your_hira_api_key_here',
+  numOfRows: 100,
+  pageNo: 1,
+  _type: 'json',
+  sidoCd: '450000'
+}
+❌ HIRA API 병원 목록 조회 실패: Request failed with status code 401
+✅ 전북특별자치도 완료: 0페이지, 총 병원 수 확인 중...
+🔍 전라남도 병원 데이터 로딩 중...
+🔍 HIRA API 병원 목록 조회 시작: {
+  ServiceKey: 'your_hira_api_key_here',
+  numOfRows: 100,
+  pageNo: 1,
+  _type: 'json',
+  sidoCd: '460000'
+}
+❌ HIRA API 병원 목록 조회 실패: Request failed with status code 401
+✅ 전라남도 완료: 0페이지, 총 병원 수 확인 중...
+🔍 경상북도 병원 데이터 로딩 중...
+🔍 HIRA API 병원 목록 조회 시작: {
+  ServiceKey: 'your_hira_api_key_here',
+  numOfRows: 100,
+  pageNo: 1,
+  _type: 'json',
+  sidoCd: '470000'
+}
+❌ HIRA API 병원 목록 조회 실패: Request failed with status code 401
+✅ 경상북도 완료: 0페이지, 총 병원 수 확인 중...
+🔍 경상남도 병원 데이터 로딩 중...
+🔍 HIRA API 병원 목록 조회 시작: {
+  ServiceKey: 'your_hira_api_key_here',
+  numOfRows: 100,
+  pageNo: 1,
+  _type: 'json',
+  sidoCd: '480000'
+}
+❌ HIRA API 병원 목록 조회 실패: Request failed with status code 401
+✅ 경상남도 완료: 0페이지, 총 병원 수 확인 중...
+🔍 제주특별자치도 병원 데이터 로딩 중...
+🔍 HIRA API 병원 목록 조회 시작: {
+  ServiceKey: 'your_hira_api_key_here',
+  numOfRows: 100,
+  pageNo: 1,
+  _type: 'json',
+  sidoCd: '500000'
+}
+❌ HIRA API 병원 목록 조회 실패: Request failed with status code 401
+✅ 제주특별자치도 완료: 0페이지, 총 병원 수 확인 중...
+🎉 HIRA API 전국 병원 로딩 완료!
+📊 총 병원 수: 0개
+📋 캐시 저장: 0개
+💾 전체 캐시 항목: 0개
+[2026-01-20T06:53:03.441Z] [WARN] 응급구조사 용량 부족 {"available":0,"threshold":5}
+[2026-01-20T06:53:03.441Z] [WARN] 용량 모니터링 실패
+[2026-01-20T06:53:06.435Z] [INFO] 🔄 초기 NEDC 병원 데이터 동기화 시작
+[2026-01-20T06:53:06.436Z] [INFO] 국립중앙의료원 API: 병원 데이터 동기화 시작 (page: 1)
+[2026-01-20T06:53:06.542Z] [ERROR] 병원 데이터 동기화 실패 {"error":{"message":"Request failed with status code 401","stack":"AxiosError: Request failed with status code 401\n    at settle (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:2106:12)\n    at IncomingMessage.handleStreamEnd (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:3491:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)\n    at Axios.request (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:4731:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async NEDCApiService.syncHospitalData (/Users/jace/Downloads/goldentime-llm/backend/services/nedcApiService.js:125:24)\n    at async Timeout._onTimeout (/Users/jace/Downloads/goldentime-llm/backend/server.js:99:13)","name":"AxiosError"}}
+[2026-01-20T06:53:06.543Z] [WARN] ⚠️ 초기 NEDC 병원 데이터 동기화 실패 (스케줄러에서 재시도 예정) {"error":"Request failed with status code 401"}
+[2026-01-20T06:53:33.443Z] [WARN] 응급구조사 용량 부족 {"available":0,"threshold":5}
+[2026-01-20T06:53:33.443Z] [WARN] 용량 모니터링 실패
+[2026-01-20T06:53:33.447Z] [WARN] 리소스 상태 업데이트 실패
+🗺️ 지도용 병원 데이터 요청
+[2026-01-20T06:53:44.975Z] [INFO] 실시간 응급실 병상 정보 조회 시작
+[2026-01-20T06:53:44.975Z] [INFO] 🔍 NEDC API 호출: 페이지 1 (500개씩)
+🏥 AI 병원 매칭 시작: 김민수
+[2026-01-20T06:53:45.001Z] [INFO] 실시간 응급실 병상 정보 조회 시작
+[2026-01-20T06:53:45.001Z] [INFO] 🔍 NEDC API 호출: 페이지 1 (500개씩)
+🏥 AI 병원 매칭 시작: 김민수
+[2026-01-20T06:53:45.006Z] [INFO] 실시간 응급실 병상 정보 조회 시작
+[2026-01-20T06:53:45.006Z] [INFO] 🔍 NEDC API 호출: 페이지 1 (500개씩)
+[2026-01-20T06:53:45.041Z] [ERROR] 응급실 병상 정보 조회 실패 {"error":{"message":"Request failed with status code 401","stack":"AxiosError: Request failed with status code 401\n    at settle (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:2106:12)\n    at IncomingMessage.handleStreamEnd (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:3491:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)\n    at Axios.request (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:4731:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async NEDCApiService.getRealTimeEmergencyBeds (/Users/jace/Downloads/goldentime-llm/backend/services/nedcApiService.js:329:26)\n    at async /Users/jace/Downloads/goldentime-llm/backend/api/emergency.js:332:32","name":"AxiosError"}}
+AI 병원 매칭 실패: AxiosError: Request failed with status code 401
+    at settle (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:2106:12)
+    at IncomingMessage.handleStreamEnd (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:3491:11)
+    at IncomingMessage.emit (node:events:520:35)
+    at endReadableNT (node:internal/streams/readable:1701:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+    at Axios.request (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:4731:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async NEDCApiService.getRealTimeEmergencyBeds (/Users/jace/Downloads/goldentime-llm/backend/services/nedcApiService.js:329:26)
+    at async /Users/jace/Downloads/goldentime-llm/backend/api/emergency.js:332:32 {
+  code: 'ERR_BAD_REQUEST',
+  config: {
+    transitional: {
+      silentJSONParsing: true,
+      forcedJSONParsing: true,
+      clarifyTimeoutError: false
+    },
+    adapter: [ 'xhr', 'http', 'fetch' ],
+    transformRequest: [ [Function: transformRequest] ],
+    transformResponse: [ [Function: transformResponse] ],
+    timeout: 20000,
+    xsrfCookieName: 'XSRF-TOKEN',
+    xsrfHeaderName: 'X-XSRF-TOKEN',
+    maxContentLength: -1,
+    maxBodyLength: -1,
+    env: { FormData: [Function], Blob: [class Blob] },
+    validateStatus: [Function: validateStatus],
+    headers: Object [AxiosHeaders] {
+      Accept: 'application/json, text/plain, */*',
+      'Content-Type': undefined,
+      'User-Agent': 'axios/1.13.2',
+      'Accept-Encoding': 'gzip, compress, deflate, br'
+    },
+    params: {
+      serviceKey: 'your_nedc_api_key_here',
+      pageNo: 1,
+      numOfRows: 500,
+      _type: 'json'
+    },
+    method: 'get',
+    url: 'https://apis.data.go.kr/B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire',
+    allowAbsoluteUrls: true,
+    data: undefined
+  },
+  request: <ref *1> ClientRequest {
+    _events: [Object: null prototype] {
+      abort: [Function (anonymous)],
+      aborted: [Function (anonymous)],
+      connect: [Function (anonymous)],
+      error: [Function (anonymous)],
+      socket: [Function (anonymous)],
+      timeout: [Function (anonymous)],
+      finish: [Function: requestOnFinish]
+    },
+    _eventsCount: 7,
+    _maxListeners: undefined,
+    outputData: [],
+    outputSize: 0,
+    writable: true,
+    destroyed: true,
+    _last: true,
+    chunkedEncoding: false,
+    shouldKeepAlive: true,
+    maxRequestsOnConnectionReached: false,
+    _defaultKeepAlive: true,
+    useChunkedEncodingByDefault: false,
+    sendDate: false,
+    _removedConnection: false,
+    _removedContLen: false,
+    _removedTE: false,
+    strictContentLength: false,
+    _contentLength: 0,
+    _hasBody: true,
+    _trailer: '',
+    finished: true,
+    _headerSent: true,
+    _closed: true,
+    _header: 'GET /B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire?serviceKey=your_nedc_api_key_here&pageNo=1&numOfRows=500&_type=json HTTP/1.1\r\n' +
+      'Accept: application/json, text/plain, */*\r\n' +
+      'User-Agent: axios/1.13.2\r\n' +
+      'Accept-Encoding: gzip, compress, deflate, br\r\n' +
+      'Host: apis.data.go.kr\r\n' +
+      'Connection: keep-alive\r\n' +
+      '\r\n',
+    _keepAliveTimeout: 0,
+    _onPendingData: [Function: nop],
+    agent: Agent {
+      _events: [Object: null prototype],
+      _eventsCount: 2,
+      _maxListeners: undefined,
+      options: [Object: null prototype],
+      defaultPort: 443,
+      protocol: 'https:',
+      requests: [Object: null prototype] {},
+      sockets: [Object: null prototype],
+      freeSockets: [Object: null prototype],
+      keepAliveMsecs: 1000,
+      keepAlive: true,
+      maxSockets: Infinity,
+      maxFreeSockets: 256,
+      scheduling: 'lifo',
+      maxTotalSockets: Infinity,
+      totalSocketCount: 3,
+      agentKeepAliveTimeoutBuffer: 1000,
+      maxCachedSessions: 100,
+      _sessionCache: [Object],
+      Symbol(shapeMode): false,
+      Symbol(kCapture): false
+    },
+    socketPath: undefined,
+    method: 'GET',
+    maxHeaderSize: undefined,
+    insecureHTTPParser: undefined,
+    joinDuplicateHeaders: undefined,
+    path: '/B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire?serviceKey=your_nedc_api_key_here&pageNo=1&numOfRows=500&_type=json',
+    _ended: true,
+    res: IncomingMessage {
+      _events: [Object],
+      _readableState: [ReadableState],
+      _maxListeners: undefined,
+      socket: null,
+      httpVersionMajor: 1,
+      httpVersionMinor: 1,
+      httpVersion: '1.1',
+      complete: true,
+      rawHeaders: [Array],
+      rawTrailers: [],
+      joinDuplicateHeaders: undefined,
+      aborted: false,
+      upgrade: false,
+      url: '',
+      method: null,
+      statusCode: 401,
+      statusMessage: 'Unauthorized',
+      client: [TLSSocket],
+      _consuming: false,
+      _dumped: false,
+      req: [Circular *1],
+      _eventsCount: 4,
+      responseUrl: 'https://apis.data.go.kr/B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire?serviceKey=your_nedc_api_key_here&pageNo=1&numOfRows=500&_type=json',
+      redirects: [],
+      Symbol(shapeMode): true,
+      Symbol(kCapture): false,
+      Symbol(kHeaders): [Object],
+      Symbol(kHeadersCount): 10,
+      Symbol(kTrailers): null,
+      Symbol(kTrailersCount): 0
+    },
+    aborted: false,
+    timeoutCb: null,
+    upgradeOrConnect: false,
+    parser: null,
+    maxHeadersCount: null,
+    reusedSocket: false,
+    host: 'apis.data.go.kr',
+    protocol: 'https:',
+    _redirectable: Writable {
+      _events: [Object],
+      _writableState: [WritableState],
+      _maxListeners: undefined,
+      _options: [Object],
+      _ended: true,
+      _ending: true,
+      _redirectCount: 0,
+      _redirects: [],
+      _requestBodyLength: 0,
+      _requestBodyBuffers: [],
+      _eventsCount: 3,
+      _onNativeResponse: [Function (anonymous)],
+      _currentRequest: [Circular *1],
+      _currentUrl: 'https://apis.data.go.kr/B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire?serviceKey=your_nedc_api_key_here&pageNo=1&numOfRows=500&_type=json',
+      _timeout: null,
+      Symbol(shapeMode): true,
+      Symbol(kCapture): false
+    },
+    Symbol(shapeMode): false,
+    Symbol(kCapture): false,
+    Symbol(kBytesWritten): 0,
+    Symbol(kNeedDrain): false,
+    Symbol(corked): 0,
+    Symbol(kChunkedBuffer): [],
+    Symbol(kChunkedLength): 0,
+    Symbol(kSocket): TLSSocket {
+      _tlsOptions: [Object],
+      _secureEstablished: true,
+      _securePending: false,
+      _newSessionPending: false,
+      _controlReleased: true,
+      secureConnecting: false,
+      _SNICallback: null,
+      servername: 'apis.data.go.kr',
+      alpnProtocol: false,
+      authorized: true,
+      authorizationError: null,
+      encrypted: true,
+      _events: [Object: null prototype],
+      _eventsCount: 9,
+      connecting: false,
+      _hadError: false,
+      _parent: null,
+      _host: 'apis.data.go.kr',
+      _closeAfterHandlingError: false,
+      _readableState: [ReadableState],
+      _writableState: [WritableState],
+      allowHalfOpen: false,
+      _maxListeners: undefined,
+      _sockname: null,
+      _pendingData: null,
+      _pendingEncoding: '',
+      server: undefined,
+      _server: null,
+      ssl: [TLSWrap],
+      _requestCert: true,
+      _rejectUnauthorized: true,
+      timeout: 5000,
+      parser: null,
+      _httpMessage: null,
+      Symbol(alpncallback): null,
+      Symbol(res): [TLSWrap],
+      Symbol(verified): true,
+      Symbol(pendingSession): null,
+      Symbol(async_id_symbol): -1,
+      Symbol(kHandle): [TLSWrap],
+      Symbol(lastWriteQueueSize): 0,
+      Symbol(timeout): Timeout {
+        _idleTimeout: 5000,
+        _idlePrev: [TimersList],
+        _idleNext: [TimersList],
+        _idleStart: 77937,
+        _onTimeout: [Function: bound ],
+        _timerArgs: undefined,
+        _repeat: null,
+        _destroyed: false,
+        Symbol(refed): false,
+        Symbol(kHasPrimitive): false,
+        Symbol(asyncId): 1926,
+        Symbol(triggerId): 1924,
+        Symbol(kAsyncContextFrame): undefined
+      },
+      Symbol(kBuffer): null,
+      Symbol(kBufferCb): null,
+      Symbol(kBufferGen): null,
+      Symbol(shapeMode): true,
+      Symbol(kCapture): false,
+      Symbol(kSetNoDelay): false,
+      Symbol(kSetKeepAlive): true,
+      Symbol(kSetKeepAliveInitialDelay): 1,
+      Symbol(kBytesRead): 0,
+      Symbol(kBytesWritten): 0,
+      Symbol(connect-options): [Object]
+    },
+    Symbol(kOutHeaders): [Object: null prototype] {
+      accept: [Array],
+      'user-agent': [Array],
+      'accept-encoding': [Array],
+      host: [Array]
+    },
+    Symbol(errored): null,
+    Symbol(kHighWaterMark): 65536,
+    Symbol(kRejectNonStandardBodyWrites): false,
+    Symbol(kUniqueHeaders): null
+  },
+  response: {
+    status: 401,
+    statusText: 'Unauthorized',
+    headers: Object [AxiosHeaders] {
+      'content-type': 'text/plain; charset=utf-8',
+      vary: 'Origin, Access-Control-Request-Method, Access-Control-Request-Headers',
+      'x-content-type-options': 'nosniff',
+      date: 'Tue, 20 Jan 2026 06:53:45 GMT',
+      'content-length': '13'
+    },
+    config: {
+      transitional: [Object],
+      adapter: [Array],
+      transformRequest: [Array],
+      transformResponse: [Array],
+      timeout: 20000,
+      xsrfCookieName: 'XSRF-TOKEN',
+      xsrfHeaderName: 'X-XSRF-TOKEN',
+      maxContentLength: -1,
+      maxBodyLength: -1,
+      env: [Object],
+      validateStatus: [Function: validateStatus],
+      headers: [Object [AxiosHeaders]],
+      params: [Object],
+      method: 'get',
+      url: 'https://apis.data.go.kr/B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire',
+      allowAbsoluteUrls: true,
+      data: undefined
+    },
+    request: <ref *1> ClientRequest {
+      _events: [Object: null prototype],
+      _eventsCount: 7,
+      _maxListeners: undefined,
+      outputData: [],
+      outputSize: 0,
+      writable: true,
+      destroyed: true,
+      _last: true,
+      chunkedEncoding: false,
+      shouldKeepAlive: true,
+      maxRequestsOnConnectionReached: false,
+      _defaultKeepAlive: true,
+      useChunkedEncodingByDefault: false,
+      sendDate: false,
+      _removedConnection: false,
+      _removedContLen: false,
+      _removedTE: false,
+      strictContentLength: false,
+      _contentLength: 0,
+      _hasBody: true,
+      _trailer: '',
+      finished: true,
+      _headerSent: true,
+      _closed: true,
+      _header: 'GET /B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire?serviceKey=your_nedc_api_key_here&pageNo=1&numOfRows=500&_type=json HTTP/1.1\r\n' +
+        'Accept: application/json, text/plain, */*\r\n' +
+        'User-Agent: axios/1.13.2\r\n' +
+        'Accept-Encoding: gzip, compress, deflate, br\r\n' +
+        'Host: apis.data.go.kr\r\n' +
+        'Connection: keep-alive\r\n' +
+        '\r\n',
+      _keepAliveTimeout: 0,
+      _onPendingData: [Function: nop],
+      agent: [Agent],
+      socketPath: undefined,
+      method: 'GET',
+      maxHeaderSize: undefined,
+      insecureHTTPParser: undefined,
+      joinDuplicateHeaders: undefined,
+      path: '/B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire?serviceKey=your_nedc_api_key_here&pageNo=1&numOfRows=500&_type=json',
+      _ended: true,
+      res: [IncomingMessage],
+      aborted: false,
+      timeoutCb: null,
+      upgradeOrConnect: false,
+      parser: null,
+      maxHeadersCount: null,
+      reusedSocket: false,
+      host: 'apis.data.go.kr',
+      protocol: 'https:',
+      _redirectable: [Writable],
+      Symbol(shapeMode): false,
+      Symbol(kCapture): false,
+      Symbol(kBytesWritten): 0,
+      Symbol(kNeedDrain): false,
+      Symbol(corked): 0,
+      Symbol(kChunkedBuffer): [],
+      Symbol(kChunkedLength): 0,
+      Symbol(kSocket): [TLSSocket],
+      Symbol(kOutHeaders): [Object: null prototype],
+      Symbol(errored): null,
+      Symbol(kHighWaterMark): 65536,
+      Symbol(kRejectNonStandardBodyWrites): false,
+      Symbol(kUniqueHeaders): null
+    },
+    data: 'Unauthorized\n'
+  },
+  status: 401
+}
+[2026-01-20T06:53:45.043Z] [ERROR] 서버 오류 발생 {"path":"/api/emergency/p1768471409791/match-hospital","method":"POST","ip":"::1","error":{"message":"Request failed with status code 401","stack":"AxiosError: Request failed with status code 401\n    at settle (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:2106:12)\n    at IncomingMessage.handleStreamEnd (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:3491:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)\n    at Axios.request (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:4731:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async NEDCApiService.getRealTimeEmergencyBeds (/Users/jace/Downloads/goldentime-llm/backend/services/nedcApiService.js:329:26)\n    at async /Users/jace/Downloads/goldentime-llm/backend/api/emergency.js:332:32","name":"AxiosError"}}
+[2026-01-20T06:53:45.254Z] [ERROR] 응급실 병상 정보 조회 실패 {"error":{"message":"Request failed with status code 401","stack":"AxiosError: Request failed with status code 401\n    at settle (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:2106:12)\n    at IncomingMessage.handleStreamEnd (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:3491:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)\n    at Axios.request (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:4731:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async NEDCApiService.getRealTimeEmergencyBeds (/Users/jace/Downloads/goldentime-llm/backend/services/nedcApiService.js:329:26)\n    at async /Users/jace/Downloads/goldentime-llm/backend/api/emergency.js:332:32","name":"AxiosError"}}
+AI 병원 매칭 실패: AxiosError: Request failed with status code 401
+    at settle (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:2106:12)
+    at IncomingMessage.handleStreamEnd (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:3491:11)
+    at IncomingMessage.emit (node:events:520:35)
+    at endReadableNT (node:internal/streams/readable:1701:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+    at Axios.request (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:4731:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async NEDCApiService.getRealTimeEmergencyBeds (/Users/jace/Downloads/goldentime-llm/backend/services/nedcApiService.js:329:26)
+    at async /Users/jace/Downloads/goldentime-llm/backend/api/emergency.js:332:32 {
+  code: 'ERR_BAD_REQUEST',
+  config: {
+    transitional: {
+      silentJSONParsing: true,
+      forcedJSONParsing: true,
+      clarifyTimeoutError: false
+    },
+    adapter: [ 'xhr', 'http', 'fetch' ],
+    transformRequest: [ [Function: transformRequest] ],
+    transformResponse: [ [Function: transformResponse] ],
+    timeout: 20000,
+    xsrfCookieName: 'XSRF-TOKEN',
+    xsrfHeaderName: 'X-XSRF-TOKEN',
+    maxContentLength: -1,
+    maxBodyLength: -1,
+    env: { FormData: [Function], Blob: [class Blob] },
+    validateStatus: [Function: validateStatus],
+    headers: Object [AxiosHeaders] {
+      Accept: 'application/json, text/plain, */*',
+      'Content-Type': undefined,
+      'User-Agent': 'axios/1.13.2',
+      'Accept-Encoding': 'gzip, compress, deflate, br'
+    },
+    params: {
+      serviceKey: 'your_nedc_api_key_here',
+      pageNo: 1,
+      numOfRows: 500,
+      _type: 'json'
+    },
+    method: 'get',
+    url: 'https://apis.data.go.kr/B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire',
+    allowAbsoluteUrls: true,
+    data: undefined
+  },
+  request: <ref *1> ClientRequest {
+    _events: [Object: null prototype] {
+      abort: [Function (anonymous)],
+      aborted: [Function (anonymous)],
+      connect: [Function (anonymous)],
+      error: [Function (anonymous)],
+      socket: [Function (anonymous)],
+      timeout: [Function (anonymous)],
+      finish: [Function: requestOnFinish]
+    },
+    _eventsCount: 7,
+    _maxListeners: undefined,
+    outputData: [],
+    outputSize: 0,
+    writable: true,
+    destroyed: true,
+    _last: true,
+    chunkedEncoding: false,
+    shouldKeepAlive: true,
+    maxRequestsOnConnectionReached: false,
+    _defaultKeepAlive: true,
+    useChunkedEncodingByDefault: false,
+    sendDate: false,
+    _removedConnection: false,
+    _removedContLen: false,
+    _removedTE: false,
+    strictContentLength: false,
+    _contentLength: 0,
+    _hasBody: true,
+    _trailer: '',
+    finished: true,
+    _headerSent: true,
+    _closed: true,
+    _header: 'GET /B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire?serviceKey=your_nedc_api_key_here&pageNo=1&numOfRows=500&_type=json HTTP/1.1\r\n' +
+      'Accept: application/json, text/plain, */*\r\n' +
+      'User-Agent: axios/1.13.2\r\n' +
+      'Accept-Encoding: gzip, compress, deflate, br\r\n' +
+      'Host: apis.data.go.kr\r\n' +
+      'Connection: keep-alive\r\n' +
+      '\r\n',
+    _keepAliveTimeout: 0,
+    _onPendingData: [Function: nop],
+    agent: Agent {
+      _events: [Object: null prototype],
+      _eventsCount: 2,
+      _maxListeners: undefined,
+      options: [Object: null prototype],
+      defaultPort: 443,
+      protocol: 'https:',
+      requests: [Object: null prototype] {},
+      sockets: [Object: null prototype],
+      freeSockets: [Object: null prototype],
+      keepAliveMsecs: 1000,
+      keepAlive: true,
+      maxSockets: Infinity,
+      maxFreeSockets: 256,
+      scheduling: 'lifo',
+      maxTotalSockets: Infinity,
+      totalSocketCount: 3,
+      agentKeepAliveTimeoutBuffer: 1000,
+      maxCachedSessions: 100,
+      _sessionCache: [Object],
+      Symbol(shapeMode): false,
+      Symbol(kCapture): false
+    },
+    socketPath: undefined,
+    method: 'GET',
+    maxHeaderSize: undefined,
+    insecureHTTPParser: undefined,
+    joinDuplicateHeaders: undefined,
+    path: '/B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire?serviceKey=your_nedc_api_key_here&pageNo=1&numOfRows=500&_type=json',
+    _ended: true,
+    res: IncomingMessage {
+      _events: [Object],
+      _readableState: [ReadableState],
+      _maxListeners: undefined,
+      socket: null,
+      httpVersionMajor: 1,
+      httpVersionMinor: 1,
+      httpVersion: '1.1',
+      complete: true,
+      rawHeaders: [Array],
+      rawTrailers: [],
+      joinDuplicateHeaders: undefined,
+      aborted: false,
+      upgrade: false,
+      url: '',
+      method: null,
+      statusCode: 401,
+      statusMessage: 'Unauthorized',
+      client: [TLSSocket],
+      _consuming: false,
+      _dumped: false,
+      req: [Circular *1],
+      _eventsCount: 4,
+      responseUrl: 'https://apis.data.go.kr/B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire?serviceKey=your_nedc_api_key_here&pageNo=1&numOfRows=500&_type=json',
+      redirects: [],
+      Symbol(shapeMode): true,
+      Symbol(kCapture): false,
+      Symbol(kHeaders): [Object],
+      Symbol(kHeadersCount): 10,
+      Symbol(kTrailers): null,
+      Symbol(kTrailersCount): 0
+    },
+    aborted: false,
+    timeoutCb: null,
+    upgradeOrConnect: false,
+    parser: null,
+    maxHeadersCount: null,
+    reusedSocket: false,
+    host: 'apis.data.go.kr',
+    protocol: 'https:',
+    _redirectable: Writable {
+      _events: [Object],
+      _writableState: [WritableState],
+      _maxListeners: undefined,
+      _options: [Object],
+      _ended: true,
+      _ending: true,
+      _redirectCount: 0,
+      _redirects: [],
+      _requestBodyLength: 0,
+      _requestBodyBuffers: [],
+      _eventsCount: 3,
+      _onNativeResponse: [Function (anonymous)],
+      _currentRequest: [Circular *1],
+      _currentUrl: 'https://apis.data.go.kr/B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire?serviceKey=your_nedc_api_key_here&pageNo=1&numOfRows=500&_type=json',
+      _timeout: null,
+      Symbol(shapeMode): true,
+      Symbol(kCapture): false
+    },
+    Symbol(shapeMode): false,
+    Symbol(kCapture): false,
+    Symbol(kBytesWritten): 0,
+    Symbol(kNeedDrain): false,
+    Symbol(corked): 0,
+    Symbol(kChunkedBuffer): [],
+    Symbol(kChunkedLength): 0,
+    Symbol(kSocket): TLSSocket {
+      _tlsOptions: [Object],
+      _secureEstablished: true,
+      _securePending: false,
+      _newSessionPending: false,
+      _controlReleased: true,
+      secureConnecting: false,
+      _SNICallback: null,
+      servername: 'apis.data.go.kr',
+      alpnProtocol: false,
+      authorized: true,
+      authorizationError: null,
+      encrypted: true,
+      _events: [Object: null prototype],
+      _eventsCount: 9,
+      connecting: false,
+      _hadError: false,
+      _parent: null,
+      _host: 'apis.data.go.kr',
+      _closeAfterHandlingError: false,
+      _readableState: [ReadableState],
+      _writableState: [WritableState],
+      allowHalfOpen: false,
+      _maxListeners: undefined,
+      _sockname: null,
+      _pendingData: null,
+      _pendingEncoding: '',
+      server: undefined,
+      _server: null,
+      ssl: [TLSWrap],
+      _requestCert: true,
+      _rejectUnauthorized: true,
+      timeout: 5000,
+      parser: null,
+      _httpMessage: null,
+      Symbol(alpncallback): null,
+      Symbol(res): [TLSWrap],
+      Symbol(verified): true,
+      Symbol(pendingSession): null,
+      Symbol(async_id_symbol): -1,
+      Symbol(kHandle): [TLSWrap],
+      Symbol(lastWriteQueueSize): 0,
+      Symbol(timeout): Timeout {
+        _idleTimeout: 5000,
+        _idlePrev: [TimersList],
+        _idleNext: [Timeout],
+        _idleStart: 78150,
+        _onTimeout: [Function: bound ],
+        _timerArgs: undefined,
+        _repeat: null,
+        _destroyed: false,
+        Symbol(refed): false,
+        Symbol(kHasPrimitive): false,
+        Symbol(asyncId): 1942,
+        Symbol(triggerId): 1940,
+        Symbol(kAsyncContextFrame): undefined
+      },
+      Symbol(kBuffer): null,
+      Symbol(kBufferCb): null,
+      Symbol(kBufferGen): null,
+      Symbol(shapeMode): true,
+      Symbol(kCapture): false,
+      Symbol(kSetNoDelay): false,
+      Symbol(kSetKeepAlive): true,
+      Symbol(kSetKeepAliveInitialDelay): 1,
+      Symbol(kBytesRead): 0,
+      Symbol(kBytesWritten): 0,
+      Symbol(connect-options): [Object]
+    },
+    Symbol(kOutHeaders): [Object: null prototype] {
+      accept: [Array],
+      'user-agent': [Array],
+      'accept-encoding': [Array],
+      host: [Array]
+    },
+    Symbol(errored): null,
+    Symbol(kHighWaterMark): 65536,
+    Symbol(kRejectNonStandardBodyWrites): false,
+    Symbol(kUniqueHeaders): null
+  },
+  response: {
+    status: 401,
+    statusText: 'Unauthorized',
+    headers: Object [AxiosHeaders] {
+      'content-type': 'text/plain; charset=utf-8',
+      vary: 'Origin, Access-Control-Request-Method, Access-Control-Request-Headers',
+      'x-content-type-options': 'nosniff',
+      date: 'Tue, 20 Jan 2026 06:53:45 GMT',
+      'content-length': '13'
+    },
+    config: {
+      transitional: [Object],
+      adapter: [Array],
+      transformRequest: [Array],
+      transformResponse: [Array],
+      timeout: 20000,
+      xsrfCookieName: 'XSRF-TOKEN',
+      xsrfHeaderName: 'X-XSRF-TOKEN',
+      maxContentLength: -1,
+      maxBodyLength: -1,
+      env: [Object],
+      validateStatus: [Function: validateStatus],
+      headers: [Object [AxiosHeaders]],
+      params: [Object],
+      method: 'get',
+      url: 'https://apis.data.go.kr/B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire',
+      allowAbsoluteUrls: true,
+      data: undefined
+    },
+    request: <ref *1> ClientRequest {
+      _events: [Object: null prototype],
+      _eventsCount: 7,
+      _maxListeners: undefined,
+      outputData: [],
+      outputSize: 0,
+      writable: true,
+      destroyed: true,
+      _last: true,
+      chunkedEncoding: false,
+      shouldKeepAlive: true,
+      maxRequestsOnConnectionReached: false,
+      _defaultKeepAlive: true,
+      useChunkedEncodingByDefault: false,
+      sendDate: false,
+      _removedConnection: false,
+      _removedContLen: false,
+      _removedTE: false,
+      strictContentLength: false,
+      _contentLength: 0,
+      _hasBody: true,
+      _trailer: '',
+      finished: true,
+      _headerSent: true,
+      _closed: true,
+      _header: 'GET /B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire?serviceKey=your_nedc_api_key_here&pageNo=1&numOfRows=500&_type=json HTTP/1.1\r\n' +
+        'Accept: application/json, text/plain, */*\r\n' +
+        'User-Agent: axios/1.13.2\r\n' +
+        'Accept-Encoding: gzip, compress, deflate, br\r\n' +
+        'Host: apis.data.go.kr\r\n' +
+        'Connection: keep-alive\r\n' +
+        '\r\n',
+      _keepAliveTimeout: 0,
+      _onPendingData: [Function: nop],
+      agent: [Agent],
+      socketPath: undefined,
+      method: 'GET',
+      maxHeaderSize: undefined,
+      insecureHTTPParser: undefined,
+      joinDuplicateHeaders: undefined,
+      path: '/B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire?serviceKey=your_nedc_api_key_here&pageNo=1&numOfRows=500&_type=json',
+      _ended: true,
+      res: [IncomingMessage],
+      aborted: false,
+      timeoutCb: null,
+      upgradeOrConnect: false,
+      parser: null,
+      maxHeadersCount: null,
+      reusedSocket: false,
+      host: 'apis.data.go.kr',
+      protocol: 'https:',
+      _redirectable: [Writable],
+      Symbol(shapeMode): false,
+      Symbol(kCapture): false,
+      Symbol(kBytesWritten): 0,
+      Symbol(kNeedDrain): false,
+      Symbol(corked): 0,
+      Symbol(kChunkedBuffer): [],
+      Symbol(kChunkedLength): 0,
+      Symbol(kSocket): [TLSSocket],
+      Symbol(kOutHeaders): [Object: null prototype],
+      Symbol(errored): null,
+      Symbol(kHighWaterMark): 65536,
+      Symbol(kRejectNonStandardBodyWrites): false,
+      Symbol(kUniqueHeaders): null
+    },
+    data: 'Unauthorized\n'
+  },
+  status: 401
+}
+[2026-01-20T06:53:45.256Z] [ERROR] 서버 오류 발생 {"path":"/api/emergency/p1768471409791/match-hospital","method":"POST","ip":"::1","error":{"message":"Request failed with status code 401","stack":"AxiosError: Request failed with status code 401\n    at settle (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:2106:12)\n    at IncomingMessage.handleStreamEnd (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:3491:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)\n    at Axios.request (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:4731:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async NEDCApiService.getRealTimeEmergencyBeds (/Users/jace/Downloads/goldentime-llm/backend/services/nedcApiService.js:329:26)\n    at async /Users/jace/Downloads/goldentime-llm/backend/api/emergency.js:332:32","name":"AxiosError"}}
+[2026-01-20T06:53:45.259Z] [ERROR] 응급실 병상 정보 조회 실패 {"error":{"message":"Request failed with status code 401","stack":"AxiosError: Request failed with status code 401\n    at settle (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:2106:12)\n    at IncomingMessage.handleStreamEnd (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:3491:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)\n    at Axios.request (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:4731:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async NEDCApiService.getRealTimeEmergencyBeds (/Users/jace/Downloads/goldentime-llm/backend/services/nedcApiService.js:329:26)\n    at async /Users/jace/Downloads/goldentime-llm/backend/api/emergency.js:25:26","name":"AxiosError"}}
+❌ 지도용 병원 데이터 조회 실패: AxiosError: Request failed with status code 401
+    at settle (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:2106:12)
+    at IncomingMessage.handleStreamEnd (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:3491:11)
+    at IncomingMessage.emit (node:events:520:35)
+    at endReadableNT (node:internal/streams/readable:1701:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+    at Axios.request (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:4731:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async NEDCApiService.getRealTimeEmergencyBeds (/Users/jace/Downloads/goldentime-llm/backend/services/nedcApiService.js:329:26)
+    at async /Users/jace/Downloads/goldentime-llm/backend/api/emergency.js:25:26 {
+  code: 'ERR_BAD_REQUEST',
+  config: {
+    transitional: {
+      silentJSONParsing: true,
+      forcedJSONParsing: true,
+      clarifyTimeoutError: false
+    },
+    adapter: [ 'xhr', 'http', 'fetch' ],
+    transformRequest: [ [Function: transformRequest] ],
+    transformResponse: [ [Function: transformResponse] ],
+    timeout: 20000,
+    xsrfCookieName: 'XSRF-TOKEN',
+    xsrfHeaderName: 'X-XSRF-TOKEN',
+    maxContentLength: -1,
+    maxBodyLength: -1,
+    env: { FormData: [Function], Blob: [class Blob] },
+    validateStatus: [Function: validateStatus],
+    headers: Object [AxiosHeaders] {
+      Accept: 'application/json, text/plain, */*',
+      'Content-Type': undefined,
+      'User-Agent': 'axios/1.13.2',
+      'Accept-Encoding': 'gzip, compress, deflate, br'
+    },
+    params: {
+      serviceKey: 'your_nedc_api_key_here',
+      pageNo: 1,
+      numOfRows: 500,
+      _type: 'json'
+    },
+    method: 'get',
+    url: 'https://apis.data.go.kr/B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire',
+    allowAbsoluteUrls: true,
+    data: undefined
+  },
+  request: <ref *1> ClientRequest {
+    _events: [Object: null prototype] {
+      abort: [Function (anonymous)],
+      aborted: [Function (anonymous)],
+      connect: [Function (anonymous)],
+      error: [Function (anonymous)],
+      socket: [Function (anonymous)],
+      timeout: [Function (anonymous)],
+      finish: [Function: requestOnFinish]
+    },
+    _eventsCount: 7,
+    _maxListeners: undefined,
+    outputData: [],
+    outputSize: 0,
+    writable: true,
+    destroyed: true,
+    _last: true,
+    chunkedEncoding: false,
+    shouldKeepAlive: true,
+    maxRequestsOnConnectionReached: false,
+    _defaultKeepAlive: true,
+    useChunkedEncodingByDefault: false,
+    sendDate: false,
+    _removedConnection: false,
+    _removedContLen: false,
+    _removedTE: false,
+    strictContentLength: false,
+    _contentLength: 0,
+    _hasBody: true,
+    _trailer: '',
+    finished: true,
+    _headerSent: true,
+    _closed: true,
+    _header: 'GET /B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire?serviceKey=your_nedc_api_key_here&pageNo=1&numOfRows=500&_type=json HTTP/1.1\r\n' +
+      'Accept: application/json, text/plain, */*\r\n' +
+      'User-Agent: axios/1.13.2\r\n' +
+      'Accept-Encoding: gzip, compress, deflate, br\r\n' +
+      'Host: apis.data.go.kr\r\n' +
+      'Connection: keep-alive\r\n' +
+      '\r\n',
+    _keepAliveTimeout: 0,
+    _onPendingData: [Function: nop],
+    agent: Agent {
+      _events: [Object: null prototype],
+      _eventsCount: 2,
+      _maxListeners: undefined,
+      options: [Object: null prototype],
+      defaultPort: 443,
+      protocol: 'https:',
+      requests: [Object: null prototype] {},
+      sockets: [Object: null prototype] {},
+      freeSockets: [Object: null prototype],
+      keepAliveMsecs: 1000,
+      keepAlive: true,
+      maxSockets: Infinity,
+      maxFreeSockets: 256,
+      scheduling: 'lifo',
+      maxTotalSockets: Infinity,
+      totalSocketCount: 3,
+      agentKeepAliveTimeoutBuffer: 1000,
+      maxCachedSessions: 100,
+      _sessionCache: [Object],
+      Symbol(shapeMode): false,
+      Symbol(kCapture): false
+    },
+    socketPath: undefined,
+    method: 'GET',
+    maxHeaderSize: undefined,
+    insecureHTTPParser: undefined,
+    joinDuplicateHeaders: undefined,
+    path: '/B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire?serviceKey=your_nedc_api_key_here&pageNo=1&numOfRows=500&_type=json',
+    _ended: true,
+    res: IncomingMessage {
+      _events: [Object],
+      _readableState: [ReadableState],
+      _maxListeners: undefined,
+      socket: null,
+      httpVersionMajor: 1,
+      httpVersionMinor: 1,
+      httpVersion: '1.1',
+      complete: true,
+      rawHeaders: [Array],
+      rawTrailers: [],
+      joinDuplicateHeaders: undefined,
+      aborted: false,
+      upgrade: false,
+      url: '',
+      method: null,
+      statusCode: 401,
+      statusMessage: 'Unauthorized',
+      client: [TLSSocket],
+      _consuming: false,
+      _dumped: false,
+      req: [Circular *1],
+      _eventsCount: 4,
+      responseUrl: 'https://apis.data.go.kr/B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire?serviceKey=your_nedc_api_key_here&pageNo=1&numOfRows=500&_type=json',
+      redirects: [],
+      Symbol(shapeMode): true,
+      Symbol(kCapture): false,
+      Symbol(kHeaders): [Object],
+      Symbol(kHeadersCount): 10,
+      Symbol(kTrailers): null,
+      Symbol(kTrailersCount): 0
+    },
+    aborted: false,
+    timeoutCb: null,
+    upgradeOrConnect: false,
+    parser: null,
+    maxHeadersCount: null,
+    reusedSocket: false,
+    host: 'apis.data.go.kr',
+    protocol: 'https:',
+    _redirectable: Writable {
+      _events: [Object],
+      _writableState: [WritableState],
+      _maxListeners: undefined,
+      _options: [Object],
+      _ended: true,
+      _ending: true,
+      _redirectCount: 0,
+      _redirects: [],
+      _requestBodyLength: 0,
+      _requestBodyBuffers: [],
+      _eventsCount: 3,
+      _onNativeResponse: [Function (anonymous)],
+      _currentRequest: [Circular *1],
+      _currentUrl: 'https://apis.data.go.kr/B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire?serviceKey=your_nedc_api_key_here&pageNo=1&numOfRows=500&_type=json',
+      _timeout: null,
+      Symbol(shapeMode): true,
+      Symbol(kCapture): false
+    },
+    Symbol(shapeMode): false,
+    Symbol(kCapture): false,
+    Symbol(kBytesWritten): 0,
+    Symbol(kNeedDrain): false,
+    Symbol(corked): 0,
+    Symbol(kChunkedBuffer): [],
+    Symbol(kChunkedLength): 0,
+    Symbol(kSocket): TLSSocket {
+      _tlsOptions: [Object],
+      _secureEstablished: true,
+      _securePending: false,
+      _newSessionPending: false,
+      _controlReleased: true,
+      secureConnecting: false,
+      _SNICallback: null,
+      servername: 'apis.data.go.kr',
+      alpnProtocol: false,
+      authorized: true,
+      authorizationError: null,
+      encrypted: true,
+      _events: [Object: null prototype],
+      _eventsCount: 9,
+      connecting: false,
+      _hadError: false,
+      _parent: null,
+      _host: 'apis.data.go.kr',
+      _closeAfterHandlingError: false,
+      _readableState: [ReadableState],
+      _writableState: [WritableState],
+      allowHalfOpen: false,
+      _maxListeners: undefined,
+      _sockname: null,
+      _pendingData: null,
+      _pendingEncoding: '',
+      server: undefined,
+      _server: null,
+      ssl: [TLSWrap],
+      _requestCert: true,
+      _rejectUnauthorized: true,
+      timeout: 5000,
+      parser: null,
+      _httpMessage: null,
+      Symbol(alpncallback): null,
+      Symbol(res): [TLSWrap],
+      Symbol(verified): true,
+      Symbol(pendingSession): null,
+      Symbol(async_id_symbol): -1,
+      Symbol(kHandle): [TLSWrap],
+      Symbol(lastWriteQueueSize): 0,
+      Symbol(timeout): Timeout {
+        _idleTimeout: 5000,
+        _idlePrev: [TimersList],
+        _idleNext: [Timeout],
+        _idleStart: 78155,
+        _onTimeout: [Function: bound ],
+        _timerArgs: undefined,
+        _repeat: null,
+        _destroyed: false,
+        Symbol(refed): false,
+        Symbol(kHasPrimitive): false,
+        Symbol(asyncId): 1957,
+        Symbol(triggerId): 1955,
+        Symbol(kAsyncContextFrame): undefined
+      },
+      Symbol(kBuffer): null,
+      Symbol(kBufferCb): null,
+      Symbol(kBufferGen): null,
+      Symbol(shapeMode): true,
+      Symbol(kCapture): false,
+      Symbol(kSetNoDelay): false,
+      Symbol(kSetKeepAlive): true,
+      Symbol(kSetKeepAliveInitialDelay): 1,
+      Symbol(kBytesRead): 0,
+      Symbol(kBytesWritten): 0,
+      Symbol(connect-options): [Object]
+    },
+    Symbol(kOutHeaders): [Object: null prototype] {
+      accept: [Array],
+      'user-agent': [Array],
+      'accept-encoding': [Array],
+      host: [Array]
+    },
+    Symbol(errored): null,
+    Symbol(kHighWaterMark): 65536,
+    Symbol(kRejectNonStandardBodyWrites): false,
+    Symbol(kUniqueHeaders): null
+  },
+  response: {
+    status: 401,
+    statusText: 'Unauthorized',
+    headers: Object [AxiosHeaders] {
+      'content-type': 'text/plain; charset=utf-8',
+      vary: 'Origin, Access-Control-Request-Method, Access-Control-Request-Headers',
+      'x-content-type-options': 'nosniff',
+      date: 'Tue, 20 Jan 2026 06:53:45 GMT',
+      'content-length': '13'
+    },
+    config: {
+      transitional: [Object],
+      adapter: [Array],
+      transformRequest: [Array],
+      transformResponse: [Array],
+      timeout: 20000,
+      xsrfCookieName: 'XSRF-TOKEN',
+      xsrfHeaderName: 'X-XSRF-TOKEN',
+      maxContentLength: -1,
+      maxBodyLength: -1,
+      env: [Object],
+      validateStatus: [Function: validateStatus],
+      headers: [Object [AxiosHeaders]],
+      params: [Object],
+      method: 'get',
+      url: 'https://apis.data.go.kr/B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire',
+      allowAbsoluteUrls: true,
+      data: undefined
+    },
+    request: <ref *1> ClientRequest {
+      _events: [Object: null prototype],
+      _eventsCount: 7,
+      _maxListeners: undefined,
+      outputData: [],
+      outputSize: 0,
+      writable: true,
+      destroyed: true,
+      _last: true,
+      chunkedEncoding: false,
+      shouldKeepAlive: true,
+      maxRequestsOnConnectionReached: false,
+      _defaultKeepAlive: true,
+      useChunkedEncodingByDefault: false,
+      sendDate: false,
+      _removedConnection: false,
+      _removedContLen: false,
+      _removedTE: false,
+      strictContentLength: false,
+      _contentLength: 0,
+      _hasBody: true,
+      _trailer: '',
+      finished: true,
+      _headerSent: true,
+      _closed: true,
+      _header: 'GET /B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire?serviceKey=your_nedc_api_key_here&pageNo=1&numOfRows=500&_type=json HTTP/1.1\r\n' +
+        'Accept: application/json, text/plain, */*\r\n' +
+        'User-Agent: axios/1.13.2\r\n' +
+        'Accept-Encoding: gzip, compress, deflate, br\r\n' +
+        'Host: apis.data.go.kr\r\n' +
+        'Connection: keep-alive\r\n' +
+        '\r\n',
+      _keepAliveTimeout: 0,
+      _onPendingData: [Function: nop],
+      agent: [Agent],
+      socketPath: undefined,
+      method: 'GET',
+      maxHeaderSize: undefined,
+      insecureHTTPParser: undefined,
+      joinDuplicateHeaders: undefined,
+      path: '/B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire?serviceKey=your_nedc_api_key_here&pageNo=1&numOfRows=500&_type=json',
+      _ended: true,
+      res: [IncomingMessage],
+      aborted: false,
+      timeoutCb: null,
+      upgradeOrConnect: false,
+      parser: null,
+      maxHeadersCount: null,
+      reusedSocket: false,
+      host: 'apis.data.go.kr',
+      protocol: 'https:',
+      _redirectable: [Writable],
+      Symbol(shapeMode): false,
+      Symbol(kCapture): false,
+      Symbol(kBytesWritten): 0,
+      Symbol(kNeedDrain): false,
+      Symbol(corked): 0,
+      Symbol(kChunkedBuffer): [],
+      Symbol(kChunkedLength): 0,
+      Symbol(kSocket): [TLSSocket],
+      Symbol(kOutHeaders): [Object: null prototype],
+      Symbol(errored): null,
+      Symbol(kHighWaterMark): 65536,
+      Symbol(kRejectNonStandardBodyWrites): false,
+      Symbol(kUniqueHeaders): null
+    },
+    data: 'Unauthorized\n'
+  },
+  status: 401
+}
+🔧 백업 전국 병원 데이터 생성
+🔧 백업 병원 데이터 400개 생성 완료
+🗺️ 지도용 병원 데이터 요청
+[2026-01-20T06:53:45.268Z] [INFO] 실시간 응급실 병상 정보 조회 시작
+[2026-01-20T06:53:45.268Z] [INFO] 🔍 NEDC API 호출: 페이지 1 (500개씩)
+[2026-01-20T06:53:45.280Z] [ERROR] 응급실 병상 정보 조회 실패 {"error":{"message":"Request failed with status code 401","stack":"AxiosError: Request failed with status code 401\n    at settle (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:2106:12)\n    at IncomingMessage.handleStreamEnd (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:3491:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)\n    at Axios.request (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:4731:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async NEDCApiService.getRealTimeEmergencyBeds (/Users/jace/Downloads/goldentime-llm/backend/services/nedcApiService.js:329:26)\n    at async /Users/jace/Downloads/goldentime-llm/backend/api/emergency.js:25:26","name":"AxiosError"}}
+❌ 지도용 병원 데이터 조회 실패: AxiosError: Request failed with status code 401
+    at settle (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:2106:12)
+    at IncomingMessage.handleStreamEnd (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:3491:11)
+    at IncomingMessage.emit (node:events:520:35)
+    at endReadableNT (node:internal/streams/readable:1701:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+    at Axios.request (/Users/jace/Downloads/goldentime-llm/node_modules/axios/dist/node/axios.cjs:4731:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async NEDCApiService.getRealTimeEmergencyBeds (/Users/jace/Downloads/goldentime-llm/backend/services/nedcApiService.js:329:26)
+    at async /Users/jace/Downloads/goldentime-llm/backend/api/emergency.js:25:26 {
+  code: 'ERR_BAD_REQUEST',
+  config: {
+    transitional: {
+      silentJSONParsing: true,
+      forcedJSONParsing: true,
+      clarifyTimeoutError: false
+    },
+    adapter: [ 'xhr', 'http', 'fetch' ],
+    transformRequest: [ [Function: transformRequest] ],
+    transformResponse: [ [Function: transformResponse] ],
+    timeout: 20000,
+    xsrfCookieName: 'XSRF-TOKEN',
+    xsrfHeaderName: 'X-XSRF-TOKEN',
+    maxContentLength: -1,
+    maxBodyLength: -1,
+    env: { FormData: [Function], Blob: [class Blob] },
+    validateStatus: [Function: validateStatus],
+    headers: Object [AxiosHeaders] {
+      Accept: 'application/json, text/plain, */*',
+      'Content-Type': undefined,
+      'User-Agent': 'axios/1.13.2',
+      'Accept-Encoding': 'gzip, compress, deflate, br'
+    },
+    params: {
+      serviceKey: 'your_nedc_api_key_here',
+      pageNo: 1,
+      numOfRows: 500,
+      _type: 'json'
+    },
+    method: 'get',
+    url: 'https://apis.data.go.kr/B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire',
+    allowAbsoluteUrls: true,
+    data: undefined
+  },
+  request: <ref *1> ClientRequest {
+    _events: [Object: null prototype] {
+      abort: [Function (anonymous)],
+      aborted: [Function (anonymous)],
+      connect: [Function (anonymous)],
+      error: [Function (anonymous)],
+      socket: [Function (anonymous)],
+      timeout: [Function (anonymous)],
+      finish: [Function: requestOnFinish]
+    },
+    _eventsCount: 7,
+    _maxListeners: undefined,
+    outputData: [],
+    outputSize: 0,
+    writable: true,
+    destroyed: true,
+    _last: true,
+    chunkedEncoding: false,
+    shouldKeepAlive: true,
+    maxRequestsOnConnectionReached: false,
+    _defaultKeepAlive: true,
+    useChunkedEncodingByDefault: false,
+    sendDate: false,
+    _removedConnection: false,
+    _removedContLen: false,
+    _removedTE: false,
+    strictContentLength: false,
+    _contentLength: 0,
+    _hasBody: true,
+    _trailer: '',
+    finished: true,
+    _headerSent: true,
+    _closed: true,
+    _header: 'GET /B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire?serviceKey=your_nedc_api_key_here&pageNo=1&numOfRows=500&_type=json HTTP/1.1\r\n' +
+      'Accept: application/json, text/plain, */*\r\n' +
+      'User-Agent: axios/1.13.2\r\n' +
+      'Accept-Encoding: gzip, compress, deflate, br\r\n' +
+      'Host: apis.data.go.kr\r\n' +
+      'Connection: keep-alive\r\n' +
+      '\r\n',
+    _keepAliveTimeout: 0,
+    _onPendingData: [Function: nop],
+    agent: Agent {
+      _events: [Object: null prototype],
+      _eventsCount: 2,
+      _maxListeners: undefined,
+      options: [Object: null prototype],
+      defaultPort: 443,
+      protocol: 'https:',
+      requests: [Object: null prototype] {},
+      sockets: [Object: null prototype] {},
+      freeSockets: [Object: null prototype],
+      keepAliveMsecs: 1000,
+      keepAlive: true,
+      maxSockets: Infinity,
+      maxFreeSockets: 256,
+      scheduling: 'lifo',
+      maxTotalSockets: Infinity,
+      totalSocketCount: 3,
+      agentKeepAliveTimeoutBuffer: 1000,
+      maxCachedSessions: 100,
+      _sessionCache: [Object],
+      Symbol(shapeMode): false,
+      Symbol(kCapture): false
+    },
+    socketPath: undefined,
+    method: 'GET',
+    maxHeaderSize: undefined,
+    insecureHTTPParser: undefined,
+    joinDuplicateHeaders: undefined,
+    path: '/B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire?serviceKey=your_nedc_api_key_here&pageNo=1&numOfRows=500&_type=json',
+    _ended: true,
+    res: IncomingMessage {
+      _events: [Object],
+      _readableState: [ReadableState],
+      _maxListeners: undefined,
+      socket: null,
+      httpVersionMajor: 1,
+      httpVersionMinor: 1,
+      httpVersion: '1.1',
+      complete: true,
+      rawHeaders: [Array],
+      rawTrailers: [],
+      joinDuplicateHeaders: undefined,
+      aborted: false,
+      upgrade: false,
+      url: '',
+      method: null,
+      statusCode: 401,
+      statusMessage: 'Unauthorized',
+      client: [TLSSocket],
+      _consuming: false,
+      _dumped: false,
+      req: [Circular *1],
+      _eventsCount: 4,
+      responseUrl: 'https://apis.data.go.kr/B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire?serviceKey=your_nedc_api_key_here&pageNo=1&numOfRows=500&_type=json',
+      redirects: [],
+      Symbol(shapeMode): true,
+      Symbol(kCapture): false,
+      Symbol(kHeaders): [Object],
+      Symbol(kHeadersCount): 10,
+      Symbol(kTrailers): null,
+      Symbol(kTrailersCount): 0
+    },
+    aborted: false,
+    timeoutCb: null,
+    upgradeOrConnect: false,
+    parser: null,
+    maxHeadersCount: null,
+    reusedSocket: true,
+    host: 'apis.data.go.kr',
+    protocol: 'https:',
+    _redirectable: Writable {
+      _events: [Object],
+      _writableState: [WritableState],
+      _maxListeners: undefined,
+      _options: [Object],
+      _ended: true,
+      _ending: true,
+      _redirectCount: 0,
+      _redirects: [],
+      _requestBodyLength: 0,
+      _requestBodyBuffers: [],
+      _eventsCount: 3,
+      _onNativeResponse: [Function (anonymous)],
+      _currentRequest: [Circular *1],
+      _currentUrl: 'https://apis.data.go.kr/B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire?serviceKey=your_nedc_api_key_here&pageNo=1&numOfRows=500&_type=json',
+      _timeout: null,
+      Symbol(shapeMode): true,
+      Symbol(kCapture): false
+    },
+    Symbol(shapeMode): false,
+    Symbol(kCapture): false,
+    Symbol(kBytesWritten): 0,
+    Symbol(kNeedDrain): false,
+    Symbol(corked): 0,
+    Symbol(kChunkedBuffer): [],
+    Symbol(kChunkedLength): 0,
+    Symbol(kSocket): TLSSocket {
+      _tlsOptions: [Object],
+      _secureEstablished: true,
+      _securePending: false,
+      _newSessionPending: false,
+      _controlReleased: true,
+      secureConnecting: false,
+      _SNICallback: null,
+      servername: 'apis.data.go.kr',
+      alpnProtocol: false,
+      authorized: true,
+      authorizationError: null,
+      encrypted: true,
+      _events: [Object: null prototype],
+      _eventsCount: 9,
+      connecting: false,
+      _hadError: false,
+      _parent: null,
+      _host: 'apis.data.go.kr',
+      _closeAfterHandlingError: false,
+      _readableState: [ReadableState],
+      _writableState: [WritableState],
+      allowHalfOpen: false,
+      _maxListeners: undefined,
+      _sockname: null,
+      _pendingData: null,
+      _pendingEncoding: '',
+      server: undefined,
+      _server: null,
+      ssl: [TLSWrap],
+      _requestCert: true,
+      _rejectUnauthorized: true,
+      timeout: 5000,
+      parser: null,
+      _httpMessage: null,
+      Symbol(alpncallback): null,
+      Symbol(res): [TLSWrap],
+      Symbol(verified): true,
+      Symbol(pendingSession): null,
+      Symbol(async_id_symbol): -1,
+      Symbol(kHandle): [TLSWrap],
+      Symbol(lastWriteQueueSize): 0,
+      Symbol(timeout): Timeout {
+        _idleTimeout: 5000,
+        _idlePrev: [TimersList],
+        _idleNext: [Timeout],
+        _idleStart: 78176,
+        _onTimeout: [Function: bound ],
+        _timerArgs: undefined,
+        _repeat: null,
+        _destroyed: false,
+        Symbol(refed): false,
+        Symbol(kHasPrimitive): false,
+        Symbol(asyncId): 1988,
+        Symbol(triggerId): 1986,
+        Symbol(kAsyncContextFrame): undefined
+      },
+      Symbol(kBuffer): null,
+      Symbol(kBufferCb): null,
+      Symbol(kBufferGen): null,
+      Symbol(shapeMode): true,
+      Symbol(kCapture): false,
+      Symbol(kSetNoDelay): false,
+      Symbol(kSetKeepAlive): true,
+      Symbol(kSetKeepAliveInitialDelay): 1,
+      Symbol(kBytesRead): 0,
+      Symbol(kBytesWritten): 0,
+      Symbol(connect-options): [Object]
+    },
+    Symbol(kOutHeaders): [Object: null prototype] {
+      accept: [Array],
+      'user-agent': [Array],
+      'accept-encoding': [Array],
+      host: [Array]
+    },
+    Symbol(errored): null,
+    Symbol(kHighWaterMark): 65536,
+    Symbol(kRejectNonStandardBodyWrites): false,
+    Symbol(kUniqueHeaders): null
+  },
+  response: {
+    status: 401,
+    statusText: 'Unauthorized',
+    headers: Object [AxiosHeaders] {
+      'content-type': 'text/plain; charset=utf-8',
+      vary: 'Origin, Access-Control-Request-Method, Access-Control-Request-Headers',
+      'x-content-type-options': 'nosniff',
+      date: 'Tue, 20 Jan 2026 06:53:45 GMT',
+      'content-length': '13'
+    },
+    config: {
+      transitional: [Object],
+      adapter: [Array],
+      transformRequest: [Array],
+      transformResponse: [Array],
+      timeout: 20000,
+      xsrfCookieName: 'XSRF-TOKEN',
+      xsrfHeaderName: 'X-XSRF-TOKEN',
+      maxContentLength: -1,
+      maxBodyLength: -1,
+      env: [Object],
+      validateStatus: [Function: validateStatus],
+      headers: [Object [AxiosHeaders]],
+      params: [Object],
+      method: 'get',
+      url: 'https://apis.data.go.kr/B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire',
+      allowAbsoluteUrls: true,
+      data: undefined
+    },
+    request: <ref *1> ClientRequest {
+      _events: [Object: null prototype],
+      _eventsCount: 7,
+      _maxListeners: undefined,
+      outputData: [],
+      outputSize: 0,
+      writable: true,
+      destroyed: true,
+      _last: true,
+      chunkedEncoding: false,
+      shouldKeepAlive: true,
+      maxRequestsOnConnectionReached: false,
+      _defaultKeepAlive: true,
+      useChunkedEncodingByDefault: false,
+      sendDate: false,
+      _removedConnection: false,
+      _removedContLen: false,
+      _removedTE: false,
+      strictContentLength: false,
+      _contentLength: 0,
+      _hasBody: true,
+      _trailer: '',
+      finished: true,
+      _headerSent: true,
+      _closed: true,
+      _header: 'GET /B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire?serviceKey=your_nedc_api_key_here&pageNo=1&numOfRows=500&_type=json HTTP/1.1\r\n' +
+        'Accept: application/json, text/plain, */*\r\n' +
+        'User-Agent: axios/1.13.2\r\n' +
+        'Accept-Encoding: gzip, compress, deflate, br\r\n' +
+        'Host: apis.data.go.kr\r\n' +
+        'Connection: keep-alive\r\n' +
+        '\r\n',
+      _keepAliveTimeout: 0,
+      _onPendingData: [Function: nop],
+      agent: [Agent],
+      socketPath: undefined,
+      method: 'GET',
+      maxHeaderSize: undefined,
+      insecureHTTPParser: undefined,
+      joinDuplicateHeaders: undefined,
+      path: '/B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire?serviceKey=your_nedc_api_key_here&pageNo=1&numOfRows=500&_type=json',
+      _ended: true,
+      res: [IncomingMessage],
+      aborted: false,
+      timeoutCb: null,
+      upgradeOrConnect: false,
+      parser: null,
+      maxHeadersCount: null,
+      reusedSocket: true,
+      host: 'apis.data.go.kr',
+      protocol: 'https:',
+      _redirectable: [Writable],
+      Symbol(shapeMode): false,
+      Symbol(kCapture): false,
+      Symbol(kBytesWritten): 0,
+      Symbol(kNeedDrain): false,
+      Symbol(corked): 0,
+      Symbol(kChunkedBuffer): [],
+      Symbol(kChunkedLength): 0,
+      Symbol(kSocket): [TLSSocket],
+      Symbol(kOutHeaders): [Object: null prototype],
+      Symbol(errored): null,
+      Symbol(kHighWaterMark): 65536,
+      Symbol(kRejectNonStandardBodyWrites): false,
+      Symbol(kUniqueHeaders): null
+    },
+    data: 'Unauthorized\n'
+  },
+  status: 401
+}
+🔧 백업 전국 병원 데이터 생성
+🔧 백업 병원 데이터 400개 생성 완료
+[2026-01-20T06:54:03.444Z] [WARN] 응급구조사 용량 부족 {"available":0,"threshold":5}
+[2026-01-20T06:54:03.444Z] [WARN] 용량 모니터링 실패

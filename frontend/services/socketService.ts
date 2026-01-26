@@ -1,4 +1,4 @@
-import { io, Socket } from 'socket.io-client';
+import { io, Socket } from "socket.io-client";
 
 class SocketService {
   private socket: Socket | null = null;
@@ -9,18 +9,20 @@ class SocketService {
       this.socket.disconnect();
     }
 
-    this.socket = io('http://localhost:3002', {
+    // Connect to the same origin (relative path) so it works through proxy or ngrok
+    this.socket = io({
+      path: "/socket.io",
       auth: { token },
-      transports: ['websocket', 'polling']
+      transports: ["websocket", "polling"],
     });
 
-    this.socket.on('connect', () => {
-      console.log('Socket connected');
+    this.socket.on("connect", () => {
+      console.log("Socket connected");
       this.isConnectedFlag = true;
     });
 
-    this.socket.on('disconnect', () => {
-      console.log('Socket disconnected');
+    this.socket.on("disconnect", () => {
+      console.log("Socket disconnected");
       this.isConnectedFlag = false;
     });
 

@@ -1,11 +1,12 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const http = require('http');
-const connectDB = require('./config/database');
-const { initializeSocket } = require('./services/socketService');
-const { validateEnv } = require('./utils/validateEnv');
-const logger = require('./utils/logger');
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const http = require("http");
+const path = require("path");
+const connectDB = require("./config/database");
+const { initializeSocket } = require("./services/socketService");
+const { validateEnv } = require("./utils/validateEnv");
+const logger = require("./utils/logger");
 
 // 환경변수 검증
 validateEnv();
@@ -13,104 +14,110 @@ validateEnv();
 // 데이터베이스 연결
 connectDB();
 
+// 정적 파일 서빙 (업로드된 오디오 파일 등) - moved to middleware section
+
 // 서버 시작 체크 (비동기로 실행)
-const { performStartupChecks } = require('./utils/startupCheck');
+const { performStartupChecks } = require("./utils/startupCheck");
 setTimeout(async () => {
   await performStartupChecks();
 }, 2000); // DB 연결 후 2초 대기
 
 // 완전 자동 학습 시스템 시작
-if (process.env.ENABLE_AUTO_LEARNING === 'true') {
-  const autoLearningService = require('./services/autoLearningService');
+if (process.env.ENABLE_AUTO_LEARNING === "true") {
+  const autoLearningService = require("./services/autoLearningService");
   setTimeout(() => {
     autoLearningService.start();
-    logger.info('🤖 완전 자동 학습 시스템 활성화됨');
+    logger.info("🤖 완전 자동 학습 시스템 활성화됨");
   }, 5000); // DB 연결 및 초기화 완료 후 5초 대기
 }
 
 // 응급 워크플로우 자동화 시스템 시작
-if (process.env.ENABLE_EMERGENCY_WORKFLOW === 'true') {
-  const emergencyWorkflowService = require('./services/emergencyWorkflowService');
-  const realtimeTrackingService = require('./services/realtimeTrackingService');
-  const resourceManagementService = require('./services/resourceManagementService');
-  
+if (process.env.ENABLE_EMERGENCY_WORKFLOW === "true") {
+  const emergencyWorkflowService = require("./services/emergencyWorkflowService");
+  const realtimeTrackingService = require("./services/realtimeTrackingService");
+  const resourceManagementService = require("./services/resourceManagementService");
+
   setTimeout(async () => {
     try {
       // 리소스 풀 초기화
       await resourceManagementService.initializeResourcePool();
-      
+
       // 시스템 모니터링 시작
       emergencyWorkflowService.startSystemMonitoring();
-      
-      logger.info('🚨 응급 워크플로우 자동화 시스템 활성화됨');
+
+      logger.info("🚨 응급 워크플로우 자동화 시스템 활성화됨");
     } catch (error) {
-      logger.error('응급 워크플로우 시스템 시작 실패', error);
+      logger.error("응급 워크플로우 시스템 시작 실패", error);
     }
   }, 6000); // 자동 학습 시스템 후 1초 대기
 }
 
 // 종합적인 피드백 및 품질 관리 시스템 시작
-if (process.env.ENABLE_QUALITY_MANAGEMENT === 'true') {
-  const qualityManagementService = require('./services/qualityManagementService');
+if (process.env.ENABLE_QUALITY_MANAGEMENT === "true") {
+  const qualityManagementService = require("./services/qualityManagementService");
   setTimeout(async () => {
     try {
       await qualityManagementService.start();
-      logger.info('🎯 종합 품질 관리 시스템 활성화됨');
+      logger.info("🎯 종합 품질 관리 시스템 활성화됨");
     } catch (error) {
-      logger.error('품질 관리 시스템 시작 실패', error);
+      logger.error("품질 관리 시스템 시작 실패", error);
     }
   }, 7000); // 워크플로우 시스템 후 1초 대기
 }
 
 // 실시간 생체신호 분석 엔진 시작
-if (process.env.ENABLE_REALTIME_BIOSIGNAL === 'true') {
-  const realtimeBiosignalEngine = require('./services/realtimeBiosignalEngine');
+if (process.env.ENABLE_REALTIME_BIOSIGNAL === "true") {
+  const realtimeBiosignalEngine = require("./services/realtimeBiosignalEngine");
   setTimeout(async () => {
     try {
       // 실시간 엔진 이벤트 리스너 설정
-      realtimeBiosignalEngine.on('emergency_detected', (eventData) => {
-        logger.warn('🚨 실시간 응급상황 감지:', {
+      realtimeBiosignalEngine.on("emergency_detected", (eventData) => {
+        logger.warn("🚨 실시간 응급상황 감지:", {
           userId: eventData.userId,
           severity: eventData.emergencyDetection.maxSeverity,
-          alerts: eventData.emergencyDetection.alerts.length
+          alerts: eventData.emergencyDetection.alerts.length,
         });
       });
 
-      logger.info('🔬 실시간 생체신호 분석 엔진 활성화됨');
+      logger.info("🔬 실시간 생체신호 분석 엔진 활성화됨");
     } catch (error) {
-      logger.error('실시간 생체신호 엔진 시작 실패', error);
+      logger.error("실시간 생체신호 엔진 시작 실패", error);
     }
   }, 8000); // 품질 관리 시스템 후 1초 대기
 }
 
 // 지능형 병원 매칭 및 API 자동 갱신 시스템 시작 - 항상 활성화
-if (true) { // process.env.ENABLE_HOSPITAL_MATCHING === 'true'
+if (true) {
+  // process.env.ENABLE_HOSPITAL_MATCHING === 'true'
   setTimeout(async () => {
     try {
       // NEDC API (국립중앙의료원) 스케줄러 시작
       if (process.env.NEDC_API_SERVICE_KEY) {
-        const nedcApiService = require('./services/nedcApiService');
+        const nedcApiService = require("./services/nedcApiService");
         nedcApiService.startAutoRefreshScheduler();
-        
+
         // 초기 병원 데이터 동기화 (서버 시작 30초 후)
         setTimeout(async () => {
           try {
-            logger.info('🔄 초기 NEDC 병원 데이터 동기화 시작');
+            logger.info("🔄 초기 NEDC 병원 데이터 동기화 시작");
             await nedcApiService.syncHospitalData(1, 100);
-            logger.info('✅ 초기 NEDC 병원 데이터 동기화 완료');
+            logger.info("✅ 초기 NEDC 병원 데이터 동기화 완료");
           } catch (error) {
-            logger.warn('⚠️ 초기 NEDC 병원 데이터 동기화 실패 (스케줄러에서 재시도 예정)', { error: error.message });
+            logger.warn(
+              "⚠️ 초기 NEDC 병원 데이터 동기화 실패 (스케줄러에서 재시도 예정)",
+              { error: error.message },
+            );
           }
         }, 30000);
       }
-      
+
       // HIRA API (건강보험심사평가원) 스케줄러 시작 (30분 주기) - 전국 병원 데이터 로딩
-      const hiraApiService = require('./services/hiraApiService');
+      const hiraApiService = require("./services/hiraApiService");
       hiraApiService.startAutoRefreshScheduler();
-      
-      logger.info('🏥 지능형 병원 매칭 시스템 및 API 자동 갱신 활성화됨');
+
+      logger.info("🏥 지능형 병원 매칭 시스템 및 API 자동 갱신 활성화됨");
     } catch (error) {
-      logger.error('❌ 병원 매칭 시스템 시작 실패', { error });
+      logger.error("❌ 병원 매칭 시스템 시작 실패", { error });
     }
   }, 9000);
 }
@@ -122,7 +129,7 @@ if (true) { // process.env.ENABLE_HOSPITAL_MATCHING === 'true'
 //       const SubstanceDetectionSystem = require('./services/substanceDetectionSystem');
 //       const substanceSystem = new SubstanceDetectionSystem();
 //       await substanceSystem.initialize();
-//       
+//
 //       logger.info('🧠 물질 남용 탐지 시스템 활성화됨 (4개 독립 LLM 병렬 구조)');
 //     } catch (error) {
 //       logger.error('❌ 물질 탐지 시스템 시작 실패', { error });
@@ -137,45 +144,51 @@ const server = http.createServer(app);
 initializeSocket(server);
 
 // 미들웨어
+app.set("trust proxy", 1); // Trust first proxy (ngrok/Vite)
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+// 정적 파일 서빙 (업로드된 오디오 파일 등)
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // 성능 모니터링
-const performanceMonitor = require('./middleware/performanceMonitor');
+const performanceMonitor = require("./middleware/performanceMonitor");
 app.use(performanceMonitor);
 
 // Rate Limiting
-const { apiLimiter } = require('./middleware/rateLimiter');
-app.use('/api', apiLimiter);
+const { apiLimiter } = require("./middleware/rateLimiter");
+app.use("/api", apiLimiter);
 
 // 인입(워치/미니앱/클라우드) 수집 API
-app.use('/api/ingest', require('./api/ingest'));
-app.use('/api/zepp', require('./api/zepp'));
-app.use('/api/users', require('./api/users'));
-app.use('/api/paramedics', require('./api/paramedics'));
-app.use('/api/emergency', require('./api/emergency'));
-app.use('/api/controllers', require('./api/controllers'));
-app.use('/api/hospital-mode', require('./api/hospitalMode'));
-app.use('/api/emergency-hospital', require('./api/emergencyHospital'));
-app.use('/api/stats', require('./api/stats'));
-app.use('/api/auto-learning', require('./api/autoLearning'));
-app.use('/api/medical-labeling', require('./api/medicalLabeling'));
-app.use('/api/emergency-workflow', require('./api/emergencyWorkflow'));
-app.use('/api/feedback', require('./api/feedback'));
-app.use('/api/quality', require('./api/qualityManagement'));
-app.use('/api/realtime-biosignal', require('./api/realtimeBiosignal'));
-app.use('/api/hospital-matching', require('./api/hospitalMatching'));
-app.use('/api/system-monitoring', require('./api/systemMonitoring'));
+app.use("/api/ingest", require("./api/ingest"));
+app.use("/api/zepp", require("./api/zepp"));
+app.use("/api/users", require("./api/users"));
+app.use("/api/paramedics", require("./api/paramedics"));
+app.use("/api/emergency", require("./api/emergency"));
+app.use("/api/controllers", require("./api/controllers"));
+app.use("/api/hospital-mode", require("./api/hospitalMode"));
+app.use("/api/emergency-hospital", require("./api/emergencyHospital"));
+app.use("/api/stats", require("./api/stats"));
+app.use("/api/auto-learning", require("./api/autoLearning"));
+app.use("/api/medical-labeling", require("./api/medicalLabeling"));
+app.use("/api/emergency-workflow", require("./api/emergencyWorkflow"));
+app.use("/api/feedback", require("./api/feedback"));
+app.use("/api/quality", require("./api/qualityManagement"));
+app.use("/api/realtime-biosignal", require("./api/realtimeBiosignal"));
+app.use("/api/hospital-matching", require("./api/hospitalMatching"));
+app.use("/api/system-monitoring", require("./api/systemMonitoring"));
+app.use("/api/zepp-biometrics", require("./api/zeppBiometrics")); // Zepp Biometrics API 추가
+app.use("/api/school-violence", require("./api/schoolViolence")); // School Violence API
 // 물질 탐지 시스템 (TensorFlow 의존성 문제로 일시 비활성화)
 // app.use('/api/substance-detection', require('./api/substanceDetection'));
 
 // Swagger API 문서
-if (process.env.NODE_ENV !== 'production') {
-  const swaggerUi = require('swagger-ui-express');
-  const swaggerSpec = require('./config/swagger');
-  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-  logger.info('Swagger API 문서 활성화: /api-docs');
+if (process.env.NODE_ENV !== "production") {
+  const swaggerUi = require("swagger-ui-express");
+  const swaggerSpec = require("./config/swagger");
+  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+  logger.info("Swagger API 문서 활성화: /api-docs");
 }
 
 // Health check
@@ -207,25 +220,26 @@ if (process.env.NODE_ENV !== 'production') {
  *                 database:
  *                   type: object
  */
-app.get('/health', async (req, res) => {
-  const mongoose = require('mongoose');
+app.get("/health", async (req, res) => {
+  const mongoose = require("mongoose");
   const memoryUsage = process.memoryUsage();
-  
+
   const healthData = {
-    status: 'ok',
-    message: '골든타임 LLM 서버가 정상 작동 중입니다.',
+    status: "ok",
+    message: "골든타임 LLM 서버가 정상 작동 중입니다.",
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     memory: {
       used: `${Math.round(memoryUsage.heapUsed / 1024 / 1024)}MB`,
       total: `${Math.round(memoryUsage.heapTotal / 1024 / 1024)}MB`,
-      rss: `${Math.round(memoryUsage.rss / 1024 / 1024)}MB`
+      rss: `${Math.round(memoryUsage.rss / 1024 / 1024)}MB`,
     },
     database: {
-      status: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-      name: mongoose.connection.name
+      status:
+        mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+      name: mongoose.connection.name,
     },
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || "development",
   };
 
   // 데이터베이스 연결 상태에 따라 상태 코드 결정
@@ -242,12 +256,12 @@ app.get('/health', async (req, res) => {
 // app.use('/api/controller', require('./api/controller'));
 
 // 에러 핸들링
-const { createErrorResponse } = require('./utils/errorHandler');
+const { createErrorResponse } = require("./utils/errorHandler");
 app.use((err, req, res, next) => {
-  logger.error('서버 오류 발생', err, {
+  logger.error("서버 오류 발생", err, {
     path: req.path,
     method: req.method,
-    ip: req.ip
+    ip: req.ip,
   });
 
   const { statusCode, response } = createErrorResponse(err, req);
@@ -258,21 +272,23 @@ app.use((err, req, res, next) => {
 app.use((req, res) => {
   res.status(404).json({
     success: false,
-    message: '요청한 리소스를 찾을 수 없습니다.'
+    message: "요청한 리소스를 찾을 수 없습니다.",
   });
 });
 
 const PORT = process.env.PORT || 3000;
 
 server.listen(PORT, () => {
-  logger.info('서버 시작', {
+  logger.info("서버 시작", {
     port: PORT,
-    environment: process.env.NODE_ENV || 'development',
-    websocket: '활성화됨'
+    environment: process.env.NODE_ENV || "development",
+    websocket: "활성화됨",
   });
   console.log(`🚀 서버가 포트 ${PORT}에서 실행 중입니다.`);
   console.log(`📡 WebSocket 실시간 통신 활성화됨`);
-  console.log(`🌐 외부 접속을 원할 경우 ngrok 또는 터널링 서비스를 사용하세요.`);
+  console.log(
+    `🌐 외부 접속을 원할 경우 ngrok 또는 터널링 서비스를 사용하세요.`,
+  );
 });
 
 module.exports = { app, server };

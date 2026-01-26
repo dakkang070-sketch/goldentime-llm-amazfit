@@ -1,0 +1,77 @@
+[
+  {
+    "category": "verbal_abuse",
+    "text": "야 이 병신아, 눈 깔라고 했지? 왜 자꾸 쳐다봐? 죽고싶냐?",
+    "description": "심한 욕설과 위협적인 언행"
+  },
+  {
+    "category": "verbal_abuse",
+    "text": "니네 엄마가 그렇게 가르치드나? 옷 입은 꼬라지 봐라 ㅋㅋ 거지냐?",
+    "description": "패드립 및 인신공격"
+  },
+  {
+    "category": "threat_coercion",
+    "text": "오늘 학교 끝나고 옥상으로 튀어와라. 안 오면 니 동생 가만 안 둔다.",
+    "description": "신체적 위협 및 가족 협박"
+  },
+  {
+    "category": "threat_coercion",
+    "text": "선생님한테 이르면 죽여버릴거야. 입 닥치고 있어라.",
+    "description": "신고 방해 및 살해 협박"
+  },
+  {
+    "category": "extortion",
+    "text": "야, 5만원만 빌려줘. 내일까지 갚을게. 안 주면 알지? 뒤진다.",
+    "description": "금품 갈취 시도 (빌리는 척 위협)"
+  },
+  {
+    "category": "extortion",
+    "text": "이번 달 상납금 왜 안 가져왔어? 맞고 줄래 그냥 줄래?",
+    "description": "상습적인 금품 갈취"
+  },
+  {
+    "category": "bullying",
+    "text": "야 쟤 왕따시키자. 아무도 쟤랑 말 섞지 마. 냄새나니까.",
+    "description": "집단 따돌림 주도"
+  },
+  {
+    "category": "bullying",
+    "text": "빵 좀 사와라. 우유랑 소보로빵으로. 늦으면 뒤진다 뛰어라.",
+    "description": "심부름 강요 (빵셔틀)"
+  },
+  {
+    "category": "normal_prank",
+    "text": "야 이 미친놈아 ㅋㅋㅋ 아 웃겨 죽겠네. 너 진짜 돌아이냐? ㅋㅋㅋ",
+    "description": "친한 친구 사이의 비속어가 섞인 농담"
+  },
+  {
+    "category": "normal_prank",
+    "text": "죽을래? ㅋㅋㅋ 아 그만 좀 괴롭혀 ㅋㅋㅋ 간지럽다고!",
+    "description": "장난스러운 신체 접촉 상황"
+  },
+  {
+    "category": "normal_conversation",
+    "text": "오늘 급식 뭐 나오는지 아냐? 배고파 죽겠다.",
+    "description": "일상적인 대화"
+  },
+  {
+    "category": "normal_conversation",
+    "text": "숙제 다 했어? 나 좀 보여주라. 너무 어려워.",
+    "description": "학업 관련 일상 대화"
+  },
+  {
+    "category": "cyber_bullying",
+    "text": "단톡방 초대하지 마라. 나가면 다시 초대해서 괴롭힐거니까.",
+    "description": "카톡 감옥/사이버 불링"
+  },
+  {
+    "category": "physical_violence_context",
+    "text": "아! 때리지 마! 아프다고! 야 하지마!",
+    "description": "폭행 상황의 비명 및 거부 의사"
+  },
+  {
+    "category": "sexual_harassment",
+    "text": "너 몸매 좀 되는데? 한번 만져봐도 되냐? ㅋㅋ",
+    "description": "성희롱 발언"
+  }
+]

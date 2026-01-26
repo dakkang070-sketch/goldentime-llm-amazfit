@@ -15,42 +15,40 @@ export const FIRE_STATIONS: FireStation[] = [
   { id: 'fs10', name: '서울도봉소방서', location: '도봉구', lat: 37.6686, lng: 127.0473 }
 ];
 
-// 서울 지역 랜덤 좌표 생성 함수
-const generateRandomSeoulCoords = (): { lat: number; lng: number } => {
-  // 서울 지역 경계: 위도 37.4 ~ 37.7, 경도 126.8 ~ 127.2
-  const minLat = 37.4;
-  const maxLat = 37.7;
-  const minLng = 126.8;
-  const maxLng = 127.2;
-  
-  const lat = minLat + Math.random() * (maxLat - minLat);
-  const lng = minLng + Math.random() * (maxLng - minLng);
-  
-  return { lat, lng };
+// 서울 25개 자치구 중심 좌표 (실제 위치 기반 배치용)
+const DISTRICT_COORDS: Record<string, {lat: number, lng: number}> = {
+  '종로': {lat: 37.5730, lng: 126.9794}, '중구': {lat: 37.5641, lng: 126.9979}, '용산': {lat: 37.5326, lng: 126.9908},
+  '성동': {lat: 37.5633, lng: 127.0371}, '광진': {lat: 37.5385, lng: 127.0824}, '동대문': {lat: 37.5744, lng: 127.0397},
+  '중랑': {lat: 37.6065, lng: 127.0927}, '성북': {lat: 37.5891, lng: 127.0182}, '강북': {lat: 37.6396, lng: 127.0257},
+  '도봉': {lat: 37.6688, lng: 127.0471}, '노원': {lat: 37.6542, lng: 127.0568}, '은평': {lat: 37.6027, lng: 126.9291},
+  '서대문': {lat: 37.5791, lng: 126.9368}, '마포': {lat: 37.5662, lng: 126.9016}, '양천': {lat: 37.5169, lng: 126.8664},
+  '강서': {lat: 37.5509, lng: 126.8497}, '구로': {lat: 37.4954, lng: 126.8874}, '금천': {lat: 37.4568, lng: 126.8952},
+  '영등포': {lat: 37.5263, lng: 126.8962}, '동작': {lat: 37.5124, lng: 126.9395}, '관악': {lat: 37.4784, lng: 126.9516},
+  '서초': {lat: 37.4837, lng: 127.0324}, '강남': {lat: 37.4959, lng: 127.0664}, '송파': {lat: 37.5145, lng: 127.1066},
+  '강동': {lat: 37.5301, lng: 127.1238}
 };
 
-// 구급차를 랜덤 위치에 배치 (원래는 응급구조사 앱 위치 기반이어야 함)
-// 서울시 119응급구조차 150대를 서울 전역에 랜덤 배치
-export const INITIAL_AMBULANCES: Ambulance[] = Array.from({ length: 150 }, (_, i) => {
-  // 서울시 25개 구 목록
-  const districtNames = [
-    '종로', '중구', '용산', '성동', '광진', '동대문', '중랑', '성북', '강북', '도봉',
-    '노원', '은평', '서대문', '마포', '양천', '강서', '구로', '금천', '영등포', '동작',
-    '관악', '서초', '강남', '송파', '강동'
-  ];
-  
-  // 각 구별로 평균 6대씩 배치 (150대 / 25개 구 = 6대)
-  const districtIndex = i % districtNames.length;
-  const districtName = districtNames[districtIndex];
-  const unitNumber = String(Math.floor(i / districtNames.length) + 1).padStart(2, '0');
-  
-  // ALS와 BLS를 적절히 배분 (약 30% ALS, 70% BLS)
+// 서울 지역 유효 좌표 생성 함수 (구별 배치)
+const generateDistrictCoords = (district: string): { lat: number; lng: number } => {
+  const center = DISTRICT_COORDS[district] || {lat: 37.5665, lng: 126.9780};
+  // 관내 2~3km 범위 내 분산 (약 0.02도)
+  return {
+    lat: center.lat + (Math.random() - 0.5) * 0.03,
+    lng: center.lng + (Math.random() - 0.5) * 0.03
+  };
+};
+
+// 구급차를 실제 소속 구에 맞춰 배치
+export const INITIAL_AMBULANCES: Ambulance[] = Array.from({ length: 200 }, (_, i) => {
+  const districts = Object.keys(DISTRICT_COORDS);
+  const districtName = districts[i % districts.length];
+  const unitNumber = String(Math.floor(i / districts.length) + 1).padStart(2, '0');
   const type = i % 10 < 3 ? 'ALS' : 'BLS';
   
   return {
     id: `a${i + 1}`,
     unitName: `${districtName} 119-${unitNumber}`,
-    ...generateRandomSeoulCoords(),
+    ...generateDistrictCoords(districtName),
     status: AmbulanceStatus.AVAILABLE,
     type: type as 'ALS' | 'BLS'
   };
@@ -308,6 +306,114 @@ export const INITIAL_HOSPITALS: Hospital[] = [
     distance: '7.8 km',
     isEROpen: true,
     activeTraumaLevel: 2
+  },
+  {
+    id: 'h15',
+    name: '인제대학교 상계백병원',
+    location: '서울 노원구',
+    lat: 37.6481,
+    lng: 127.0623,
+    availableBeds: 11,
+    totalBeds: 180,
+    icuBeds: { available: 3, total: 24 },
+    erBeds: { available: 5, total: 34 },
+    operatingRooms: { available: 2, total: 11 },
+    specialties: ['심장혈관', '외상센터'],
+    surgicalCapabilities: [{ name: '스텐트시술', isAvailable: true }],
+    bloodSupply: 'Normal',
+    distance: '12.4 km',
+    isEROpen: true,
+    activeTraumaLevel: 2
+  },
+  {
+    id: 'h16',
+    name: '한림대학교 강남성심병원',
+    location: '서울 영등포구',
+    lat: 37.4915,
+    lng: 126.9075,
+    availableBeds: 8,
+    totalBeds: 170,
+    icuBeds: { available: 2, total: 22 },
+    erBeds: { available: 4, total: 30 },
+    operatingRooms: { available: 1, total: 10 },
+    specialties: ['화상치료', '고위험산모'],
+    surgicalCapabilities: [{ name: '화상수술', isAvailable: true }],
+    bloodSupply: 'Normal',
+    distance: '5.2 km',
+    isEROpen: true,
+    activeTraumaLevel: 2
+  },
+  {
+    id: 'h17',
+    name: '순천향대학교 서울병원',
+    location: '서울 용산구',
+    lat: 37.5338,
+    lng: 127.0012,
+    availableBeds: 6,
+    totalBeds: 150,
+    icuBeds: { available: 1, total: 18 },
+    erBeds: { available: 3, total: 28 },
+    operatingRooms: { available: 1, total: 9 },
+    specialties: ['소화기질환', '응급센터'],
+    surgicalCapabilities: [{ name: '내시경수술', isAvailable: true }],
+    bloodSupply: 'Low',
+    distance: '3.8 km',
+    isEROpen: true,
+    activeTraumaLevel: 2
+  },
+  {
+    id: 'h18',
+    name: '가톨릭대학교 여의도성모병원',
+    location: '서울 영등포구',
+    lat: 37.5183,
+    lng: 126.9365,
+    availableBeds: 9,
+    totalBeds: 160,
+    icuBeds: { available: 4, total: 20 },
+    erBeds: { available: 5, total: 32 },
+    operatingRooms: { available: 2, total: 10 },
+    specialties: ['안과전문', '순환기'],
+    surgicalCapabilities: [{ name: '망막수술', isAvailable: true }],
+    bloodSupply: 'Normal',
+    distance: '4.5 km',
+    isEROpen: true,
+    activeTraumaLevel: 2
+  },
+  {
+    id: 'h19',
+    name: '성애병원',
+    location: '서울 영등포구',
+    lat: 37.5085,
+    lng: 126.9185,
+    availableBeds: 15,
+    totalBeds: 120,
+    icuBeds: { available: 5, total: 12 },
+    erBeds: { available: 8, total: 20 },
+    operatingRooms: { available: 3, total: 6 },
+    specialties: ['내과', '외과', '응급센터'],
+    surgicalCapabilities: [{ name: '일반외과수술', isAvailable: true }],
+    bloodSupply: 'Normal',
+    distance: '4.8 km',
+    isEROpen: true,
+    activeTraumaLevel: 3
+  },
+  {
+    id: 'h20',
+    name: '명지성모병원',
+    location: '서울 영등포구',
+    lat: 37.4965,
+    lng: 126.8985,
+    availableBeds: 7,
+    totalBeds: 100,
+    icuBeds: { available: 2, total: 10 },
+    erBeds: { available: 4, total: 15 },
+    operatingRooms: { available: 1, total: 5 },
+    specialties: ['뇌혈관질환전문'],
+    surgicalCapabilities: [{ name: '뇌동맥류수술', isAvailable: true }],
+    bloodSupply: 'Normal',
+    distance: '5.5 km',
+    isEROpen: true,
+    activeTraumaLevel: 3
   }
 ];
 
@@ -335,10 +441,7 @@ export const INITIAL_PATIENTS: Patient[] = [
 
 🔍 **분석 결과:**
 • 34세 남성 심혈관계 위험
-• 폐렴, 천식악화, 심부전 의심
-
-📌 **시스템 조치:**
-• **최적 병원 실시간 탐색 및 수용 가능 여부 확인 중**`,
+• 폐렴, 천식악화, 심부전 의심`,
     vitals: {
       heartRate: 163,
       bloodPressure: '150/100',

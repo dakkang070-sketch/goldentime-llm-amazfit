@@ -10,9 +10,13 @@ export function transformEmergencyCaseToPatient(caseData: any): Patient {
   if (caseData.emergencyLevel === 5) {
     status = PatientStatus.CRITICAL;
   } else if (caseData.emergencyLevel === 4) {
-    status = PatientStatus.SERIOUS;
+    status = PatientStatus.DANGER;
   } else if (caseData.emergencyLevel === 3) {
-    status = PatientStatus.STABLE;
+    status = PatientStatus.WARNING;
+  } else if (caseData.emergencyLevel === 2) {
+    status = PatientStatus.CAUTION;
+  } else if (caseData.emergencyLevel === 1) {
+    status = PatientStatus.NORMAL;
   }
 
   // 이상 징후에서 심박수 추출 시도

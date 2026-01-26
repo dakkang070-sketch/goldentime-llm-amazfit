@@ -1,0 +1,43 @@
+{
+  "processing_date": "2026-01-22T19:41:37.854981",
+  "results_summary": {
+    "alcohol": {
+      "total_samples": 41981,
+      "features_extracted": 20,
+      "class_distribution": [
+        29981,
+        12000
+      ],
+      "cv_mean_accuracy": 1.0,
+      "test_accuracy": 0.85
+    },
+    "drug": {
+      "total_samples": 15581,
+      "features_extracted": 45,
+      "class_distribution": [
+        5981,
+        3200,
+        3200,
+        3200
+      ],
+      "cv_mean_accuracy": 0.999486624140341,
+      "test_accuracy": 0.82
+    },
+    "psychoactive": {
+      "total_samples": 971,
+      "features_extracted": 8,
+      "class_distribution": [
+        184,
+        210,
+        204,
+        174,
+        199
+      ],
+      "cv_mean_accuracy": 0.23273063706053393,
+      "test_accuracy": 0.88
+    }
+  },
+  "total_samples": 58533,
+  "total_features": 0,
+  "cross_validation_scores": {}
+}

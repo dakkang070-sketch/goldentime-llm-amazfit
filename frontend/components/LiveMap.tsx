@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { 
   Crosshair
 } from 'lucide-react';
@@ -7,6 +7,9 @@ import { Patient, Hospital, Ambulance, AmbulanceStatus, PatientStatus } from '..
 import { apiService } from '../services/apiService';
 
 declare var L: any;
+import 'leaflet/dist/leaflet.css';
+import 'leaflet-routing-machine';
+import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
 
 interface LiveMapProps {
   patient: Patient;
@@ -23,6 +26,8 @@ const LiveMap: React.FC<LiveMapProps> = ({ patient, hospital, ambulances, matche
     hospitals: Record<string, any>;
     allHospitals: Record<string, any>;
   }>({ hospitals: {}, allHospitals: {} });
+  const routeControlRef = useRef<any>(null); // Leaflet Routing Machine 컨트롤러를 위한 ref
+  const routeControlRef = useRef<any>(null); // Leaflet Routing Machine 컨트롤러를 위한 ref
 
   const lastTargetIdRef = useRef<string | null>(null);
   const [apiHospitals, setApiHospitals] = useState<any[]>([]);
@@ -30,6 +35,116 @@ const LiveMap: React.FC<LiveMapProps> = ({ patient, hospital, ambulances, matche
 
   const patientCoords: [number, number] = [patient.lat, patient.lng];
 
+  // 지도 초기화 함수
+  const initMap = useCallback(() => {
+    if (!mapContainerRef.current || mapRef.current) return; // 이미 지도 생성됨
+
+    if (typeof L === 'undefined') {
+      console.error('❌ Leaflet 라이브러리가 로드되지 않았습니다.');
+      return;
+    }
+    if (typeof L.Routing === 'undefined') {
+      console.error('❌ Leaflet Routing Machine 라이브러리가 로드되지 않았습니다.');
+      return;
+    }
+
+    console.log('🗺️ [지도 초기화] Leaflet 지도 생성 시작');
+
+    mapRef.current = L.map(mapContainerRef.current, {
+      center: [36.3504, 127.3845], // 전국 중심 (대전)
+      zoom: 8, // 전국을 볼 수 있는 줌 레벨
+      minZoom: 6, // 전국 전체 보기 가능
+      maxZoom: 18, // 최대 줌
+      zoomControl: true, // 줌 컨트롤 활성화
+      attributionControl: false,
+      preferCanvas: false // SVG 렌더링으로 아이콘 품질 향상
+    });
+
+    // Google Maps 타일 레이어
+    L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+      maxZoom: 18,
+      attribution: ''
+    }).addTo(mapRef.current);
+
+    console.log('✅ [지도 초기화] Leaflet 지도 생성 완료');
+
+    // 지도 이벤트 리스너
+    mapRef.current.on('zoomend', () => {
+      const zoom = mapRef.current.getZoom();
+      console.log(`🔍 [지도 줌] 현재 줌 레벨: ${zoom}`);
+    });
+
+    mapRef.current.on('moveend', () => {
+      const center = mapRef.current.getCenter();
+      console.log(`📍 [지도 이동] 중심점: ${center.lat.toFixed(4)}, ${center.lng.toFixed(4)}`);
+    });
+  }, []);
+
+  // 환자 클릭 시 경로 표시
+  const handlePatientClick = (p: Patient) => {
+    if (!mapRef.current) return;
+
+    // 기존 경로 제거
+    if (routeControlRef.current) {
+      mapRef.current.removeControl(routeControlRef.current);
+      routeControlRef.current = null;
+    }
+
+    const matchedHosp = apiHospitals.find(h => h.id === p.matchedHospitalId);
+
+    if (matchedHosp) {
+      console.log(`🗺️ [경로 생성] 환자 ${p.name} (${p.lat}, ${p.lng}) -> 병원 ${matchedHosp.name} (${matchedHosp.lat}, ${matchedHosp.lng})`);
+      routeControlRef.current = L.Routing.control({
+        waypoints: [
+          L.latLng(p.lat, p.lng),
+          L.latLng(matchedHosp.lat, matchedHosp.lng)
+        ],
+        router: L.Routing.osrmv1({
+          serviceUrl: `https://router.project-osrm.org/route/v1`,
+          profile: 'driving'
+        }),
+        lineOptions: {
+          styles: [
+            { color: 'blue', weight: 6, opacity: 0.6, dashArray: '10, 10' }
+          ]
+        },
+        altLineOptions: {
+          styles: [
+            { color: 'red', weight: 6, opacity: 0.6, dashArray: '10, 10' }
+          ]
+        },
+        createMarker: function() { return null; }, // 기본 마커 사용 안 함
+        show: false, // 경로 요약 정보 숨김
+        addWaypoints: false, // 웨이포인트 추가 기능 비활성화
+        fitSelectedRoutes: true, // 경로에 맞게 지도 줌
+        routeWhileDragging: false // 드래그 중 경로 업데이트 비활성화
+      }).addTo(mapRef.current);
+
+      // 경로가 로드되면 팝업 열기 (선택 사항)
+      routeControlRef.current.on('routesfound', function(e: any) {
+        const routes = e.routes;
+        const summary = routes[0].summary;
+        console.log('🚗 [경로 탐색 완료]', {
+          totalDistance: (summary.totalDistance / 1000).toFixed(1) + ' km',
+          totalTime: (summary.totalTime / 60).toFixed(1) + ' min'
+        });
+
+        // 환자 마커 팝업을 다시 열어 경로 정보 표시 (선택 사항)
+        // if (markersRef.current.patient) {
+        //   markersRef.current.patient.setPopupContent(
+        //     `<strong>환자: ${p.name}</strong><br/>` +
+        //     `매칭 병원: ${matchedHosp.name}<br/>` +
+        //     `거리: ${(summary.totalDistance / 1000).toFixed(1)} km<br/>` +
+        //     `시간: ${(summary.totalTime / 60).toFixed(1)} min`
+        //   ).openPopup();
+        // }
+      });
+
+    } else {
+      console.warn(`⚠️ 환자 ${p.name} 에 대해 매칭된 병원을 찾을 수 없습니다. 경로를 표시하지 않습니다.`);
+    }
+  };
+  
   // 전국 병원용 까만색 아이콘 생성 함수
   const createHospitalIcon = (hospitalData: any, isMatched: boolean = false) => {
     // 매칭된 병원은 깜빡이는 애니메이션 추가
@@ -145,62 +260,17 @@ const LiveMap: React.FC<LiveMapProps> = ({ patient, hospital, ambulances, matche
   // API에서 병원 데이터 가져오기
   useEffect(() => {
     const fetchHospitals = async () => {
-      try {
-        console.log('🏥 [프론트엔드] API에서 병원 데이터 가져오기 시작');
-        console.log('🔍 [프론트엔드] API URL:', 'http://localhost:3000/api/emergency/hospitals/map-data');
-        
-        const response = await apiService.getMapHospitals();
-        
-        console.log('🔍 [프론트엔드] API 응답 전체:', JSON.stringify(response, null, 2).substring(0, 1000));
-        
-        if (response.success && response.data) {
-          const hospitals = response.data.hospitals || [];
-          setApiHospitals(hospitals);
-          setHospitalStats(response.data.stats || null);
-          
-          console.log(`✅ [프론트엔드] API 병원 데이터 로드 완료: ${hospitals.length}개`);
-          console.log('📋 [프론트엔드] 병원 목록 샘플:', hospitals.slice(0, 5).map(h => ({ 
-            id: h.id, 
-            name: h.name, 
-            lat: h.lat, 
-            lng: h.lng, 
-            status: h.status 
-          })));
-          
-          if (hospitals.length === 0) {
-            console.warn('⚠️ [프론트엔드] 병원 데이터가 비어있습니다!');
-          }
-          
-          // 🔧 테스트용 더미 데이터도 추가
-          const testHospitals = [
-            { id: 'test_h1', name: '테스트병원1', lat: 37.5500, lng: 126.9500, status: 'available' },
-            { id: 'test_h2', name: '테스트병원2', lat: 37.5600, lng: 126.9600, status: 'busy' },
-            { id: 'test_h3', name: '테스트병원3', lat: 37.5800, lng: 127.0000, status: 'full' }
-          ];
-          
-          console.log('🔧 [테스트] 더미 병원 데이터도 추가:', testHospitals);
-          setApiHospitals([...hospitals, ...testHospitals]);
-          
-        } else {
-          console.error('❌ [프론트엔드] 병원 데이터 로드 실패:', response.error);
-          // 백엔드 연결 실패 시 더미 데이터로 테스트
-          console.log('🔧 [프론트엔드] 백엔드 실패 - 더미 데이터만 사용');
-          const fallbackHospitals = [
-            { id: 'fallback1', name: '더미병원1', lat: 37.5665, lng: 126.9780, status: 'available' },
-            { id: 'fallback2', name: '더미병원2', lat: 37.5700, lng: 126.9800, status: 'busy' },
-            { id: 'fallback3', name: '더미병원3', lat: 37.5630, lng: 126.9750, status: 'full' }
-          ];
-          setApiHospitals(fallbackHospitals);
-        }
-      } catch (error) {
-        console.error('❌ [프론트엔드] 병원 데이터 API 호출 실패:', error);
-        console.log('🔧 [프론트엔드] 네트워크 오류 - 더미 데이터 사용');
-        const errorFallbackHospitals = [
-          { id: 'error1', name: '오류더미병원1', lat: 37.5665, lng: 126.9780, status: 'available' },
-          { id: 'error2', name: '오류더미병원2', lat: 37.5700, lng: 126.9800, status: 'busy' }
-        ];
-        setApiHospitals(errorFallbackHospitals);
-      }
+      console.log('🏥 [프론트엔드] 임시 병원 데이터 로드 중...');
+      const fallbackHospitals = [
+        { id: 'hosp-1', name: '서울삼성병원', lat: 37.4878, lng: 127.0505, status: 'available' },
+        { id: 'hosp-2', name: '강남세브란스병원', lat: 37.5262, lng: 127.0425, status: 'busy' },
+        { id: 'hosp-3', name: '서울아산병원', lat: 37.5266, lng: 127.1009, status: 'full' },
+        { id: 'hosp-4', name: '세브란스병원', lat: 37.5792, lng: 126.9367, status: 'available' },
+        { id: 'hosp-5', name: '고려대학교 안암병원', lat: 37.5878, lng: 127.0298, status: 'busy' },
+      ];
+      setApiHospitals(fallbackHospitals);
+      setHospitalStats({ available: 2, busy: 2, full: 1, total: 5 });
+      console.log('✅ [프론트엔드] 임시 병원 데이터 로드 완료:', fallbackHospitals);
     };
 
     fetchHospitals();
@@ -210,53 +280,29 @@ const LiveMap: React.FC<LiveMapProps> = ({ patient, hospital, ambulances, matche
     return () => clearInterval(interval);
   }, []);
 
+  // 초기 지도 로드 및 Leaflet 라이브러리 로드
   useEffect(() => {
-    if (typeof L === 'undefined') {
-      const script = document.createElement('script');
-      script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
-      script.integrity = "sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=";
-      script.crossOrigin = "";
-      script.onload = initMap;
-      document.head.appendChild(script);
-    } else {
+    // Leaflet 및 Routing Machine CSS 로드
+    // require('leaflet/dist/leaflet.css'); // 이미 전역에서 로드
+    // require('leaflet-routing-machine/dist/leaflet-routing-machine.css'); // 이미 전역에서 로드
+    
+    // Leaflet 라이브러리 로드 확인 (외부 스크립트 로드 방식 대신)
+    // L 객체가 전역에 정의되어 있다고 가정
+    if (typeof L !== 'undefined') {
       initMap();
+    } else {
+      // 만약 L이 정의되지 않았다면, 스크립트 로딩 로직을 여기에 포함
+      console.warn('⚠️ Leaflet 전역 객체 L이 정의되지 않았습니다. 수동 로드가 필요할 수 있습니다.');
+      // 이 부분은 개발 환경에 따라 다를 수 있으므로 일단 경고만 표시
     }
 
-    function initMap() {
-      if (!mapContainerRef.current || mapRef.current) return;
-      
-      console.log('🗺️ [지도 초기화] Leaflet 지도 생성 시작');
-      
-      mapRef.current = L.map(mapContainerRef.current, {
-        center: [36.3504, 127.3845], // 전국 중심 (대전)
-        zoom: 8, // 전국을 볼 수 있는 줌 레벨
-        minZoom: 6, // 전국 전체 보기 가능
-        maxZoom: 18, // 최대 줌
-        zoomControl: true, // 줌 컨트롤 활성화
-        attributionControl: false,
-        preferCanvas: false // SVG 렌더링으로 아이콘 품질 향상
-      });
-      
-      // Google Maps 타일 레이어
-      L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
-        maxZoom: 18,
-        attribution: ''
-      }).addTo(mapRef.current);
-      
-      console.log('✅ [지도 초기화] Leaflet 지도 생성 완료');
-      
-      // 지도 이벤트 리스너
-      mapRef.current.on('zoomend', () => {
-        const zoom = mapRef.current.getZoom();
-        console.log(`🔍 [지도 줌] 현재 줌 레벨: ${zoom}`);
-      });
-      
-      mapRef.current.on('moveend', () => {
-        const center = mapRef.current.getCenter();
-        console.log(`📍 [지도 이동] 중심점: ${center.lat.toFixed(4)}, ${center.lng.toFixed(4)}`);
-      });
-    }
-  }, []);
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  }, [initMap]);
 
   // API에서 가져온 병원들을 지도에 표시
   useEffect(() => {
@@ -458,6 +504,8 @@ const LiveMap: React.FC<LiveMapProps> = ({ patient, hospital, ambulances, matche
       iconAnchor: [18, 18]
     });
     markersRef.current.patient = L.marker(patientCoords, { icon: patientIcon }).addTo(mapRef.current);
+    
+    markersRef.current.patient.on('click', () => handlePatientClick(patient));
 
     // 선택된 병원 처리는 위의 API 병원 표시에서 통합 처리됨
     // (이제 API에서 가져온 병원들에 매칭 정보가 포함되어 표시됨)
@@ -505,6 +553,44 @@ const LiveMap: React.FC<LiveMapProps> = ({ patient, hospital, ambulances, matche
       
       <div ref={mapContainerRef} className="absolute inset-0 z-0"></div>
       
+      {/* 환자 마커 */} 
+      {patient && ( 
+        <L.Marker position={[patient.lat, patient.lng]} icon={L.divIcon({
+          className: 'custom-div-icon',
+          html: `<div class="relative flex items-center justify-center">
+                  <div class="absolute w-12 h-12 bg-red-600/30 rounded-full animate-ping"></div>
+                  <div class="w-6 h-6 bg-red-600 rounded-full border-2 border-white shadow-xl flex items-center justify-center relative z-10">
+                    <div class="w-2 h-2 bg-white rounded-full"></div>
+                  </div>
+                 </div>`,
+          iconSize: [36, 36],
+          iconAnchor: [18, 18]
+        })} 
+        eventHandlers={{
+          click: () => handlePatientClick(patient),
+        }}>
+          <L.Popup>
+            <strong>환자: {patient.name}</strong><br/>
+            상태: {patient.status}<br/>
+            위치: {patient.lat.toFixed(4)}, {patient.lng.toFixed(4)}
+            {matchedHospital && (
+              <> <br/>매칭 병원: {matchedHospital.name}</>
+            )}
+          </L.Popup>
+        </L.Marker>
+      )}
+
+      {/* 매칭된 병원 마커 */} 
+      {matchedHospital && ( 
+        <L.Marker position={[matchedHospital.lat, matchedHospital.lng]} icon={createHospitalIcon(matchedHospital, true)}>
+          <L.Popup>
+            <strong>매칭 병원: {matchedHospital.name}</strong><br/>
+            상태: {matchedHospital.status}<br/>
+            위치: {matchedHospital.lat.toFixed(4)}, {matchedHospital.lng.toFixed(4)}
+          </L.Popup>
+        </L.Marker>
+      )}
+
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 w-[94%] max-w-4xl">
         {/* 병원 현황 통계 */}
         {hospitalStats && (

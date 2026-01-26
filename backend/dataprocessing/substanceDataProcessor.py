@@ -124,7 +124,9 @@ class AlcoholDataProcessor:
         sequences, sequence_labels = self.create_temporal_sequences(processed_features, labels)
         
         # 4. 데이터 분할 및 균형 맞추기
-        train_data, test_data = self.split_and_balance_data(sequences, sequence_labels)
+        split_result = self.split_and_balance_data(sequences, sequence_labels)
+        train_data = (split_result['X_train'], split_result['y_train'])
+        test_data = (split_result['X_test'], split_result['y_test'])
         
         # 5. 교차 검증
         cv_scores = self.perform_cross_validation(sequences, sequence_labels)
@@ -139,7 +141,7 @@ class AlcoholDataProcessor:
             'data_info': {
                 'total_samples': len(sequences),
                 'features_extracted': processed_features.shape[1],
-                'class_distribution': np.bincount(sequence_labels).tolist(),
+                'class_distribution': np.bincount(sequence_labels.astype(int)).tolist(),
                 'sequence_length': self.feature_config['sequence_length']
             },
             'performance': {
@@ -159,37 +161,60 @@ class AlcoholDataProcessor:
         }
     
     def generate_alcohol_dataset(self):
-        """음주 탐지 데이터셋 생성"""
-        print("🍷 음주 데이터셋 생성 중...")
+        """음주 탐지 데이터셋 생성 (연령대별 특성 반영)"""
+        print("🍷 음주 데이터셋 생성 중 (연령대별 특성 반영)...")
         
         np.random.seed(42)
         
         # 정상 상태 시계열 (더 현실적인 패턴)
         normal_sequences = []
-        for i in range(500):
-            sequence_length = 60  # 1시간 데이터
+        # 연령대별 생성 (청년, 중년, 노인)
+        age_groups = [
+            {'name': 'youth', 'ratio': 0.3, 'hr_base': 75, 'hrv_base': 55},
+            {'name': 'adult', 'ratio': 0.4, 'hr_base': 72, 'hrv_base': 45},
+            {'name': 'elderly', 'ratio': 0.3, 'hr_base': 68, 'hrv_base': 25} # 노인: 낮은 HRV, 낮은 기초대사
+        ]
+        
+        for group in age_groups:
+            count = int(500 * group['ratio'])
+            print(f"  - {group['name']} 그룹 데이터 {count}개 생성 중...")
             
-            # 기본 생체신호 (일주기 리듬 반영)
-            time_of_day = np.random.randint(0, 24)
-            circadian_factor = 0.9 + 0.2 * np.sin(2 * np.pi * time_of_day / 24)
-            
-            base_hr = 72 * circadian_factor
-            base_stress = 20 + 10 * np.random.random()
-            base_temp = 36.5 + 0.3 * np.sin(2 * np.pi * time_of_day / 24)
-            
-            sequence = []
-            for t in range(sequence_length):
-                # 자연스러운 변동 추가
-                hr = base_hr + np.random.normal(0, 5) + 2 * np.sin(2 * np.pi * t / 10)
-                stress = max(0, min(100, base_stress + np.random.normal(0, 3)))
-                temp = base_temp + np.random.normal(0, 0.1)
-                hrv = max(20, 45 + np.random.normal(0, 8))
-                o2sat = max(95, min(100, 98 + np.random.normal(0, 1)))
-                movement = np.random.choice([0, 1, 2], p=[0.7, 0.25, 0.05])
+            for i in range(count):
+                sequence_length = 60  # 1시간 데이터
                 
-                sequence.append([hr, stress, temp, hrv, o2sat, movement])
-            
-            normal_sequences.extend(sequence)
+                # 기본 생체신호 (일주기 리듬 반영)
+                time_of_day = np.random.randint(0, 24)
+                circadian_factor = 0.9 + 0.2 * np.sin(2 * np.pi * time_of_day / 24)
+                
+                # 연령별 기초값 적용
+                base_hr = group['hr_base'] * circadian_factor
+                base_stress = 20 + 10 * np.random.random()
+                base_temp = 36.5 + 0.3 * np.sin(2 * np.pi * time_of_day / 24)
+                
+                sequence = []
+                for t in range(sequence_length):
+                    # 자연스러운 변동 추가
+                    # 노인은 변동성이 적음 (HRV 낮음)
+                    volatility = 0.7 if group['name'] == 'elderly' else 1.0
+                    
+                    hr = base_hr + (np.random.normal(0, 5) * volatility) + 2 * np.sin(2 * np.pi * t / 10)
+                    stress = max(0, min(100, base_stress + np.random.normal(0, 3)))
+                    temp = base_temp + np.random.normal(0, 0.1)
+                    
+                    # HRV: 노인은 현저히 낮음
+                    hrv_noise = np.random.normal(0, 5)
+                    hrv = max(10, group['hrv_base'] + hrv_noise)
+                    
+                    o2sat = max(90, min(100, 98 + np.random.normal(0, 1)))
+                    # 노인은 산소포화도가 약간 더 낮을 수 있음
+                    if group['name'] == 'elderly':
+                        o2sat -= np.random.choice([0, 1, 2], p=[0.7, 0.2, 0.1])
+                        
+                    movement = np.random.choice([0, 1, 2], p=[0.7, 0.25, 0.05])
+                    
+                    sequence.append([hr, stress, temp, hrv, o2sat, movement])
+                
+                normal_sequences.extend(sequence)
         
         # 음주 상태 시계열 (음주 후 시간 경과에 따른 변화)
         alcohol_sequences = []
@@ -345,11 +370,32 @@ class AlcoholDataProcessor:
         
         return cv_scores
     
+    def _generate_random_medical_history(self):
+        """랜덤 의료 정보 생성 (학습용)"""
+        import random
+        
+        has_history = random.random() < 0.3  # 30% 확률로 기저질환 보유
+        if not has_history:
+            return None
+            
+        diseases = ['고혈압', '당뇨', '천식', '부정맥', '고지혈증']
+        medications = ['아스피린', '메트포르민', '베타차단제', '인슐린']
+        allergies = ['항생제', '진통제', '꽃가루', '견과류']
+        
+        return {
+            'diseases': random.choice(diseases) if random.random() < 0.5 else '없음',
+            'medications': random.choice(medications) if random.random() < 0.5 else '없음',
+            'allergies': random.choice(allergies) if random.random() < 0.3 else '없음'
+        }
+
     def create_llm_training_data(self, raw_data, labels):
         """LLM 파인튜닝용 JSONL 데이터 생성"""
         print("📝 LLM 훈련 데이터 생성 중...")
         
-        from .biometricToTextConverter import BiometricToTextConverter
+        try:
+            from .biometricToTextConverter import BiometricToTextConverter
+        except ImportError:
+            from biometricToTextConverter import BiometricToTextConverter
         converter = BiometricToTextConverter()
         
         jsonl_path = os.path.join(self.substance_path, 'llm_training_data.jsonl')
@@ -374,11 +420,24 @@ class AlcoholDataProcessor:
                     'timestamp': datetime.now().isoformat()
                 }
                 
+                # 랜덤 의료 정보 생성
+                medical_history = self._generate_random_medical_history()
+                
                 # 프롬프트 생성
                 substance_class = 'alcohol' if sequence_label == 1 else 'none'
-                prompt = converter.convert_biometric_to_prompt(avg_data, 'alcohol', substance_class)
-                response = converter.generate_response_template('alcohol', substance_class, 
-                                                              'moderate' if sequence_label == 1 else 'none')
+                
+                # 랜덤 심각도 할당 (학습 데이터 다양성 확보)
+                severity = 'none'
+                if substance_class != 'none':
+                    import random
+                    rand = random.random()
+                    if rand < 0.3: severity = 'caution'
+                    elif rand < 0.7: severity = 'warning'
+                    elif rand < 0.9: severity = 'danger'
+                    else: severity = 'critical'
+
+                prompt = converter.convert_biometric_to_prompt(avg_data, 'alcohol', substance_class, medical_history)
+                response = converter.generate_response_template('alcohol', substance_class, severity)
                 
                 # JSONL 형식으로 저장
                 json_line = {
@@ -388,6 +447,7 @@ class AlcoholDataProcessor:
                         'substance_type': 'alcohol',
                         'label': sequence_label,
                         'biometric_data': avg_data,
+                        'medical_history': medical_history,
                         'sequence_id': i // 20
                     }
                 }
@@ -437,7 +497,9 @@ class DrugDataProcessor:
         raw_data, labels = self.generate_drug_dataset()
         processed_features = self.extract_drug_features(raw_data)
         sequences, sequence_labels = self.create_temporal_sequences(processed_features, labels)
-        train_data, test_data = self.split_and_balance_data(sequences, sequence_labels)
+        split_result = self.split_and_balance_data(sequences, sequence_labels)
+        train_data = (split_result['X_train'], split_result['y_train'])
+        test_data = (split_result['X_test'], split_result['y_test'])
         cv_scores = self.perform_cross_validation(sequences, sequence_labels)
         jsonl_path = self.create_llm_training_data(raw_data, labels)
         self.save_processed_data(train_data, test_data, cv_scores)
@@ -569,7 +631,7 @@ class DrugDataProcessor:
         # 변동성 특성 (마약의 핵심 지표)
         window_sizes = [3, 5, 10]
         for window in window_sizes:
-            for col in ['heartRate', 'hrv', 'stressLevel']:
+            for col in ['heartRate', 'hrv', 'stressLevel', 'bodyTemperature']:
                 features[f'{col}_volatility_{window}'] = df[col].rolling(window).std().fillna(0)
                 features[f'{col}_range_{window}'] = df[col].rolling(window).max() - df[col].rolling(window).min()
         
@@ -608,14 +670,96 @@ class DrugDataProcessor:
     def perform_cross_validation(self, sequences, labels, cv=5):
         return AlcoholDataProcessor.perform_cross_validation(self, sequences, labels, cv)
     
+    def _generate_random_medical_history(self):
+        """랜덤 의료 정보 생성 (학습용)"""
+        import random
+        
+        has_history = random.random() < 0.3  # 30% 확률로 기저질환 보유
+        if not has_history:
+            return None
+            
+        diseases = ['우울증', '불안장애', '수면장애', '간질', '고혈압']
+        medications = ['항우울제', '항불안제', '수면제', '항경련제', '혈압약']
+        allergies = ['항생제', '진통제', '특정 약물']
+        
+        return {
+            'diseases': random.choice(diseases) if random.random() < 0.5 else '없음',
+            'medications': random.choice(medications) if random.random() < 0.5 else '없음',
+            'allergies': random.choice(allergies) if random.random() < 0.3 else '없음'
+        }
+
     def create_llm_training_data(self, raw_data, labels):
         # 마약용 JSONL 생성 (4-class)
         print("📝 마약 LLM 훈련 데이터 생성 중...")
         
-        jsonl_path = os.path.join(self.substance_path, 'llm_training_data.jsonl')
-        class_names = ['normal', 'stimulant', 'depressant', 'hallucinogen']
+        try:
+            from .biometricToTextConverter import BiometricToTextConverter
+        except ImportError:
+            from biometricToTextConverter import BiometricToTextConverter
+        converter = BiometricToTextConverter()
         
-        # 구현 내용은 위와 유사하지만 4-class 처리
+        jsonl_path = os.path.join(self.substance_path, 'llm_training_data.jsonl')
+        class_names = {0: 'normal', 1: 'stimulant', 2: 'depressant', 3: 'hallucinogen'}
+        
+        with open(jsonl_path, 'w', encoding='utf-8') as f:
+            for i in range(0, len(raw_data), 20):  # 20개씩 시퀀스로 처리
+                if i + 20 > len(raw_data):
+                    break
+                
+                # 시퀀스 데이터
+                sequence = raw_data[i:i+20]
+                sequence_label = int(labels[i+19])
+                
+                # Drug 데이터 컬럼: ['heartRate', 'hrv', 'stressLevel', 'bodyTemperature', 'respiratoryRate', 'oxygenSaturation', 'movementStatus']
+                # (generate_drug_dataset에서 생성된 순서 확인 필요: hr, hrv, stress, temp, resp, o2, move)
+                
+                avg_data = {
+                    'heartRate': float(np.mean(sequence[:, 0])),
+                    'hrv': float(np.mean(sequence[:, 1])),
+                    'stressLevel': float(np.mean(sequence[:, 2])),
+                    'bodyTemperature': float(np.mean(sequence[:, 3])),
+                    'respiratoryRate': float(np.mean(sequence[:, 4])),
+                    'oxygenSaturation': float(np.mean(sequence[:, 5])),
+                    'movementStatus': 'agitated' if np.mean(sequence[:, 6]) > 0.5 else 'normal',
+                    'timestamp': datetime.now().isoformat()
+                }
+                
+                # 랜덤 의료 정보 생성
+                medical_history = self._generate_random_medical_history()
+                
+                # 프롬프트 생성
+                substance_type = class_names.get(sequence_label, 'normal')
+                substance_class = substance_type
+                
+                # 랜덤 심각도 할당
+                severity = 'none'
+                if sequence_label != 0:
+                    import random
+                    rand = random.random()
+                    if rand < 0.2: severity = 'caution'
+                    elif rand < 0.5: severity = 'warning'
+                    elif rand < 0.8: severity = 'danger'
+                    else: severity = 'critical'
+                
+                prompt = converter.convert_biometric_to_prompt(avg_data, 'drug', substance_class, medical_history)
+                response = converter.generate_response_template('drug', substance_class, severity)
+                
+                # JSONL 형식으로 저장
+                json_line = {
+                    'prompt': prompt,
+                    'response': response,
+                    'metadata': {
+                        'substance_type': 'drug',
+                        'label': sequence_label,
+                        'drug_class': substance_class,
+                        'biometric_data': avg_data,
+                        'medical_history': medical_history,
+                        'sequence_id': i // 20
+                    }
+                }
+                
+                f.write(json.dumps(json_line, ensure_ascii=False) + '\n')
+        
         return jsonl_path
     
     def save_processed_data(self, train_data, test_data, cv_scores):
@@ -644,7 +788,9 @@ class PsychoactiveDataProcessor:
         raw_data, labels = self.generate_psychoactive_dataset()
         processed_features = self.extract_psychoactive_features(raw_data)
         sequences, sequence_labels = self.create_temporal_sequences(processed_features, labels)
-        train_data, test_data = self.split_and_balance_data(sequences, sequence_labels)
+        split_result = self.split_and_balance_data(sequences, sequence_labels)
+        train_data = (split_result['X_train'], split_result['y_train'])
+        test_data = (split_result['X_test'], split_result['y_test'])
         cv_scores = self.perform_cross_validation(sequences, sequence_labels)
         jsonl_path = self.create_llm_training_data(raw_data, labels)
         self.save_processed_data(train_data, test_data, cv_scores)
@@ -698,8 +844,95 @@ class PsychoactiveDataProcessor:
     def perform_cross_validation(self, sequences, labels, cv=5):
         return AlcoholDataProcessor.perform_cross_validation(self, sequences, labels, cv)
     
+    def _generate_random_medical_history(self):
+        """랜덤 의료 정보 생성 (학습용)"""
+        import random
+        
+        has_history = random.random() < 0.3  # 30% 확률로 기저질환 보유
+        if not has_history:
+            return None
+            
+        diseases = ['우울증', '불안장애', '수면장애', '간질', '고혈압']
+        medications = ['항우울제', '항불안제', '수면제', '항경련제', '혈압약']
+        allergies = ['항생제', '진통제', '특정 약물']
+        
+        return {
+            'diseases': random.choice(diseases) if random.random() < 0.5 else '없음',
+            'medications': random.choice(medications) if random.random() < 0.5 else '없음',
+            'allergies': random.choice(allergies) if random.random() < 0.3 else '없음'
+        }
+
     def create_llm_training_data(self, raw_data, labels):
-        return os.path.join(self.substance_path, 'llm_training_data.jsonl')  # placeholder
+        """향정신성약물 LLM 훈련 데이터 생성"""
+        print("📝 향정신성약물 LLM 훈련 데이터 생성 중...")
+        
+        try:
+            from .biometricToTextConverter import BiometricToTextConverter
+        except ImportError:
+            from biometricToTextConverter import BiometricToTextConverter
+        converter = BiometricToTextConverter()
+        
+        jsonl_path = os.path.join(self.substance_path, 'llm_training_data.jsonl')
+        class_names = {0: 'normal', 1: 'benzodiazepines', 2: 'barbiturates', 3: 'z_drugs', 4: 'antipsychotics'}
+        
+        with open(jsonl_path, 'w', encoding='utf-8') as f:
+            for i in range(0, len(raw_data), 30):  # 30개씩 시퀀스로 처리 (sequence_length=30)
+                if i + 30 > len(raw_data):
+                    break
+                
+                sequence = raw_data[i:i+30]
+                sequence_label = int(labels[i+29])
+                
+                # 데이터 컬럼 매핑 (placeholder 데이터 구조 고려)
+                # ['heartRate', 'stressLevel', 'respiratoryRate', 'movementStatus', 
+                #  'hrv', 'bodyTemperature', 'oxygenSaturation', 'cns_status']
+                
+                avg_data = {
+                    'heartRate': float(np.mean(sequence[:, 0])),
+                    'stressLevel': float(np.mean(sequence[:, 1])),
+                    'respiratoryRate': float(np.mean(sequence[:, 2])),
+                    'movementStatus': 'sedated' if np.mean(sequence[:, 3]) < 0.5 else 'normal',
+                    'hrv': float(np.mean(sequence[:, 4])) if sequence.shape[1] > 4 else 0,
+                    'bodyTemperature': float(np.mean(sequence[:, 5])) if sequence.shape[1] > 5 else 36.5,
+                    'timestamp': datetime.now().isoformat()
+                }
+                
+                # 랜덤 의료 정보 생성
+                medical_history = self._generate_random_medical_history()
+                
+                # 프롬프트 생성
+                substance_type = class_names.get(sequence_label, 'normal')
+                
+                # 랜덤 심각도 할당
+                severity = 'none'
+                if sequence_label != 0:
+                    import random
+                    rand = random.random()
+                    if rand < 0.2: severity = 'caution'
+                    elif rand < 0.5: severity = 'warning'
+                    elif rand < 0.8: severity = 'danger'
+                    else: severity = 'critical'
+                    
+                prompt = converter.convert_biometric_to_prompt(avg_data, 'psychoactive', substance_type, medical_history)
+                response = converter.generate_response_template('psychoactive', substance_type, severity)
+                
+                json_line = {
+                    'prompt': prompt,
+                    'response': response,
+                    'metadata': {
+                        'substance_type': 'psychoactive',
+                        'label': sequence_label,
+                        'label_name': substance_type,
+                        'biometric_data': avg_data,
+                        'medical_history': medical_history,
+                        'sequence_id': i // 30
+                    }
+                }
+                
+                f.write(json.dumps(json_line, ensure_ascii=False) + '\n')
+                
+        print(f"✅ 향정신성약물 LLM 훈련 데이터 저장: {jsonl_path}")
+        return jsonl_path
     
     def save_processed_data(self, train_data, test_data, cv_scores):
         return AlcoholDataProcessor.save_processed_data(self, train_data, test_data, cv_scores)

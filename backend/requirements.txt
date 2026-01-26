@@ -36,6 +36,8 @@ scipy>=1.10.0
 # 자연어 처리
 nltk>=3.8.0
 spacy>=3.6.0
+openai-whisper
+soundfile
 
 # 웹 요청 (Ollama API 연결용)
 requests>=2.31.0

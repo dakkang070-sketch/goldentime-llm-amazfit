@@ -19,7 +19,7 @@ fi
 cd "$(dirname "$0")/frontend"
 
 # 의존성 확인
-if [ ! -d "node_modules" ]; then
+if false; then
     echo "📦 의존성 설치 중..."
     npm install
     if [ $? -ne 0 ]; then

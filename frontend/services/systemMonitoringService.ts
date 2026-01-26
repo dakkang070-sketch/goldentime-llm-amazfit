@@ -3,14 +3,15 @@
  * 실시간 대시보드를 위한 API 호출
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3004';
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 export interface SystemOverview {
-  systemStatus: 'OPERATIONAL' | 'WARNING' | 'CRITICAL';
+  systemStatus: "OPERATIONAL" | "WARNING" | "CRITICAL";
   timestamp: string;
   uptime: number;
   overallHealth: {
-    status: 'HEALTHY' | 'WARNING' | 'CRITICAL';
+    status: "HEALTHY" | "WARNING" | "CRITICAL";
     score: number;
     criticalAlerts: number;
     warningAlerts: number;
@@ -32,7 +33,14 @@ export interface SystemOverview {
 export interface SystemEngine {
   id: string;
   name: string;
-  status: 'ACTIVE' | 'CONNECTED' | 'MONITORING' | 'TRACKING' | 'DISABLED' | 'DISCONNECTED' | 'ERROR';
+  status:
+    | "ACTIVE"
+    | "CONNECTED"
+    | "MONITORING"
+    | "TRACKING"
+    | "DISABLED"
+    | "DISCONNECTED"
+    | "ERROR";
   icon: string;
   metrics: Record<string, any>;
 }
@@ -81,7 +89,7 @@ export interface PerformanceMetrics {
 
 export interface SystemAlert {
   id: string;
-  level: 'CRITICAL' | 'WARNING' | 'INFO';
+  level: "CRITICAL" | "WARNING" | "INFO";
   title: string;
   message: string;
   timestamp: string;
@@ -101,9 +109,11 @@ class SystemMonitoringService {
    * 시스템 전체 개요 조회
    */
   async getSystemOverview(): Promise<SystemOverview> {
-    const response = await fetch(`${API_BASE_URL}/api/system-monitoring/overview`);
+    const response = await fetch(
+      `${API_BASE_URL}/api/system-monitoring/overview`,
+    );
     if (!response.ok) {
-      throw new Error('Failed to fetch system overview');
+      throw new Error("Failed to fetch system overview");
     }
     const data = await response.json();
     return data.data;
@@ -113,9 +123,11 @@ class SystemMonitoringService {
    * 모든 엔진 상태 조회
    */
   async getEngineStatus(): Promise<EngineStatus> {
-    const response = await fetch(`${API_BASE_URL}/api/system-monitoring/engines`);
+    const response = await fetch(
+      `${API_BASE_URL}/api/system-monitoring/engines`,
+    );
     if (!response.ok) {
-      throw new Error('Failed to fetch engine status');
+      throw new Error("Failed to fetch engine status");
     }
     const data = await response.json();
     return data.data;
@@ -125,9 +137,11 @@ class SystemMonitoringService {
    * 성능 지표 조회
    */
   async getPerformanceMetrics(): Promise<PerformanceMetrics> {
-    const response = await fetch(`${API_BASE_URL}/api/system-monitoring/performance`);
+    const response = await fetch(
+      `${API_BASE_URL}/api/system-monitoring/performance`,
+    );
     if (!response.ok) {
-      throw new Error('Failed to fetch performance metrics');
+      throw new Error("Failed to fetch performance metrics");
     }
     const data = await response.json();
     return data.data;
@@ -137,9 +151,11 @@ class SystemMonitoringService {
    * 시스템 알림 조회
    */
   async getSystemAlerts(): Promise<AlertSummary> {
-    const response = await fetch(`${API_BASE_URL}/api/system-monitoring/alerts`);
+    const response = await fetch(
+      `${API_BASE_URL}/api/system-monitoring/alerts`,
+    );
     if (!response.ok) {
-      throw new Error('Failed to fetch system alerts');
+      throw new Error("Failed to fetch system alerts");
     }
     const data = await response.json();
     return data.data;
@@ -155,7 +171,7 @@ class SystemMonitoringService {
       performance: PerformanceMetrics;
       alerts: AlertSummary;
     }) => void,
-    interval: number = 5000 // 5초마다 업데이트
+    interval: number = 5000, // 5초마다 업데이트
   ): () => void {
     const updateData = async () => {
       try {
@@ -163,12 +179,12 @@ class SystemMonitoringService {
           this.getSystemOverview(),
           this.getEngineStatus(),
           this.getPerformanceMetrics(),
-          this.getSystemAlerts()
+          this.getSystemAlerts(),
         ]);
 
         onUpdate({ overview, engines, performance, alerts });
       } catch (error) {
-        console.error('실시간 모니터링 데이터 가져오기 실패:', error);
+        console.error("실시간 모니터링 데이터 가져오기 실패:", error);
       }
     };
 
@@ -188,9 +204,12 @@ class SystemMonitoringService {
 export const systemMonitoringService = new SystemMonitoringService();
 
 // React hooks for easy integration
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
-export function useSystemOverview(autoRefresh: boolean = true, interval: number = 5000) {
+export function useSystemOverview(
+  autoRefresh: boolean = true,
+  interval: number = 5000,
+) {
   const [data, setData] = useState<SystemOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -203,7 +222,7 @@ export function useSystemOverview(autoRefresh: boolean = true, interval: number 
         setData(overview);
         setError(null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
         setLoading(false);
       }
@@ -220,7 +239,10 @@ export function useSystemOverview(autoRefresh: boolean = true, interval: number 
   return { data, loading, error };
 }
 
-export function useEngineStatus(autoRefresh: boolean = true, interval: number = 5000) {
+export function useEngineStatus(
+  autoRefresh: boolean = true,
+  interval: number = 5000,
+) {
   const [data, setData] = useState<EngineStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -233,7 +255,7 @@ export function useEngineStatus(autoRefresh: boolean = true, interval: number = 
         setData(engines);
         setError(null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
         setLoading(false);
       }
@@ -250,7 +272,10 @@ export function useEngineStatus(autoRefresh: boolean = true, interval: number = 
   return { data, loading, error };
 }
 
-export function usePerformanceMetrics(autoRefresh: boolean = true, interval: number = 10000) {
+export function usePerformanceMetrics(
+  autoRefresh: boolean = true,
+  interval: number = 10000,
+) {
   const [data, setData] = useState<PerformanceMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -263,7 +288,7 @@ export function usePerformanceMetrics(autoRefresh: boolean = true, interval: num
         setData(metrics);
         setError(null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
         setLoading(false);
       }
@@ -280,7 +305,10 @@ export function usePerformanceMetrics(autoRefresh: boolean = true, interval: num
   return { data, loading, error };
 }
 
-export function useSystemAlerts(autoRefresh: boolean = true, interval: number = 30000) {
+export function useSystemAlerts(
+  autoRefresh: boolean = true,
+  interval: number = 30000,
+) {
   const [data, setData] = useState<AlertSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -293,7 +321,7 @@ export function useSystemAlerts(autoRefresh: boolean = true, interval: number = 
         setData(alerts);
         setError(null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
         setLoading(false);
       }
@@ -313,23 +341,22 @@ export function useSystemAlerts(autoRefresh: boolean = true, interval: number = 
 export function useRealtimeMonitoring(interval: number = 5000) {
   const [overview, setOverview] = useState<SystemOverview | null>(null);
   const [engines, setEngines] = useState<EngineStatus | null>(null);
-  const [performance, setPerformance] = useState<PerformanceMetrics | null>(null);
+  const [performance, setPerformance] = useState<PerformanceMetrics | null>(
+    null,
+  );
   const [alerts, setAlerts] = useState<AlertSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const cleanup = systemMonitoringService.startRealtimeMonitoring(
-      (data) => {
-        setOverview(data.overview);
-        setEngines(data.engines);
-        setPerformance(data.performance);
-        setAlerts(data.alerts);
-        setLoading(false);
-        setError(null);
-      },
-      interval
-    );
+    const cleanup = systemMonitoringService.startRealtimeMonitoring((data) => {
+      setOverview(data.overview);
+      setEngines(data.engines);
+      setPerformance(data.performance);
+      setAlerts(data.alerts);
+      setLoading(false);
+      setError(null);
+    }, interval);
 
     return cleanup;
   }, [interval]);
@@ -340,6 +367,6 @@ export function useRealtimeMonitoring(interval: number = 5000) {
     performance,
     alerts,
     loading,
-    error
+    error,
   };
 }
