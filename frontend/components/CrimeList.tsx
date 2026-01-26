@@ -28,7 +28,11 @@ interface CrimeCase {
   status: string;
 }
 
-const CrimeList = () => {
+interface CrimeListProps {
+  onSelectCase?: (caseId: string) => void;
+}
+
+const CrimeList: React.FC<CrimeListProps> = ({ onSelectCase }) => {
   const [cases, setCases] = useState<CrimeCase[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterSeverity, setFilterSeverity] = useState<string>("all");
@@ -271,6 +275,21 @@ const CrimeList = () => {
                         <div className="bg-black/40 p-2 rounded-md border border-zinc-800 whitespace-pre-wrap">
                           {item.analysisResult.reasoning}
                         </div>
+                      </div>
+                    )}
+                    
+                    {onSelectCase && (
+                      <div className="flex justify-end pt-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectCase(item._id);
+                          }}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs transition-colors flex items-center gap-2"
+                        >
+                          <MapPin className="w-3 h-3" />
+                          지도에서 보기
+                        </button>
                       </div>
                     )}
                   </div>

@@ -1968,7 +1968,12 @@ const App: React.FC = () => {
           {activeTab === "hospitals" && renderHospitals()}
           {activeTab === "crime" && <CrimeDashboard initialSelectedCaseId={selectedCrimeId} />}
           {activeTab === "crime-list" && (
-            <CrimeList />
+            <CrimeList
+              onSelectCase={(id) => {
+                setSelectedCrimeId(id);
+                setActiveTab("crime");
+              }}
+            />
           )}
         </div>
       </main>
