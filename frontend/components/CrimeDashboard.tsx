@@ -628,7 +628,12 @@ const CrimeDashboard: React.FC<{ initialSelectedCaseId?: string }> = ({ initialS
           }
 
           const nextSelectedId = nextSelected?.id || nextSelected?._id || null;
-          if (nextSelectedId !== selectedCaseIdRef.current) {
+          // Always update selectedCase to ensure we have the latest data (e.g. biometrics)
+          // But only if we found a valid selection
+          if (nextSelected) {
+            setSelectedCase(nextSelected);
+          } else if (nextSelectedId !== selectedCaseIdRef.current) {
+            // Fallback for deselect or switch to null
             setSelectedCase(nextSelected);
           }
           
