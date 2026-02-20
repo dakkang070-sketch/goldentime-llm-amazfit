@@ -72,6 +72,50 @@ import {
 import MobileRecorder from "./components/MobileRecorder";
 import CrimeList from "./components/CrimeList";
 
+const OSRM_SERVERS = [
+  "https://routing.openstreetmap.de/routed-car/route/v1/driving",
+  "https://router.project-osrm.org/route/v1/driving",
+];
+
+const generateManhattanRoute = (
+  start: { lat: number; lng: number },
+  end: { lat: number; lng: number },
+) => {
+  const goHorizontalFirst = Math.random() > 0.5;
+  const mid = goHorizontalFirst
+    ? { lat: start.lat, lng: end.lng }
+    : { lat: end.lat, lng: start.lng };
+  return [
+    { lat: start.lat, lng: start.lng },
+    { lat: mid.lat, lng: mid.lng },
+    { lat: end.lat, lng: end.lng },
+  ];
+};
+
+const fetchRoadRoute = async (
+  s: { lat: number; lng: number },
+  e: { lat: number; lng: number },
+) => {
+  for (const server of OSRM_SERVERS) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      const url = `${server}/${s.lng},${s.lat};${e.lng},${e.lat}?overview=full&geometries=geojson`;
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (!res.ok) continue;
+      const data = await res.json();
+      const pts =
+        data.routes?.[0]?.geometry?.coordinates?.map((c: any) => ({
+          lat: c[1],
+          lng: c[0],
+        })) || [];
+      if (pts.length > 0) return pts;
+    } catch {}
+  }
+  return generateManhattanRoute(s, e);
+};
+
 const Emblem119 = ({ color = "#ef4444", className = "w-6 h-6" }) => (
   <svg
     viewBox="0 0 100 100"
@@ -175,12 +219,10 @@ const getHaversineDistance = (
 };
 
 const App: React.FC = () => {
-  const [patients, setPatients] = useState<Patient[]>(INITIAL_PATIENTS);
+  const [patients, setPatients] = useState<Patient[]>([]);
   const [hospitals, setHospitals] = useState<Hospital[]>(INITIAL_HOSPITALS);
   const [ambulances, setAmbulances] = useState<Ambulance[]>(INITIAL_AMBULANCES);
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(
-    INITIAL_PATIENTS.length > 0 ? INITIAL_PATIENTS[0] : null,
-  );
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
   const processingRef = useRef<Set<string>>(new Set());
   const assignedAmbulancesRef = useRef<Set<string>>(new Set());
@@ -193,10 +235,8 @@ const App: React.FC = () => {
     | "patients"
     | "hospitals"
     | "admin"
-    | "crime"
-    | "crime-list"
     | "mobile"
-  >(window.location.pathname === "/mobile" ? "mobile" : "crime");
+  >(window.location.pathname === "/mobile" ? "mobile" : "dashboard");
   const [selectedCrimeId, setSelectedCrimeId] = useState<string | undefined>(undefined);
   const [searchTerm, setSearchTerm] = useState("");
   const [isAiMatchingEnabled, setIsAiMatchingEnabled] = useState(true);
@@ -218,25 +258,6 @@ const App: React.FC = () => {
   const [isAlertVoiceEnabled, setIsAlertVoiceEnabled] = useState(true);
   const isAlertVoiceEnabledRef = useRef(true);
 
-  const handleDeleteAll = useCallback(async () => {
-    if (!confirm("범죄 관제 회원을 모두 삭제하시겠습니까?\n이 작업은 되돌릴 수 없으며 모든 데이터가 영구적으로 삭제됩니다.")) return;
-    
-    try {
-      const res = await fetch("/api/school-violence/cases", {
-        method: "DELETE",
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert("모든 회원이 삭제되었습니다.");
-        window.location.reload();
-      } else {
-        alert("삭제 실패: " + (data.error || "Unknown error"));
-      }
-    } catch (error) {
-      console.error("Delete failed", error);
-      alert("서버 통신 오류가 발생했습니다.");
-    }
-  }, []);
   const spokenAlertsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     isAlertVoiceEnabledRef.current = isAlertVoiceEnabled;
@@ -249,9 +270,60 @@ const App: React.FC = () => {
     null,
   );
 
-  // Initialize socket connection
+  // Initialize socket connection and listeners
   useEffect(() => {
-    socketService.connect(apiService.getToken() || "");
+    // 개발용 프리패스 토큰 사용
+    const socket = socketService.connect("controller-token");
+    
+    if (socket) {
+      // 응급 상황 발생 이벤트 수신
+      socket.on("emergency_case_created", (data: any) => {
+        console.log("🚨 실시간 응급 알림 수신:", data);
+        
+        const newPatient: Patient = {
+          id: data.id || `real-${Date.now()}`,
+          name: "응급 환자", // 실제 이름은 개인정보 보호로 마스킹될 수 있음
+          age: 0, // 정보 없음
+          birthDate: "1900-01-01",
+          bloodType: "Unknown",
+          gender: "O",
+          status: data.status === 'Critical' ? PatientStatus.CRITICAL : 
+                  data.status === 'Warning' ? PatientStatus.WARNING : PatientStatus.NORMAL,
+          location: typeof data.location === 'string' ? data.location : "위치 정보 수신 중...",
+          lat: data.location?.lat || 37.5665, // 기본값 서울시청
+          lng: data.location?.lng || 126.9780,
+          imageUrl: `https://i.pravatar.cc/150?u=${Math.random()}`,
+          vitals: {
+            heartRate: data.vitals?.heartRate || 0,
+            bloodPressure: data.vitals?.bloodPressure || "0/0",
+            oxygenLevel: data.vitals?.oxygenLevel || 0,
+            bodyTemp: data.vitals?.bodyTemp || 36.5,
+            lastUpdated: new Date().toISOString(),
+            history: [],
+          },
+          symptoms: [data.aiAnalysis || "증상 정보 없음"],
+          severityScore: data.status === 'Critical' ? 90 : 50,
+          aiAnalysis: data.aiAnalysis,
+        };
+
+        setPatients((prev) => [newPatient, ...prev]);
+        
+        const logMsg = `🚨 실시간 응급 상황 발생: ${newPatient.location} (${data.status})`;
+        setSystemLogs((prev) => [
+          { id: Date.now().toString(), text: logMsg, time: new Date().toLocaleTimeString() },
+          ...prev,
+        ]);
+
+        // 음성 알림
+        if (isAlertVoiceEnabledRef.current && "speechSynthesis" in window) {
+          const message = `실시간 응급 상황 발생. ${data.status} 단계.`;
+          const utterance = new SpeechSynthesisUtterance(message);
+          utterance.lang = "ko-KR";
+          window.speechSynthesis.speak(utterance);
+        }
+      });
+    }
+
     return () => {
       socketService.disconnect();
     };
@@ -279,136 +351,12 @@ const App: React.FC = () => {
     return { total, dispatched, available, busy };
   }, [patients, ambulances]);
 
-  // 10초마다 랜덤 환자 발생
+  // 시뮬레이션 로직 제거됨 (실제 데이터 연동)
+  /*
   useEffect(() => {
-    const names = [
-      "김철수",
-      "이영희",
-      "박지민",
-      "최동훈",
-      "정수연",
-      "강민호",
-      "조예진",
-      "윤상욱",
-      "임지혜",
-      "한성민",
-    ];
-    const symptoms = [
-      "심한 흉통",
-      "호흡 곤란",
-      "의식 저하",
-      "심한 두통",
-      "복부 통증",
-      "골절 의심",
-      "고열",
-      "어지러움",
-    ];
-
-    const generator = setInterval(() => {
-      const seoulHubs = [
-        { lat: 37.4979, lng: 127.0276, loc: "강남구 역삼동" },
-        { lat: 37.5565, lng: 126.9239, loc: "마포구 서교동" },
-        { lat: 37.5133, lng: 127.1001, loc: "송파구 잠실동" },
-        { lat: 37.5216, lng: 126.9242, loc: "영등포구 여의도동" },
-        { lat: 37.5759, lng: 126.9768, loc: "종로구 세종로" },
-        { lat: 37.5446, lng: 127.0559, loc: "성동구 성수동" },
-        { lat: 37.5345, lng: 126.9946, loc: "용산구 이태원동" },
-        { lat: 37.5635, lng: 126.9842, loc: "중구 명동" },
-        { lat: 37.5398, lng: 126.9459, loc: "마포구 도화동" },
-        { lat: 37.4812, lng: 126.9527, loc: "관악구 봉천동" },
-      ];
-
-      const hub = seoulHubs[Math.floor(Math.random() * seoulHubs.length)];
-      const jitter = 0.006;
-      const name = names[Math.floor(Math.random() * names.length)];
-      const age = Math.floor(Math.random() * 60) + 15;
-      const symptom = symptoms[Math.floor(Math.random() * symptoms.length)];
-      const hr = Math.floor(Math.random() * 60) + 100;
-      const spo2 = Math.floor(Math.random() * 15) + 80;
-
-      const rand = Math.random();
-      let status;
-      let statusText;
-
-      if (rand > 0.85) {
-        status = PatientStatus.CRITICAL;
-        statusText = "응급(Critical)";
-      } else if (rand > 0.7) {
-        status = PatientStatus.DANGER;
-        statusText = "위험(Danger)";
-      } else if (rand > 0.55) {
-        status = PatientStatus.WARNING;
-        statusText = "경고(Warning)";
-      } else if (rand > 0.4) {
-        status = PatientStatus.CAUTION;
-        statusText = "주의(Caution)";
-      } else {
-        status = PatientStatus.NORMAL;
-        statusText = "정상(Normal)";
-      }
-
-      const aiAnalysis = `**🚨 응급상황 분석 결과**
-
-📋 **주요 소견:**
-• ${symptom} 증상 호소
-• 심박수 ${hr}bpm (${hr > 120 ? "위험" : "주의"})
-• 산소포화도 ${spo2}% (${spo2 < 90 ? "긴급" : "주의"})
-
-🔍 **판단:**
-• ${age}세 ${Math.random() > 0.5 ? "남성" : "여성"} ${symptom}으로 인한 ${statusText} 상황
-• 즉각적인 의료 조치 및 전문 센터 이송 필요`;
-
-      const newPatient: Patient = {
-        id: `gen-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        name: name,
-        age: age,
-        birthDate: "1980-01-01",
-        bloodType: ["A", "B", "O", "AB"][Math.floor(Math.random() * 4)],
-        gender: Math.random() > 0.5 ? "M" : "F",
-        status: status,
-        location: hub.loc,
-        lat: hub.lat + (Math.random() - 0.5) * jitter,
-        lng: hub.lng + (Math.random() - 0.5) * jitter,
-        imageUrl: `https://i.pravatar.cc/150?u=${Math.random()}`,
-        vitals: {
-          heartRate: hr,
-          bloodPressure: "150/100",
-          oxygenLevel: spo2,
-          bodyTemp: 37.0 + Math.random() * 2.5,
-          lastUpdated: new Date().toISOString(),
-          history: [],
-        },
-        symptoms: [symptom],
-        severityScore: Math.floor(Math.random() * 40) + 60,
-        aiAnalysis: aiAnalysis,
-      };
-
-      setPatients((prev) => [newPatient, ...prev].slice(0, 100));
-      addLog(
-        `🚨 신규 응급 환자 발생: ${newPatient.name}님 (${newPatient.location})`,
-      );
-
-      if (
-        newPatient.status === PatientStatus.CRITICAL ||
-        newPatient.status === PatientStatus.DANGER
-      ) {
-        if (!spokenAlertsRef.current.has(newPatient.id)) {
-          if (isAlertVoiceEnabledRef.current && "speechSynthesis" in window) {
-            const message =
-              newPatient.status === PatientStatus.CRITICAL
-                ? "긴급환자발생. 응급 단계."
-                : "긴급환자발생. 위험 단계.";
-            const utterance = new SpeechSynthesisUtterance(message);
-            utterance.lang = "ko-KR";
-            window.speechSynthesis.speak(utterance);
-            spokenAlertsRef.current.add(newPatient.id);
-          }
-        }
-      }
-    }, 10000);
-
-    return () => clearInterval(generator);
+    // 10초마다 랜덤 환자 발생 로직 제거됨
   }, []);
+  */
 
   const ambulancesRef = useRef(ambulances);
   const patientsRef = useRef(patients);
@@ -470,39 +418,17 @@ const App: React.FC = () => {
         const targetLat = amb.lat + (Math.random() - 0.5) * 0.015;
         const targetLng = amb.lng + (Math.random() - 0.5) * 0.015;
 
-        try {
-          const url = `https://routing.openstreetmap.de/routed-car/route/v1/driving/${amb.lng},${amb.lat};${targetLng},${targetLat}?overview=full&geometries=geojson&steps=true`;
-          const res = await fetch(url);
-          const data = await res.json();
-          const points = data.routes?.[0]?.geometry?.coordinates?.map(
-            (c: any) => ({ lat: c[1], lng: c[0] }),
-          );
-
-          if (points && points.length > 0) {
-            setAmbulances((prev) =>
-              prev.map((a) =>
-                a.id === amb.id
-                  ? {
-                      ...a,
-                      patrolPath: points,
-                      patrolIndex: 0,
-                      activity: "patrolling",
-                    }
-                  : a,
-              ),
-            );
-          }
-        } catch (e) {
-          const fallback = [
-            { lat: amb.lat, lng: amb.lng },
-            { lat: targetLat, lng: targetLng },
-          ];
+        const points = await fetchRoadRoute(
+          { lat: amb.lat, lng: amb.lng },
+          { lat: targetLat, lng: targetLng },
+        );
+        if (points && points.length > 1) {
           setAmbulances((prev) =>
             prev.map((a) =>
               a.id === amb.id
                 ? {
                     ...a,
-                    patrolPath: fallback,
+                    patrolPath: points,
                     patrolIndex: 0,
                     activity: "patrolling",
                   }
@@ -734,33 +660,27 @@ const App: React.FC = () => {
         let dispatchPathLen = 0;
 
         try {
-          const url1 = `https://routing.openstreetmap.de/routed-car/route/v1/driving/${targetAmb.lng},${targetAmb.lat};${patient.lng},${patient.lat}?overview=full&geometries=geojson&steps=true`;
-          const res1 = await fetch(url1);
-          const data1 = await res1.json();
-          const p1 =
-            data1.routes?.[0]?.geometry?.coordinates?.map((c: any) => ({
-              lat: c[1],
-              lng: c[0],
-            })) || [];
-          dispatchPathLen = p1.length;
-
-          const url2 = `https://routing.openstreetmap.de/routed-car/route/v1/driving/${patient.lng},${patient.lat};${bestHospital.lng},${bestHospital.lat}?overview=full&geometries=geojson&steps=true`;
-          const res2 = await fetch(url2);
-          const data2 = await res2.json();
-          const p2 =
-            data2.routes?.[0]?.geometry?.coordinates?.map((c: any) => ({
-              lat: c[1],
-              lng: c[0],
-            })) || [];
-
-          fullJourneyPath = [...p1, ...p2];
-        } catch (e) {
-          fullJourneyPath = [
+          const p1 = await fetchRoadRoute(
             { lat: targetAmb.lat, lng: targetAmb.lng },
             { lat: patient.lat, lng: patient.lng },
+          );
+          dispatchPathLen = p1.length;
+          const p2 = await fetchRoadRoute(
+            { lat: patient.lat, lng: patient.lng },
             { lat: bestHospital.lat, lng: bestHospital.lng },
-          ];
-          dispatchPathLen = 2;
+          );
+          fullJourneyPath = [...p1, ...p2];
+        } catch {
+          const p1 = generateManhattanRoute(
+            { lat: targetAmb.lat, lng: targetAmb.lng },
+            { lat: patient.lat, lng: patient.lng },
+          );
+          const p2 = generateManhattanRoute(
+            { lat: patient.lat, lng: patient.lng },
+            { lat: bestHospital.lat, lng: bestHospital.lng },
+          );
+          fullJourneyPath = [...p1, ...p2];
+          dispatchPathLen = p1.length;
         }
 
         setAmbulances((prevAmbs) =>
@@ -1449,20 +1369,36 @@ const App: React.FC = () => {
               {
                 id: "waiting",
                 label: "대기",
-                count: patients.filter(
-                  (p) =>
-                    p.status !== PatientStatus.TRANSPORTED &&
-                    !p.matchedAmbulanceId,
-                ).length,
+                count: patients.filter((p) => {
+                  if (p.status === PatientStatus.TRANSPORTED) return false;
+                  if (!p.matchedAmbulanceId) return true;
+                  // 구급차가 배정되었어도 아직 환자에게 가는 중이면 '대기'로 분류
+                  const amb = ambulances.find(
+                    (a) => a.id === p.matchedAmbulanceId,
+                  );
+                  return (
+                    amb &&
+                    (amb.activity === "heading_to_patient" ||
+                      amb.status === AmbulanceStatus.DISPATCHED)
+                  );
+                }).length,
               },
               {
                 id: "transporting",
                 label: "이송중",
-                count: patients.filter(
-                  (p) =>
-                    p.status !== PatientStatus.TRANSPORTED &&
-                    !!p.matchedAmbulanceId,
-                ).length,
+                count: patients.filter((p) => {
+                  if (p.status === PatientStatus.TRANSPORTED) return false;
+                  if (!p.matchedAmbulanceId) return false;
+                  // 환자에게 도착하여 탑승 중이거나 병원으로 이동 중인 경우만 '이송중'으로 분류
+                  const amb = ambulances.find(
+                    (a) => a.id === p.matchedAmbulanceId,
+                  );
+                  return (
+                    amb &&
+                    (amb.activity === "boarding" ||
+                      amb.activity === "transporting_to_hospital")
+                  );
+                }).length,
               },
               {
                 id: "completed",
@@ -1497,30 +1433,56 @@ const App: React.FC = () => {
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">
           {patients.filter((p) => {
-            if (patientListTab === "waiting")
+            if (patientListTab === "waiting") {
+              if (p.status === PatientStatus.TRANSPORTED) return false;
+              if (!p.matchedAmbulanceId) return true;
+              const amb = ambulances.find((a) => a.id === p.matchedAmbulanceId);
               return (
-                p.status !== PatientStatus.TRANSPORTED && !p.matchedAmbulanceId
+                amb &&
+                (amb.activity === "heading_to_patient" ||
+                  amb.status === AmbulanceStatus.DISPATCHED)
               );
-            if (patientListTab === "transporting")
+            }
+            if (patientListTab === "transporting") {
+              if (p.status === PatientStatus.TRANSPORTED) return false;
+              if (!p.matchedAmbulanceId) return false;
+              const amb = ambulances.find((a) => a.id === p.matchedAmbulanceId);
               return (
-                p.status !== PatientStatus.TRANSPORTED && !!p.matchedAmbulanceId
+                amb &&
+                (amb.activity === "boarding" ||
+                  amb.activity === "transporting_to_hospital")
               );
+            }
             if (patientListTab === "completed")
               return p.status === PatientStatus.TRANSPORTED;
             return true;
           }).length > 0 ? (
             patients
               .filter((p) => {
-                if (patientListTab === "waiting")
-                  return (
-                    p.status !== PatientStatus.TRANSPORTED &&
-                    !p.matchedAmbulanceId
+                if (patientListTab === "waiting") {
+                  if (p.status === PatientStatus.TRANSPORTED) return false;
+                  if (!p.matchedAmbulanceId) return true;
+                  const amb = ambulances.find(
+                    (a) => a.id === p.matchedAmbulanceId,
                   );
-                if (patientListTab === "transporting")
                   return (
-                    p.status !== PatientStatus.TRANSPORTED &&
-                    !!p.matchedAmbulanceId
+                    amb &&
+                    (amb.activity === "heading_to_patient" ||
+                      amb.status === AmbulanceStatus.DISPATCHED)
                   );
+                }
+                if (patientListTab === "transporting") {
+                  if (p.status === PatientStatus.TRANSPORTED) return false;
+                  if (!p.matchedAmbulanceId) return false;
+                  const amb = ambulances.find(
+                    (a) => a.id === p.matchedAmbulanceId,
+                  );
+                  return (
+                    amb &&
+                    (amb.activity === "boarding" ||
+                      amb.activity === "transporting_to_hospital")
+                  );
+                }
                 if (patientListTab === "completed")
                   return p.status === PatientStatus.TRANSPORTED;
                 return true;
@@ -1827,35 +1789,21 @@ const App: React.FC = () => {
               { id: "dashboard", icon: Monitor, label: "관제" },
               { id: "patients", icon: Users, label: "목록" },
               { id: "hospitals", icon: HospitalIcon, label: "병원" },
-              { type: "divider" },
-              { id: "crime", icon: ShieldAlert, label: "범죄 관제" },
-              { id: "crime-list", icon: List, label: "유저 목록" },
-              { type: "divider" },
-              { id: "delete-members", icon: UserMinus, label: "회원 삭제", action: handleDeleteAll, isDestructive: true },
-            ].map((item, idx) =>
-              item.type === "divider" ? (
-                <div
-                  key={`divider-${idx}`}
-                  className="w-full h-px bg-zinc-800 my-2"
-                />
-              ) : (
-                <button
-                  key={item.id}
-                  onClick={() => item.action ? item.action() : setActiveTab(item.id as any)}
-                  title={item.label}
-                  className={`w-full flex items-center justify-center p-3.5 rounded-xl transition-all ${
-                    item.isDestructive 
-                      ? "text-zinc-600 hover:bg-red-900/20 hover:text-red-500"
-                      : activeTab === item.id 
-                        ? "bg-red-600 text-white shadow-[0_0_15px_rgba(239,68,68,0.3)]" 
-                        : "text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300"
-                  }`}
-                >
-                  {/* @ts-ignore */}
-                  <item.icon className="w-6.5 h-6.5 shrink-0" />
-                </button>
-              ),
-            )}
+            ].map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id as any)}
+                title={item.label}
+                className={`w-full flex items-center justify-center p-3.5 rounded-xl transition-all ${
+                  activeTab === item.id
+                    ? "bg-red-600 text-white shadow-[0_0_15px_rgba(239,68,68,0.3)]"
+                    : "text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300"
+                }`}
+              >
+                {/* @ts-ignore */}
+                <item.icon className="w-6.5 h-6.5 shrink-0" />
+              </button>
+            ))}
           </nav>
         </div>
       </aside>
@@ -1863,7 +1811,7 @@ const App: React.FC = () => {
         <header className="h-16 border-b border-zinc-800 px-6 flex items-center justify-between bg-zinc-950/50 backdrop-blur-md z-40 shrink-0">
           <div className="flex items-center gap-9 min-w-0 flex-1 overflow-hidden">
             <h2 className="text-[14px] font-normal uppercase tracking-[0.4em] text-zinc-300 shrink-0">
-              관제시스템 v1
+              응급관제시스템
             </h2>
             <div className="hidden lg:flex items-center gap-6 shrink-0 border-l border-zinc-800 pl-6 pr-6">
               <div className="flex flex-col">
@@ -1966,15 +1914,6 @@ const App: React.FC = () => {
           {activeTab === "dashboard" && renderDashboard()}
           {activeTab === "patients" && renderPatients()}
           {activeTab === "hospitals" && renderHospitals()}
-          {activeTab === "crime" && <CrimeDashboard initialSelectedCaseId={selectedCrimeId} />}
-          {activeTab === "crime-list" && (
-            <CrimeList
-              onSelectCase={(id) => {
-                setSelectedCrimeId(id);
-                setActiveTab("crime");
-              }}
-            />
-          )}
         </div>
       </main>
       <style>{`.custom-scrollbar::-webkit-scrollbar { width: 3px; }.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }.custom-scrollbar::-webkit-scrollbar-thumb { background: #27272a; border-radius: 10px; }.font-diag-common { font-family: 'Inter', 'Malgun Gothic', sans-serif; font-size: 1.0rem; }`}</style>

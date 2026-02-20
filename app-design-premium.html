@@ -1,0 +1,1353 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Starmax Health - Premium Medical App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Premium Color Palette */
+            --primary-navy: #1a1f36;
+            --primary-blue: #2563eb;
+            --accent-cyan: #06b6d4;
+            --accent-purple: #8b5cf6;
+            --success-green: #10b981;
+            --warning-orange: #f59e0b;
+            --danger-red: #ef4444;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-surface: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-muted: #64748b;
+            --border-light: #475569;
+            --border-subtle: #334155;
+            --gradient-primary: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            --gradient-accent: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+            --gradient-danger: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            --shadow-soft: 0 4px 24px rgba(0, 0, 0, 0.25);
+            --shadow-strong: 0 8px 40px rgba(0, 0, 0, 0.4);
+            --shadow-glow: 0 0 24px rgba(37, 99, 235, 0.3);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'SF Pro Display', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            color: var(--text-primary);
+        }
+
+        .phone-frame {
+            width: 390px;
+            height: 844px;
+            background: var(--bg-dark);
+            border-radius: 44px;
+            padding: 8px;
+            box-shadow: var(--shadow-strong);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .phone-screen {
+            width: 100%;
+            height: 100%;
+            background: var(--bg-dark);
+            border-radius: 36px;
+            overflow: hidden;
+            position: relative;
+            backdrop-filter: blur(20px);
+        }
+
+        .status-bar {
+            height: 47px;
+            background: rgba(26, 31, 54, 0.95);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 24px;
+            font-size: 15px;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .screen-content {
+            height: calc(100% - 47px - 83px);
+            overflow-y: auto;
+            background: var(--bg-dark);
+        }
+
+        /* Header Section */
+        .header-section {
+            padding: 32px 24px 24px;
+            background: var(--gradient-primary);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 70% 30%, rgba(6, 182, 212, 0.1) 0%, transparent 50%);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            z-index: 2;
+        }
+
+        .user-greeting h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .user-greeting p {
+            font-size: 15px;
+            color: var(--text-secondary);
+            opacity: 0.9;
+        }
+
+        .user-avatar {
+            width: 52px;
+            height: 52px;
+            border-radius: 16px;
+            background: var(--gradient-accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: var(--shadow-soft);
+        }
+
+        /* Connection Status */
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 20px;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success-green);
+            animation: pulse 2s infinite;
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+        }
+
+        .status-text {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .device-name {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* Health Score Card */
+        .health-score-card {
+            margin: 24px;
+            padding: 24px;
+            background: var(--bg-card);
+            border-radius: 24px;
+            box-shadow: var(--shadow-soft);
+            border: 1px solid var(--border-subtle);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .health-score-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--gradient-accent);
+        }
+
+        .score-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .score-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .score-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .score-excellent { background: var(--gradient-success); color: white; }
+        .score-good { background: var(--gradient-accent); color: white; }
+        .score-fair { background: var(--warning-orange); color: white; }
+        .score-poor { background: var(--gradient-danger); color: white; }
+
+        .score-content {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .circular-progress {
+            position: relative;
+            width: 80px;
+            height: 80px;
+        }
+
+        .progress-ring {
+            transform: rotate(-90deg);
+        }
+
+        .progress-ring-circle {
+            transition: stroke-dasharray 0.6s ease;
+        }
+
+        .score-value {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .score-details {
+            flex: 1;
+        }
+
+        .score-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .score-description {
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* Metric Cards Grid */
+        .metrics-section {
+            padding: 0 24px 24px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-surface);
+            padding: 4px;
+            border-radius: 12px;
+        }
+
+        .view-button {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 500;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .view-button.active {
+            background: var(--primary-blue);
+            color: white;
+            box-shadow: var(--shadow-soft);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        .metric-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 20px;
+            border: 1px solid var(--border-subtle);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-strong);
+            border-color: var(--primary-blue);
+        }
+
+        .metric-card.critical {
+            border-color: var(--danger-red);
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, var(--bg-card) 100%);
+            animation: criticalGlow 2s infinite;
+        }
+
+        @keyframes criticalGlow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3); }
+            50% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.5); }
+        }
+
+        .metric-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .metric-info h3 {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+            line-height: 1;
+        }
+
+        .metric-unit {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+            margin-left: 4px;
+        }
+
+        .metric-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-light);
+        }
+
+        .metric-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .status-normal { background: var(--success-green); }
+        .status-warning { background: var(--warning-orange); }
+        .status-danger { background: var(--danger-red); }
+
+        .status-text {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .metric-trend {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Chart Section */
+        .chart-section {
+            padding: 0 24px 24px;
+        }
+
+        .chart-container {
+            background: var(--bg-card);
+            border-radius: 24px;
+            padding: 24px;
+            border: 1px solid var(--border-subtle);
+            box-shadow: var(--shadow-soft);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .chart-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .time-selector {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-surface);
+            padding: 4px;
+            border-radius: 10px;
+        }
+
+        .time-button {
+            padding: 6px 12px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 500;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .time-button.active {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        .chart-area {
+            height: 160px;
+            background: var(--bg-surface);
+            border-radius: 16px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chart-line {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 70%;
+            background: var(--gradient-accent);
+            border-radius: 0 0 16px 16px;
+            opacity: 0.8;
+            animation: chartFlow 4s ease-in-out infinite;
+        }
+
+        @keyframes chartFlow {
+            0%, 100% { transform: translateY(0) scaleY(1); }
+            25% { transform: translateY(-10px) scaleY(0.9); }
+            50% { transform: translateY(-5px) scaleY(1.1); }
+            75% { transform: translateY(-15px) scaleY(0.8); }
+        }
+
+        .chart-data-points {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px;
+        }
+
+        .data-point {
+            font-size: 11px;
+            color: var(--text-secondary);
+            background: rgba(255, 255, 255, 0.1);
+            padding: 4px 8px;
+            border-radius: 6px;
+            backdrop-filter: blur(10px);
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            padding: 0 24px 24px;
+        }
+
+        .actions-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+
+        .action-button {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 16px 8px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .action-button:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-soft);
+            border-color: var(--primary-blue);
+        }
+
+        .action-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--gradient-primary);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .action-button:hover::before {
+            opacity: 0.1;
+        }
+
+        .action-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            background: var(--bg-surface);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .action-label {
+            font-size: 10px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-align: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 83px;
+            background: rgba(26, 31, 54, 0.95);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid var(--border-subtle);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            border-radius: 0 0 36px 36px;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 12px;
+            position: relative;
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .nav-item.active {
+            background: rgba(37, 99, 235, 0.1);
+        }
+
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: var(--primary-blue);
+        }
+
+        .nav-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: var(--text-secondary);
+            transition: all 0.3s ease;
+        }
+
+        .nav-item.active .nav-icon {
+            color: var(--primary-blue);
+            transform: scale(1.1);
+        }
+
+        .nav-label {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: all 0.3s ease;
+        }
+
+        .nav-item.active .nav-label {
+            color: var(--primary-blue);
+            font-weight: 600;
+        }
+
+        /* Emergency Banner */
+        .emergency-banner {
+            margin: 16px 24px;
+            padding: 16px 20px;
+            background: var(--gradient-danger);
+            border-radius: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: emergencyPulse 2s infinite;
+            box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3);
+        }
+
+        @keyframes emergencyPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        .emergency-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .emergency-icon {
+            font-size: 24px;
+            animation: emergencyShake 1s infinite;
+        }
+
+        @keyframes emergencyShake {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-5deg); }
+            75% { transform: rotate(5deg); }
+        }
+
+        .emergency-text {
+            flex: 1;
+        }
+
+        .emergency-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: white;
+            margin-bottom: 2px;
+        }
+
+        .emergency-desc {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .emergency-action {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .emergency-action:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+        }
+
+        /* Screen Controls */
+        .screen-controls {
+            position: absolute;
+            top: 60px;
+            right: 24px;
+            display: flex;
+            gap: 8px;
+            z-index: 10;
+        }
+
+        .control-button {
+            width: 36px;
+            height: 36px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .control-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: var(--text-primary);
+            transform: translateY(-1px);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 480px) {
+            .phone-frame {
+                width: 100%;
+                max-width: 390px;
+                height: auto;
+                min-height: 844px;
+                border-radius: 0;
+                margin: 0;
+            }
+
+            .phone-screen {
+                border-radius: 0;
+            }
+
+            .bottom-nav {
+                border-radius: 0;
+            }
+        }
+
+        /* Loading Animation */
+        .loading-skeleton {
+            background: linear-gradient(90deg, var(--bg-surface) 25%, var(--bg-card) 50%, var(--bg-surface) 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Smooth Animations */
+        .fade-in {
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .slide-up {
+            animation: slideUp 0.4s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="phone-frame">
+        <div class="phone-screen">
+            <div class="status-bar">
+                <span>9:41</span>
+                <span>🔋 85%</span>
+            </div>
+
+            <div class="screen-controls">
+                <button class="control-button" onclick="showConnectionScreen()" title="연결">🔗</button>
+                <button class="control-button" onclick="showDashboard()" title="대시보드">📊</button>
+                <button class="control-button" onclick="toggleEmergency()" title="응급">🚨</button>
+                <button class="control-button" onclick="toggleTheme()" title="테마">🎨</button>
+            </div>
+
+            <div class="screen-content" id="appContent">
+                <!-- Content will be dynamically loaded here -->
+            </div>
+
+            <div class="bottom-nav">
+                <div class="nav-item active">
+                    <div class="nav-icon">🏠</div>
+                    <div class="nav-label">홈</div>
+                </div>
+                <div class="nav-item">
+                    <div class="nav-icon">📈</div>
+                    <div class="nav-label">분석</div>
+                </div>
+                <div class="nav-item">
+                    <div class="nav-icon">🎯</div>
+                    <div class="nav-label">목표</div>
+                </div>
+                <div class="nav-item">
+                    <div class="nav-icon">👤</div>
+                    <div class="nav-label">프로필</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Starmax SDK Data
+        const biometricData = {
+            heartRate: { value: 72, unit: 'bpm', normal: [60, 100], status: 'normal' },
+            bloodPressure: { systolic: 118, diastolic: 78, unit: 'mmHg', normal: [[90, 120], [60, 80]], status: 'normal' },
+            bloodOxygen: { value: 98, unit: '%', normal: [95, 100], status: 'normal' },
+            bodyTemperature: { value: 36.7, unit: '°C', normal: [36.1, 37.2], status: 'normal' },
+            bloodSugar: { value: 95, unit: 'mg/dL', normal: [70, 100], status: 'normal' },
+            steps: { value: 8543, unit: '걸음', goal: 10000, status: 'normal' },
+            sleep: { value: 7.5, unit: '시간', quality: 85, status: 'normal' },
+            stress: { value: 25, unit: '점', normal: [0, 40], status: 'normal' },
+            respiration: { value: 16, unit: '회/분', normal: [12, 20], status: 'normal' },
+            hrv: { value: 45, unit: 'ms', normal: [30, 50], status: 'normal' }
+        };
+
+        let currentScreen = 'dashboard';
+        let emergencyMode = false;
+        let darkTheme = true;
+
+        // Real-time data updates
+        function updateRealtimeData() {
+            // Heart Rate
+            biometricData.heartRate.value = 65 + Math.floor(Math.random() * 20);
+            
+            // Blood Pressure
+            biometricData.bloodPressure.systolic = 110 + Math.floor(Math.random() * 20);
+            biometricData.bloodPressure.diastolic = 70 + Math.floor(Math.random() * 10);
+            
+            // Blood Oxygen
+            biometricData.bloodOxygen.value = 95 + Math.floor(Math.random() * 5);
+            
+            // Body Temperature
+            biometricData.bodyTemperature.value = 36.5 + (Math.random() * 0.4 - 0.2);
+            
+            // Blood Sugar
+            biometricData.bloodSugar.value = 85 + Math.floor(Math.random() * 30);
+            
+            // Steps
+            biometricData.steps.value += Math.floor(Math.random() * 10);
+            
+            // Sleep Quality
+            biometricData.sleep.quality = 70 + Math.floor(Math.random() * 25);
+            
+            // Stress
+            biometricData.stress.value = 20 + Math.floor(Math.random() * 40);
+            
+            // Respiration
+            biometricData.respiration.value = 14 + Math.floor(Math.random() * 6);
+            
+            // HRV
+            biometricData.hrv.value = 35 + Math.floor(Math.random() * 25);
+
+            // Update status for each metric
+            updateAllMetricStatus();
+            
+            // Update UI if dashboard is shown
+            if (currentScreen === 'dashboard') {
+                updateDashboardDisplay();
+            }
+        }
+
+        function updateAllMetricStatus() {
+            // Heart Rate
+            if (biometricData.heartRate.value > 150 || biometricData.heartRate.value < 50) {
+                biometricData.heartRate.status = 'danger';
+            } else if (biometricData.heartRate.value > 120 || biometricData.heartRate.value < 60) {
+                biometricData.heartRate.status = 'warning';
+            } else {
+                biometricData.heartRate.status = 'normal';
+            }
+
+            // Blood Pressure
+            const bp = biometricData.bloodPressure;
+            if (bp.systolic > 180 || bp.diastolic > 110) {
+                bp.status = 'danger';
+            } else if (bp.systolic > 140 || bp.diastolic > 90) {
+                bp.status = 'warning';
+            } else {
+                bp.status = 'normal';
+            }
+
+            // Blood Oxygen
+            if (biometricData.bloodOxygen.value < 90) {
+                biometricData.bloodOxygen.status = 'danger';
+            } else if (biometricData.bloodOxygen.value < 95) {
+                biometricData.bloodOxygen.status = 'warning';
+            } else {
+                biometricData.bloodOxygen.status = 'normal';
+            }
+
+            // Body Temperature
+            if (biometricData.bodyTemperature.value > 38.5 || biometricData.bodyTemperature.value < 35.5) {
+                biometricData.bodyTemperature.status = 'danger';
+            } else if (biometricData.bodyTemperature.value > 37.8 || biometricData.bodyTemperature.value < 36.0) {
+                biometricData.bodyTemperature.status = 'warning';
+            } else {
+                biometricData.bodyTemperature.status = 'normal';
+            }
+
+            // Blood Sugar
+            if (biometricData.bloodSugar.value > 140 || biometricData.bloodSugar.value < 60) {
+                biometricData.bloodSugar.status = 'danger';
+            } else if (biometricData.bloodSugar.value > 110 || biometricData.bloodSugar.value < 80) {
+                biometricData.bloodSugar.status = 'warning';
+            } else {
+                biometricData.bloodSugar.status = 'normal';
+            }
+
+            // Steps
+            biometricData.steps.status = biometricData.steps.value < 3000 ? 'warning' : 'normal';
+
+            // Sleep
+            if (biometricData.sleep.quality < 60) {
+                biometricData.sleep.status = 'warning';
+            } else if (biometricData.sleep.quality > 90) {
+                biometricData.sleep.status = 'normal';
+            } else {
+                biometricData.sleep.status = 'normal';
+            }
+
+            // Stress
+            if (biometricData.stress.value > 60) {
+                biometricData.stress.status = 'danger';
+            } else if (biometricData.stress.value > 40) {
+                biometricData.stress.status = 'warning';
+            } else {
+                biometricData.stress.status = 'normal';
+            }
+
+            // Respiration
+            if (biometricData.respiration.value > 25 || biometricData.respiration.value < 10) {
+                biometricData.respiration.status = 'warning';
+            } else {
+                biometricData.respiration.status = 'normal';
+            }
+
+            // HRV
+            if (biometricData.hrv.value < 25) {
+                biometricData.hrv.status = 'warning';
+            } else if (biometricData.hrv.value > 50) {
+                biometricData.hrv.status = 'normal';
+            } else {
+                biometricData.hrv.status = 'normal';
+            }
+        }
+
+        function calculateHealthScore() {
+            let score = 100;
+            let deductions = 0;
+
+            // Heart Rate
+            const hr = biometricData.heartRate.value;
+            if (hr > 120 || hr < 60) deductions += 10;
+            else if (hr > 110 || hr < 65) deductions += 5;
+
+            // Blood Pressure
+            const bp = biometricData.bloodPressure;
+            if (bp.systolic > 140 || bp.diastolic > 90) deductions += 15;
+            else if (bp.systolic > 130 || bp.diastolic > 85) deductions += 8;
+
+            // Blood Oxygen
+            const spo2 = biometricData.bloodOxygen.value;
+            if (spo2 < 95) deductions += 10;
+            else if (spo2 < 98) deductions += 5;
+
+            // Body Temperature
+            const temp = biometricData.bodyTemperature.value;
+            if (temp > 37.8 || temp < 36.0) deductions += 10;
+            else if (temp > 37.5 || temp < 36.3) deductions += 5;
+
+            // Stress
+            const stress = biometricData.stress.value;
+            if (stress > 50) deductions += 10;
+            else if (stress > 35) deductions += 5;
+
+            // Sleep Quality
+            const sleepQuality = biometricData.sleep.quality;
+            if (sleepQuality < 70) deductions += 10;
+            else if (sleepQuality < 85) deductions += 5;
+
+            score = Math.max(0, 100 - deductions);
+            return Math.round(score);
+        }
+
+        function getHealthScoreStatus(score) {
+            if (score >= 90) return 'excellent';
+            if (score >= 80) return 'good';
+            if (score >= 60) return 'fair';
+            return 'poor';
+        }
+
+        function renderDashboard() {
+            const healthScore = calculateHealthScore();
+            const scoreStatus = getHealthScoreStatus(healthScore);
+
+            return `
+                <div class="header-section fade-in">
+                    <div class="user-info">
+                        <div class="user-greeting">
+                            <h1>안녕하세요, 김건강님</h1>
+                            <p>오늘도 건강을 지켜보고 있어요</p>
+                        </div>
+                        <div class="user-avatar">👨‍⚕️</div>
+                    </div>
+                    
+                    <div class="connection-status">
+                        <div class="status-indicator"></div>
+                        <span class="status-text">
+                            <span class="device-name">Starmax Watch</span> 연결됨
+                        </span>
+                    </div>
+                </div>
+
+                ${emergencyMode ? `
+                    <div class="emergency-banner slide-up">
+                        <div class="emergency-content">
+                            <div class="emergency-icon">🚨</div>
+                            <div class="emergency-text">
+                                <div class="emergency-title">응급 상황 감지</div>
+                                <div class="emergency-desc">다수 생체지표가 정상 범위를 벗어났습니다</div>
+                            </div>
+                        </div>
+                        <button class="emergency-action" onclick="handleEmergency()">응급 조치</button>
+                    </div>
+                ` : ''}
+
+                <div class="health-score-card fade-in" style="animation-delay: 0.1s;">
+                    <div class="score-header">
+                        <div class="score-title">건강 점수</div>
+                        <div class="score-badge score-${scoreStatus}">${scoreStatus === 'excellent' ? '매우 좋음' : scoreStatus === 'good' ? '좋음' : scoreStatus === 'fair' ? '보통' : '주의 필요'}</div>
+                    </div>
+                    <div class="score-content">
+                        <div class="circular-progress">
+                            <svg width="80" height="80" class="progress-ring">
+                                <circle cx="40" cy="40" r="36" fill="none" stroke="var(--bg-surface)" stroke-width="8"/>
+                                <circle cx="40" cy="40" r="36" fill="none" stroke="var(--primary-blue)" stroke-width="8" 
+                                        stroke-dasharray="${(healthScore / 100) * 226} 226" 
+                                        stroke-linecap="round" class="progress-ring-circle"/>
+                            </svg>
+                            <div class="score-value">${healthScore}</div>
+                        </div>
+                        <div class="score-details">
+                            <div class="score-label">현재 건강 상태</div>
+                            <div class="score-description">
+                                ${scoreStatus === 'excellent' ? '모든 생체 지표가 정상 범위에 있습니다.' : 
+                                  scoreStatus === 'good' ? '대부분의 지표가 양호합니다.' : 
+                                  scoreStatus === 'fair' ? '일부 지표에 주의가 필요합니다.' : 
+                                  '여러 지표가 정상 범위를 벗어났습니다.'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metrics-section">
+                    <div class="section-header">
+                        <div class="section-title">실시간 생체 데이터</div>
+                        <div class="view-toggle">
+                            <button class="view-button active">전체</button>
+                            <button class="view-button">핵심</button>
+                        </div>
+                    </div>
+                    
+                    <div class="metrics-grid">
+                        ${createMetricCard('heartRate', '❤️', '심박수', biometricData.heartRate.value, 'bpm')}
+                        ${createMetricCard('bloodPressure', '💉', '혈압', `${biometricData.bloodPressure.systolic}/${biometricData.bloodPressure.diastolic}`, 'mmHg')}
+                        ${createMetricCard('bloodOxygen', '🫁', '산소포화도', biometricData.bloodOxygen.value, '%')}
+                        ${createMetricCard('bodyTemperature', '🌡️', '체온', biometricData.bodyTemperature.value.toFixed(1), '°C')}
+                        ${createMetricCard('bloodSugar', '🍯', '혈당', biometricData.bloodSugar.value, 'mg/dL')}
+                        ${createMetricCard('steps', '👟', '걸음수', biometricData.steps.value.toLocaleString(), '걸음')}
+                        ${createMetricCard('sleep', '🌙', '수면', biometricData.sleep.value.toFixed(1), '시간')}
+                        ${createMetricCard('stress', '😌', '스트레스', biometricData.stress.value, '점')}
+                        ${createMetricCard('respiration', '🌬️', '호흡수', biometricData.respiration.value, '회/분')}
+                        ${createMetricCard('hrv', '💓', '심박변이도', biometricData.hrv.value, 'ms')}
+                    </div>
+                </div>
+
+                <div class="chart-section">
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <div class="chart-title">심박수 추이</div>
+                            <div class="time-selector">
+                                <button class="time-button">1H</button>
+                                <button class="time-button active">6H</button>
+                                <button class="time-button">24H</button>
+                                <button class="time-button">7D</button>
+                            </div>
+                        </div>
+                        <div class="chart-area">
+                            <div class="chart-line"></div>
+                            <div class="chart-data-points">
+                                <div class="data-point">평균: ${biometricData.heartRate.value} bpm</div>
+                                <div class="data-point">최고: ${biometricData.heartRate.value + 15} bpm</div>
+                                <div class="data-point">최저: ${biometricData.heartRate.value - 10} bpm</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="quick-actions">
+                    <div class="actions-grid">
+                        <div class="action-button" onclick="exportData()">
+                            <div class="action-icon">📤</div>
+                            <div class="action-label">데이터 추출</div>
+                        </div>
+                        <div class="action-button" onclick="shareReport()">
+                            <div class="action-icon">📧</div>
+                            <div class="action-label">리포트 전송</div>
+                        </div>
+                        <div class="action-button" onclick="emergencyContact()">
+                            <div class="action-icon">🚨</div>
+                            <div class="action-label">비상 연락</div>
+                        </div>
+                        <div class="action-button" onclick="showSettings()">
+                            <div class="action-icon">⚙️</div>
+                            <div class="action-label">설정</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function createMetricCard(type, icon, title, value, unit) {
+            const metric = biometricData[type];
+            const status = metric.status;
+            const statusClass = `status-${status}`;
+            const statusText = status === 'normal' ? '정상' : status === 'warning' ? '주의' : '위험';
+
+            return `
+                <div class="metric-card ${status === 'danger' ? 'critical' : ''}" onclick="showMetricDetail('${type}')">
+                    <div class="metric-header">
+                        <div class="metric-info">
+                            <h3>${title}</h3>
+                            <div class="metric-value">
+                                ${value}
+                                <span class="metric-unit">${unit}</span>
+                            </div>
+                        </div>
+                        <div class="metric-icon">${icon}</div>
+                    </div>
+                    <div class="metric-status">
+                        <div class="status-dot ${statusClass}"></div>
+                        <span class="status-text">${statusText}</span>
+                    </div>
+                    <div class="metric-trend">2분 전 업데이트</div>
+                </div>
+            `;
+        }
+
+        function renderConnectionScreen() {
+            return `
+                <div class="header-section fade-in">
+                    <div class="user-info">
+                        <div class="user-greeting">
+                            <h1>기기 연결</h1>
+                            <p>Starmax 스마트워치를 찾고 있습니다</p>
+                        </div>
+                        <div class="user-avatar">⌚</div>
+                    </div>
+                </div>
+
+                <div style="padding: 48px 24px; text-align: center;">
+                    <div style="font-size: 64px; margin-bottom: 24px;">📱</div>
+                    <h2 style="font-size: 24px; margin-bottom: 12px;">Starmax Health Monitor</h2>
+                    <p style="color: var(--text-secondary); margin-bottom: 32px;">
+                        10종 생체 데이터를 실시간으로 모니터링하는<br>
+                        프리미엄 건강 관리 솔루션
+                    </p>
+                    
+                    <div style="background: var(--bg-card); border-radius: 16px; padding: 24px; margin-bottom: 24px;">
+                        <h3 style="font-size: 16px; margin-bottom: 16px;">지원 기능</h3>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; text-align: left;">
+                            <div>❤️ 심박수 모니터링</div>
+                            <div>💉 혈압 추적</div>
+                            <div>🫁 산소포화도 측정</div>
+                            <div>🌡️ 체온 모니터링</div>
+                            <div>🍯 혈당 관리</div>
+                            <div>👟 활동량 추적</div>
+                            <div>🌙 수면 분석</div>
+                            <div>😌 스트레스 측정</div>
+                        </div>
+                    </div>
+
+                    <button class="emergency-action" style="width: 100%; margin-bottom: 12px;" onclick="showDashboard()">
+                        연결 시작하기
+                    </button>
+                    
+                    <p style="font-size: 12px; color: var(--text-muted);">
+                        BLE 5.0 | 실시간 데이터 | 응급 알림
+                    </p>
+                </div>
+            `;
+        }
+
+        // Event handlers
+        function showDashboard() {
+            currentScreen = 'dashboard';
+            document.getElementById('appContent').innerHTML = renderDashboard();
+        }
+
+        function showConnectionScreen() {
+            currentScreen = 'connection';
+            document.getElementById('appContent').innerHTML = renderConnectionScreen();
+        }
+
+        function toggleEmergency() {
+            emergencyMode = !emergencyMode;
+            if (currentScreen === 'dashboard') {
+                showDashboard();
+            }
+        }
+
+        function toggleTheme() {
+            darkTheme = !darkTheme;
+            // Theme switching logic would go here
+            console.log('Theme toggled:', darkTheme ? 'Dark' : 'Light');
+        }
+
+        function showMetricDetail(type) {
+            alert(`${type} 상세 정보 화면으로 이동`);
+        }
+
+        function exportData() {
+            alert('건강 데이터를 CSV/PDF 형식으로 추출합니다');
+        }
+
+        function shareReport() {
+            alert('건강 리포트를 이메일로 전송합니다');
+        }
+
+        function emergencyContact() {
+            alert('비상 연락처로 전화를 겁니다');
+        }
+
+        function showSettings() {
+            alert('설정 화면으로 이동합니다');
+        }
+
+        function handleEmergency() {
+            alert('응급 조치 프로토콜을 시작합니다');
+        }
+
+        // Initialize
+        showDashboard();
+
+        // Start real-time updates
+        setInterval(updateRealtimeData, 2000);
+
+        // Random emergency simulation
+        setInterval(() => {
+            if (Math.random() < 0.05) { // 5% chance
+                // Simulate emergency
+                const emergencyMetrics = ['heartRate', 'bloodPressure', 'bloodOxygen', 'bodyTemperature'];
+                const randomMetric = emergencyMetrics[Math.floor(Math.random() * emergencyMetrics.length)];
+                
+                if (randomMetric === 'heartRate') {
+                    biometricData.heartRate.value = 180 + Math.floor(Math.random() * 20);
+                } else if (randomMetric === 'bloodPressure') {
+                    biometricData.bloodPressure.systolic = 190 + Math.floor(Math.random() * 10);
+                    biometricData.bloodPressure.diastolic = 120 + Math.floor(Math.random() * 10);
+                } else if (randomMetric === 'bloodOxygen') {
+                    biometricData.bloodOxygen.value = 85 + Math.floor(Math.random() * 5);
+                } else if (randomMetric === 'bodyTemperature') {
+                    biometricData.bodyTemperature.value = 39.5 + (Math.random() * 0.5);
+                }
+                
+                updateAllMetricStatus();
+                emergencyMode = true;
+                
+                if (currentScreen === 'dashboard') {
+                    showDashboard();
+                }
+                
+                // Auto-recover after 5 seconds
+                setTimeout(() => {
+                    updateRealtimeData();
+                    emergencyMode = false;
+                    if (currentScreen === 'dashboard') {
+                        showDashboard();
+                    }
+                }, 5000);
+            }
+        }, 20000); // Check every 20 seconds
+    </script>
+</body>
+</html>

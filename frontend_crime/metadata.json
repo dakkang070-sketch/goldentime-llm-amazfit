@@ -1,0 +1,7 @@
+{
+  "name": "LifeSync Crime Control v0.1",
+  "description": "Gemini AI를 활용하여 범죄 데이터를 분석하고 대응하는 범죄 관제 시스템입니다.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

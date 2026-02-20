@@ -53,13 +53,16 @@ if [ -n "$USER_TOKEN" ] && [ "$USER_TOKEN" != "null" ]; then
     # 생체 데이터 업로드 테스트
     echo ""
     echo "3️⃣ 생체 데이터 업로드 테스트..."
-    BIOMETRIC_RESPONSE=$(curl -s -X POST "$BASE_URL/api/ingest/zepp" \
+    BIOMETRIC_RESPONSE=$(curl -s -X POST "$BASE_URL/api/mobile/biometric" \
       -H "Content-Type: application/json" \
       -H "Authorization: Bearer $USER_TOKEN" \
       -d '{
         "heartRate": 75,
-        "stressLevel": 30,
-        "movementStatus": "walking",
+        "bloodPressureSys": 120,
+        "bloodPressureDia": 78,
+        "spO2": 98,
+        "temperature": 36.7,
+        "stress": 30,
         "location": {
           "lat": 37.5665,
           "lng": 126.9780
@@ -70,13 +73,16 @@ if [ -n "$USER_TOKEN" ] && [ "$USER_TOKEN" != "null" ]; then
     # 응급 데이터 테스트 (심박수 낮음)
     echo ""
     echo "4️⃣ 응급 상황 데이터 테스트 (낮은 심박수)..."
-    EMERGENCY_RESPONSE=$(curl -s -X POST "$BASE_URL/api/ingest/zepp" \
+    EMERGENCY_RESPONSE=$(curl -s -X POST "$BASE_URL/api/mobile/biometric" \
       -H "Content-Type: application/json" \
       -H "Authorization: Bearer $USER_TOKEN" \
       -d '{
         "heartRate": 40,
-        "stressLevel": 85,
-        "movementStatus": "fall_detected",
+        "bloodPressureSys": 180,
+        "bloodPressureDia": 110,
+        "spO2": 89,
+        "temperature": 39.0,
+        "stress": 85,
         "location": {
           "lat": 37.5665,
           "lng": 126.9780

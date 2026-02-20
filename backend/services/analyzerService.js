@@ -104,13 +104,39 @@ async function analyzeBiometricAndMaybeOpenCase({ user, biometricDoc }) {
   }
 
   // BiometricData.analysis 업데이트
+  const conflictDetected = detectAiConflict(level, analysisText);
+  
   biometricDoc.analysis = {
     isAnomaly: level >= 3,
     emergencyLevel: level,
     analysisResult: analysisText,
     analyzedAt: new Date(),
+    conflictDetected: conflictDetected
   };
   await biometricDoc.save();
+
+  if (conflictDetected) {
+    logger.warn(`⚠️ AI 분석 갈등 감지 [User: ${biometricDoc.userId}]: Rule Level ${level} vs LLM Text Analysis`);
+  }
+
+/**
+ * Rule 기반 결과와 LLM 분석 결과 간의 모순 검출
+ */
+function detectAiConflict(ruleLevel, llmText) {
+  if (!llmText) return false;
+  
+  const text = llmText.toLowerCase();
+  const isLlmNormal = text.includes('정상') || text.includes('안정') || text.includes('excellent') || text.includes('stable');
+  const isLlmCritical = text.includes('위험') || text.includes('응급') || text.includes('critical') || text.includes('emergency');
+
+  // Rule은 위급한데 LLM은 정상이라고 하는 경우
+  if (ruleLevel >= 4 && isLlmNormal) return true;
+  
+  // Rule은 정상인데 LLM은 매우 위험하다고 하는 경우 (과잉 탐지)
+  if (ruleLevel <= 2 && isLlmCritical) return true;
+
+  return false;
+}
 
   // 케이스 생성 조건 (MVP): level >= 4 인 경우 자동 케이스 생성
   // - level 3은 관제 알림만(추후 구현)으로 두는 편이 안전

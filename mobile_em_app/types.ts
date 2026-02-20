@@ -1,0 +1,32 @@
+import React from 'react';
+
+export interface BiometricData {
+  heartRate: number;      // bpm
+  bloodPressureSys: number; // mmHg
+  bloodPressureDia: number; // mmHg
+  spO2: number;           // %
+  temperature: number;    // Celsius
+  glucose: number;        // mg/dL
+  steps: number;          // count
+  sleep: number;          // hours
+  stress: number;         // 0-100
+  respiratoryRate: number;// bpm
+  hrv: number;           // ms
+  timestamp: number;
+}
+
+export interface MetricConfig {
+  id: keyof BiometricData | 'bloodPressure';
+  label: string;
+  unit: string;
+  icon: React.ElementType;
+  color: string;
+  minSafe: number;
+  maxSafe: number;
+}
+
+export interface HistoryPoint {
+  time: string;
+  heartRate: number;
+  stress: number;
+}

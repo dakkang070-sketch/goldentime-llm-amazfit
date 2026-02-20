@@ -4,7 +4,7 @@ const cors = require("cors");
 const http = require("http");
 const path = require("path");
 const connectDB = require("./config/database");
-const { initializeSocket } = require("./services/socketService");
+const { initializeSocket, emitEmergencyCaseCreated } = require("./services/socketService");
 const { validateEnv } = require("./utils/validateEnv");
 const logger = require("./utils/logger");
 
@@ -65,18 +65,54 @@ if (process.env.ENABLE_QUALITY_MANAGEMENT === "true") {
   }, 7000); // 워크플로우 시스템 후 1초 대기
 }
 
+const Alert = require('./models/Alert');
+
 // 실시간 생체신호 분석 엔진 시작
 if (process.env.ENABLE_REALTIME_BIOSIGNAL === "true") {
   const realtimeBiosignalEngine = require("./services/realtimeBiosignalEngine");
   setTimeout(async () => {
     try {
       // 실시간 엔진 이벤트 리스너 설정
-      realtimeBiosignalEngine.on("emergency_detected", (eventData) => {
+      realtimeBiosignalEngine.on("emergency_detected", async (eventData) => {
         logger.warn("🚨 실시간 응급상황 감지:", {
           userId: eventData.userId,
           severity: eventData.emergencyDetection.maxSeverity,
           alerts: eventData.emergencyDetection.alerts.length,
         });
+
+        // Alert 모델에 저장 (백오피스 이력용)
+        try {
+          const alerts = eventData.emergencyDetection.alerts.map(alert => ({
+            userId: eventData.userId,
+            type: alert.type, // '낙상', '심박수', '산소포화도' 등
+            severity: alert.severity === 'critical' ? '위험' : alert.severity === 'warning' ? '주의' : '정보',
+            aiAnalysis: alert.message,
+            aiConfidence: alert.confidence || 0,
+            biometricsSnapshot: eventData.biometrics,
+            deviceInfo: eventData.deviceInfo,
+            status: '발생'
+          }));
+          
+          if (alerts.length > 0) {
+            await Alert.insertMany(alerts);
+            logger.info(`💾 ${alerts.length}개의 응급 알림이 데이터베이스에 저장되었습니다.`);
+            
+            // 소켓을 통해 관제 시스템에 실시간 알림 전송
+            alerts.forEach(alert => {
+              emitEmergencyCaseCreated({
+                userId: alert.userId,
+                status: alert.severity === '위험' ? 'Critical' : alert.severity === '주의' ? 'Warning' : 'Normal',
+                location: eventData.location || '위치 정보 없음', // location 정보가 eventData에 있다고 가정
+                aiAnalysis: alert.aiAnalysis,
+                vitals: alert.biometricsSnapshot,
+                timestamp: new Date().toISOString(),
+                id: alert._id
+              });
+            });
+          }
+        } catch (saveError) {
+          logger.error("응급 알림 저장 실패:", saveError);
+        }
       });
 
       logger.info("🔬 실시간 생체신호 분석 엔진 활성화됨");
@@ -86,8 +122,21 @@ if (process.env.ENABLE_REALTIME_BIOSIGNAL === "true") {
   }, 8000); // 품질 관리 시스템 후 1초 대기
 }
 
-// 지능형 병원 매칭 및 API 자동 갱신 시스템 시작 - 항상 활성화
-if (true) {
+// STARMAX BLE 실시간 모니터링 시스템 시작 (응급 사용자앱 전용)
+if (process.env.ENABLE_STARMAX_MONITORING === "true") {
+  const realtimeMonitoringService = require("./services/realtimeMonitoringService");
+  setTimeout(async () => {
+    try {
+      realtimeMonitoringService.startMonitoring();
+      logger.info("⌚ STARMAX BLE 실시간 모니터링 시스템 활성화됨 (응급 사용자앱 전용)");
+    } catch (error) {
+      logger.error("STARMAX BLE 모니터링 시스템 시작 실패", error);
+    }
+  }, 8500); // 실시간 생체신호 엔진 후 0.5초 대기
+}
+
+// 지능형 병원 매칭 및 API 자동 갱신 시스템 시작 - 사용자 요청으로 비활성화 (2025-02-02)
+if (false) {
   // process.env.ENABLE_HOSPITAL_MATCHING === 'true'
   setTimeout(async () => {
     try {
@@ -144,7 +193,7 @@ const server = http.createServer(app);
 initializeSocket(server);
 
 // 미들웨어
-app.set("trust proxy", 1); // Trust first proxy (ngrok/Vite)
+app.set("trust proxy", 1); // Trust first proxy (Cloudflare/Vite)
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
@@ -162,7 +211,6 @@ app.use("/api", apiLimiter);
 
 // 인입(워치/미니앱/클라우드) 수집 API
 app.use("/api/ingest", require("./api/ingest"));
-app.use("/api/zepp", require("./api/zepp"));
 app.use("/api/users", require("./api/users"));
 app.use("/api/paramedics", require("./api/paramedics"));
 app.use("/api/emergency", require("./api/emergency"));
@@ -178,8 +226,11 @@ app.use("/api/quality", require("./api/qualityManagement"));
 app.use("/api/realtime-biosignal", require("./api/realtimeBiosignal"));
 app.use("/api/hospital-matching", require("./api/hospitalMatching"));
 app.use("/api/system-monitoring", require("./api/systemMonitoring"));
-app.use("/api/zepp-biometrics", require("./api/zeppBiometrics")); // Zepp Biometrics API 추가
-app.use("/api/school-violence", require("./api/schoolViolence")); // School Violence API
+app.use("/api/settings", require("./api/settings")); // System Settings API
+app.use("/api/alerts", require("./api/alerts")); // AI Emergency Alerts API
+app.use("/api/ai-analysis", require("./api/aiAnalysis")); // AI Analysis API
+// app.use("/api/school-violence", require("./api/schoolViolence")); // School Violence API
+app.use("/api/mobile", require("./api/mobile")); // 응급 사용자앱 전용 API
 // 물질 탐지 시스템 (TensorFlow 의존성 문제로 일시 비활성화)
 // app.use('/api/substance-detection', require('./api/substanceDetection'));
 
@@ -276,7 +327,7 @@ app.use((req, res) => {
   });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3003;
 
 server.listen(PORT, () => {
   logger.info("서버 시작", {
@@ -287,7 +338,7 @@ server.listen(PORT, () => {
   console.log(`🚀 서버가 포트 ${PORT}에서 실행 중입니다.`);
   console.log(`📡 WebSocket 실시간 통신 활성화됨`);
   console.log(
-    `🌐 외부 접속을 원할 경우 ngrok 또는 터널링 서비스를 사용하세요.`,
+    `🌐 외부 접속: Cloudflare Tunnel이 설정되었습니다.`,
   );
 });
 

@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Starmax Health Monitor - Complete App Design</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .phone-frame {
+            width: 375px;
+            height: 812px;
+            background: #000;
+            border-radius: 40px;
+            padding: 10px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        .phone-screen {
+            width: 100%;
+            height: 100%;
+            background: #f8fafc;
+            border-radius: 30px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .status-bar {
+            height: 44px;
+            background: rgba(255,255,255,0.95);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .screen-content {
+            height: calc(100% - 44px - 80px);
+            overflow-y: auto;
+            padding-bottom: 20px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            padding: 20px;
+        }
+
+        .metric-card {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid #e5e7eb;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+        }
+
+        .metric-card.critical {
+            border-color: #ef4444;
+            background: linear-gradient(135deg, #fef2f2 0%, #ffffff 100%);
+            animation: criticalPulse 2s infinite;
+        }
+
+        .metric-card.warning {
+            border-color: #f59e0b;
+            background: linear-gradient(135deg, #fff7ed 0%, #ffffff 100%);
+        }
+
+        .metric-card.normal {
+            border-color: #10b981;
+            background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+        }
+
+        @keyframes criticalPulse {
+            0%, 100% { box-shadow: 0 4px 20px rgba(239, 68, 68, 0.1); }
+            50% { box-shadow: 0 8px 30px rgba(239, 68, 68, 0.3); }
+        }
+
+        .metric-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .metric-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-icon {
+            font-size: 20px;
+        }
+
+        .metric-value {
+            font-size: 26px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 2px;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+        }
+
+        .metric-unit {
+            font-size: 11px;
+            color: #9ca3af;
+            font-weight: 500;
+        }
+
+        .metric-status {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 8px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .status-indicator {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .status-normal { background: #10b981; }
+        .status-warning { background: #f59e0b; }
+        .status-danger { background: #ef4444; }
+
+        .chart-container {
+            background: white;
+            margin: 0 20px 20px;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .chart-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .time-selector {
+            display: flex;
+            gap: 4px;
+        }
+
+        .time-button {
+            padding: 4px 8px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .time-button.active {
+            background: #0d9488;
+            color: white;
+            border-color: #0d9488;
+        }
+
+        .chart {
+            height: 120px;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chart-line {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60%;
+            background: linear-gradient(45deg, #0d9488, #14b8a6);
+            border-radius: 0 0 8px 8px;
+            opacity: 0.8;
+            animation: chartAnimation 3s ease-in-out infinite;
+        }
+
+        @keyframes chartAnimation {
+            0%, 100% { transform: translateY(0) scaleY(1); }
+            50% { transform: translateY(-10px) scaleY(1.1); }
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            padding: 20px;
+        }
+
+        .action-button {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 12px 8px;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .action-button:hover {
+            background: #f8fafc;
+            border-color: #0d9488;
+        }
+
+        .action-icon {
+            font-size: 24px;
+            margin-bottom: 4px;
+        }
+
+        .action-label {
+            font-size: 10px;
+            font-weight: 500;
+            color: #6b7280;
+            text-align: center;
+        }
+
+        .bottom-nav {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: white;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            border-radius: 0 0 30px 30px;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .nav-item.active {
+            color: #0d9488;
+        }
+
+        .nav-icon {
+            font-size: 20px;
+        }
+
+        .nav-label {
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        .emergency-banner {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            padding: 12px 20px;
+            margin: 0 20px 20px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: slideInDown 0.5s ease;
+        }
+
+        @keyframes slideInDown {
+            from { transform: translateY(-100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .emergency-text {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .emergency-action {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: white;
+        }
+
+        .emergency-action:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .device-connection {
+            background: white;
+            margin: 20px;
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        .connection-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .connection-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+
+        .connection-subtitle {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 20px;
+        }
+
+        .connect-button {
+            background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .connect-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3);
+        }
+
+        .screen-indicator {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 4px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 2px;
+        }
+
+        .screen-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .control-button {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .prototype-info {
+            position: absolute;
+            bottom: -40px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: white;
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .data-trend {
+            font-size: 10px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        .trend-up { color: #10b981; }
+        .trend-down { color: #ef4444; }
+        .trend-stable { color: #6b7280; }
+
+        .last-update {
+            font-size: 9px;
+            color: #9ca3af;
+            margin-top: 6px;
+        }
+
+        .metric-progress {
+            width: 100%;
+            height: 2px;
+            background: #e5e7eb;
+            border-radius: 1px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            border-radius: 1px;
+            transition: width 0.3s ease;
+        }
+
+        .progress-normal { background: #10b981; }
+        .progress-warning { background: #f59e0b; }
+        .progress-danger { background: #ef4444; }
+    </style>
+</head>
+<body>
+    <div class="phone-frame">
+        <div class="screen-indicator"></div>
+        <div class="screen-controls">
+            <button class="control-button" onclick="showConnectionScreen()" title="연결 화면">🔗</button>
+            <button class="control-button" onclick="showDashboard()" title="대시보드">📊</button>
+            <button class="control-button" onclick="toggleEmergency()" title="응급상황">🚨</button>
+            <button class="control-button" onclick="showAllMetrics()" title="전체 데이터">📋</button>
+        </div>
+        
+        <div class="phone-screen" id="appScreen">
+            <!-- 실제 앱 화면이 여기에 표시됩니다 -->
+        </div>
+        
+        <div class="prototype-info">
+            Starmax Health Monitor - Complete Biometric Data App
+        </div>
+    </div>
+
+    <script>
+        let currentScreen = 'dashboard';
+        let emergencyMode = false;
+        let connectionStatus = 'connected';
+        let showAll = false;
+
+        // Starmax SDK에서 제공하는 전체 생체 데이터
+        const biometricData = {
+            heartRate: { value: 72, unit: 'bpm', normal: [60, 100], status: 'normal' },
+            bloodPressure: { systolic: 118, diastolic: 78, unit: 'mmHg', normal: [[90, 120], [60, 80]], status: 'normal' },
+            bloodOxygen: { value: 98, unit: '%', normal: [95, 100], status: 'normal' },
+            bodyTemperature: { value: 36.7, unit: '°C', normal: [36.1, 37.2], status: 'normal' },
+            bloodSugar: { value: 95, unit: 'mg/dL', normal: [70, 100], status: 'normal' },
+            steps: { value: 8543, unit: '걸음', goal: 10000, status: 'normal' },
+            sleep: { value: 7.5, unit: '시간', quality: 85, status: 'normal' },
+            stress: { value: 25, unit: '점', normal: [0, 40], status: 'normal' },
+            respiration: { value: 16, unit: '회/분', normal: [12, 20], status: 'normal' },
+            hrv: { value: 45, unit: 'ms', normal: [30, 50], status: 'normal' }
+        };
+
+        // 실시간 데이터 업데이트
+        function updateRealtimeData() {
+            // 심박수 업데이트
+            biometricData.heartRate.value = 65 + Math.floor(Math.random() * 20);
+            updateMetricStatus('heartRate');
+
+            // 혈압 업데이트
+            biometricData.bloodPressure.systolic = 110 + Math.floor(Math.random() * 20);
+            biometricData.bloodPressure.diastolic = 70 + Math.floor(Math.random() * 10);
+            updateMetricStatus('bloodPressure');
+
+            // 산소포화도 업데이트
+            biometricData.bloodOxygen.value = 95 + Math.floor(Math.random() * 5);
+            updateMetricStatus('bloodOxygen');
+
+            // 체온 업데이트
+            biometricData.bodyTemperature.value = 36.5 + (Math.random() * 0.4 - 0.2);
+            updateMetricStatus('bodyTemperature');
+
+            // 혈당 업데이트
+            biometricData.bloodSugar.value = 85 + Math.floor(Math.random() * 30);
+            updateMetricStatus('bloodSugar');
+
+            // 걸음수 업데이트
+            biometricData.steps.value += Math.floor(Math.random() * 10);
+            updateMetricStatus('steps');
+
+            // 수면 품질 업데이트
+            biometricData.sleep.quality = 70 + Math.floor(Math.random() * 25);
+            updateMetricStatus('sleep');
+
+            // 스트레스 업데이트
+            biometricData.stress.value = 20 + Math.floor(Math.random() * 40);
+            updateMetricStatus('stress');
+
+            // 호흡수 업데이트
+            biometricData.respiration.value = 14 + Math.floor(Math.random() * 6);
+            updateMetricStatus('respiration');
+
+            // HRV 업데이트
+            biometricData.hrv.value = 35 + Math.floor(Math.random() * 25);
+            updateMetricStatus('hrv');
+
+            // UI 업데이트
+            if (currentScreen === 'dashboard') {
+                updateDashboardDisplay();
+            }
+        }
+
+        function updateMetricStatus(metricType) {
+            const metric = biometricData[metricType];
+            let status = 'normal';
+            
+            switch(metricType) {
+                case 'heartRate':
+                    if (metric.value > 150 || metric.value < 50) status = 'danger';
+                    else if (metric.value > 120 || metric.value < 60) status = 'warning';
+                    break;
+                case 'bloodPressure':
+                    if (metric.systolic > 180 || metric.diastolic > 110) status = 'danger';
+                    else if (metric.systolic > 140 || metric.diastolic > 90) status = 'warning';
+                    break;
+                case 'bloodOxygen':
+                    if (metric.value < 90) status = 'danger';
+                    else if (metric.value < 95) status = 'warning';
+                    break;
+                case 'bodyTemperature':
+                    if (metric.value > 38.5 || metric.value < 35.5) status = 'danger';
+                    else if (metric.value > 37.8 || metric.value < 36.0) status = 'warning';
+                    break;
+                case 'bloodSugar':
+                    if (metric.value > 140 || metric.value < 60) status = 'danger';
+                    else if (metric.value > 110 || metric.value < 80) status = 'warning';
+                    break;
+                case 'steps':
+                    if (metric.value < 3000) status = 'warning';
+                    break;
+                case 'sleep':
+                    if (metric.quality < 60) status = 'warning';
+                    else if (metric.quality > 90) status = 'normal';
+                    break;
+                case 'stress':
+                    if (metric.value > 60) status = 'danger';
+                    else if (metric.value > 40) status = 'warning';
+                    break;
+                case 'respiration':
+                    if (metric.value > 25 || metric.value < 10) status = 'warning';
+                    break;
+                case 'hrv':
+                    if (metric.value < 25) status = 'warning';
+                    else if (metric.value > 50) status = 'normal';
+                    break;
+            }
+            
+            metric.status = status;
+        }
+
+        function getTrendIcon(metricType) {
+            const trends = {
+                heartRate: Math.random() > 0.5 ? '📈' : '📉',
+                bloodPressure: Math.random() > 0.5 ? '📈' : '📉',
+                bloodOxygen: '📊',
+                bodyTemperature: Math.random() > 0.5 ? '🌡️' : '📉',
+                bloodSugar: Math.random() > 0.5 ? '📈' : '📉',
+                steps: '📈',
+                sleep: '🌙',
+                stress: Math.random() > 0.5 ? '📈' : '📉',
+                respiration: '🌬️',
+                hrv: '💓'
+            };
+            return trends[metricType] || '📊';
+        }
+
+        function getProgressPercentage(metricType) {
+            const metric = biometricData[metricType];
+            let percentage = 70; // 기본값
+            
+            switch(metricType) {
+                case 'heartRate':
+                    percentage = Math.min(100, ((metric.value - 50) / (150 - 50)) * 100);
+                    break;
+                case 'bloodOxygen':
+                    percentage = Math.min(100, metric.value);
+                    break;
+                case 'bodyTemperature':
+                    percentage = Math.min(100, ((metric.value - 35) / (40 - 35)) * 100);
+                    break;
+                case 'bloodSugar':
+                    percentage = Math.min(100, ((metric.value - 60) / (140 - 60)) * 100);
+                    break;
+                case 'steps':
+                    percentage = Math.min(100, (metric.value / metric.goal) * 100);
+                    break;
+                case 'sleep':
+                    percentage = metric.quality;
+                    break;
+                case 'stress':
+                    percentage = Math.min(100, metric.value);
+                    break;
+                case 'hrv':
+                    percentage = Math.min(100, (metric.value / 60) * 100);
+                    break;
+            }
+            
+            return Math.max(0, Math.min(100, percentage));
+        }
+
+        function createMetricCard(metricType, showAll = false) {
+            const metric = biometricData[metricType];
+            const statusColor = {
+                normal: '#10b981',
+                warning: '#f59e0b',
+                danger: '#ef4444'
+            }[metric.status];
+
+            let valueText = '';
+            let unitText = metric.unit;
+            
+            switch(metricType) {
+                case 'heartRate':
+                    valueText = metric.value;
+                    break;
+                case 'bloodPressure':
+                    valueText = `${metric.systolic}/${metric.diastolic}`;
+                    break;
+                case 'bodyTemperature':
+                    valueText = metric.value.toFixed(1);
+                    break;
+                case 'steps':
+                    valueText = metric.value.toLocaleString();
+                    unitText = metric.unit;
+                    break;
+                case 'sleep':
+                    valueText = metric.value.toFixed(1);
+                    break;
+                default:
+                    valueText = metric.value;
+            }
+
+            const progressPercentage = getProgressPercentage(metricType);
+            const trendIcon = getTrendIcon(metricType);
+            const statusText = {
+                normal: '정상',
+                warning: '주의',
+                danger: '위험'
+            }[metric.status];
+
+            const titles = {
+                heartRate: '심박수',
+                bloodPressure: '혈압',
+                bloodOxygen: '산소포화도',
+                bodyTemperature: '체온',
+                bloodSugar: '혈당',
+                steps: '걸음수',
+                sleep: '수면',
+                stress: '스트레스',
+                respiration: '호흡수',
+                hrv: '심박변이도'
+            };
+
+            return `
+                <div class="metric-card ${metric.status}" onclick="showDetail('${metricType}')">
+                    <div class="metric-header">
+                        <div class="metric-title">${titles[metricType]}</div>
+                        <div class="metric-icon">${trendIcon}</div>
+                    </div>
+                    <div class="metric-value">${valueText}</div>
+                    <div class="metric-unit">${unitText}</div>
+                    <div class="metric-status">
+                        <div class="status-indicator status-${metric.status}"></div>
+                        <span>${statusText}</span>
+                    </div>
+                    ${showAll ? `
+                        <div class="data-trend">
+                            ${metricType === 'steps' ? `${((metric.value/metric.goal)*100).toFixed(1)}% 달성` : 
+                              metricType === 'sleep' ? `품질 ${metric.quality}%` :
+                              '추세 안정'}
+                        </div>
+                        <div class="metric-progress">
+                            <div class="progress-bar progress-${metric.status}" style="width: ${progressPercentage}%"></div>
+                        </div>
+                    ` : ''}
+                    <div class="last-update">${Math.floor(Math.random() * 5) + 1}분 전</div>
+                </div>
+            `;
+        }
+
+        function renderCompleteDashboard() {
+            const primaryMetrics = ['heartRate', 'bloodPressure', 'bloodOxygen', 'bodyTemperature'];
+            const secondaryMetrics = ['bloodSugar', 'steps', 'sleep', 'stress'];
+            const advancedMetrics = ['respiration', 'hrv'];
+
+            return `
+                <div class="status-bar">
+                    <span>9:41</span>
+                    <span>🔋 85%</span>
+                </div>
+                
+                <div class="screen-content">
+                    <div class="header">
+                        <h1>건강 모니터링</h1>
+                        <p>실시간 생체 데이터</p>
+                        <div class="connection-status">
+                            <div class="status-dot"></div>
+                            <span>Starmax 연결됨</span>
+                        </div>
+                    </div>
+
+                    ${emergencyMode ? `
+                        <div class="emergency-banner">
+                            <div class="emergency-text">
+                                🚨 다수 생체지표 이상 - 즉시 응급조치 필요!
+                            </div>
+                            <button class="emergency-action">응급조치</button>
+                        </div>
+                    ` : ''}
+
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <div class="chart-title">전체 건강 상태</div>
+                            <div class="time-selector">
+                                <button class="time-button">1H</button>
+                                <button class="time-button active">6H</button>
+                                <button class="time-button">24H</button>
+                            </div>
+                        </div>
+                        <div class="chart">
+                            <div class="chart-line" style="height: ${70 + Math.random() * 20}%; background: linear-gradient(45deg, #0d9488, #14b8a6, #10b981, #f59e0b, #ef4444);"></div>
+                        </div>
+                    </div>
+
+                    <div style="padding: 0 20px 10px;">
+                        <div style="font-size: 14px; font-weight: 600; color: #1f2937; margin-bottom: 12px;">핵심 지표</div>
+                    </div>
+                    <div class="metrics-grid">
+                        ${primaryMetrics.map(metric => createMetricCard(metric, showAll)).join('')}
+                    </div>
+
+                    <div style="padding: 0 20px 10px;">
+                        <div style="font-size: 14px; font-weight: 600; color: #1f2937; margin-bottom: 12px;">일상 건강</div>
+                    </div>
+                    <div class="metrics-grid">
+                        ${secondaryMetrics.map(metric => createMetricCard(metric, showAll)).join('')}
+                    </div>
+
+                    ${showAll ? `
+                        <div style="padding: 0 20px 10px;">
+                            <div style="font-size: 14px; font-weight: 600; color: #1f2937; margin-bottom: 12px;">고급 분석</div>
+                        </div>
+                        <div class="metrics-grid">
+                            ${advancedMetrics.map(metric => createMetricCard(metric, showAll)).join('')}
+                        </div>
+                    ` : ''}
+
+                    <div class="quick-actions">
+                        <div class="action-button" onclick="toggleAllMetrics()">
+                            <div class="action-icon">${showAll ? '📊' : '📋'}</div>
+                            <div class="action-label">${showAll ? '간략히' : '전체보기'}</div>
+                        </div>
+                        <div class="action-button" onclick="exportData()">
+                            <div class="action-icon">📤</div>
+                            <div class="action-label">데이터추출</div>
+                        </div>
+                        <div class="action-button" onclick="shareReport()">
+                            <div class="action-icon">📧</div>
+                            <div class="action-label">리포트전송</div>
+                        </div>
+                        <div class="action-button" onclick="emergencyContact()">
+                            <div class="action-icon">🚨</div>
+                            <div class="action-label">비상연락</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bottom-nav">
+                    <div class="nav-item active">
+                        <div class="nav-icon">🏠</div>
+                        <div class="nav-label">홈</div>
+                    </div>
+                    <div class="nav-item">
+                        <div class="nav-icon">📈</div>
+                        <div class="nav-label">분석</div>
+                    </div>
+                    <div class="nav-item">
+                        <div class="nav-icon">🎯</div>
+                        <div class="nav-label">목표</div>
+                    </div>
+                    <div class="nav-item">
+                        <div class="nav-icon">👤</div>
+                        <div class="nav-label">프로필</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderConnectionScreen() {
+            return `
+                <div class="status-bar">
+                    <span>9:41</span>
+                    <span>🔋 85%</span>
+                </div>
+                
+                <div class="screen-content" style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: calc(100% - 124px);">
+                    <div class="device-connection">
+                        <div class="connection-icon">⌚</div>
+                        <div class="connection-title">Starmax 스마트워치 연결</div>
+                        <div class="connection-subtitle">10개 생체 데이터 실시간 모니터링</div>
+                        <div style="margin: 20px 0; font-size: 12px; color: #6b7280;">
+                            • 심박수 • 혈압 • 산소포화도 • 체온 • 혈당<br>
+                            • 걸음수 • 수면 • 스트레스 • 호흡수 • 심박변이도
+                        </div>
+                        <button class="connect-button" onclick="showDashboard()">기기 찾기</button>
+                    </div>
+                </div>
+
+                <div class="bottom-nav">
+                    <div class="nav-item">
+                        <div class="nav-icon">🏠</div>
+                        <div class="nav-label">홈</div>
+                    </div>
+                    <div class="nav-item">
+                        <div class="nav-icon">📈</div>
+                        <div class="nav-label">분석</div>
+                    </div>
+                    <div class="nav-item">
+                        <div class="nav-icon">🎯</div>
+                        <div class="nav-label">목표</div>
+                    </div>
+                    <div class="nav-item">
+                        <div class="nav-icon">👤</div>
+                        <div class="nav-label">프로필</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showDetail(metricType) {
+            alert(`${metricType} 상세 정보 화면으로 이동`);
+        }
+
+        function exportData() {
+            alert('CSV/PDF 형식으로 데이터 추출');
+        }
+
+        function shareReport() {
+            alert('건강 리포트 이메일 전송');
+        }
+
+        function emergencyContact() {
+            alert('비상 연락처로 자동 전화 연결');
+        }
+
+        function showDashboard() {
+            currentScreen = 'dashboard';
+            document.getElementById('appScreen').innerHTML = renderCompleteDashboard();
+        }
+
+        function showConnectionScreen() {
+            currentScreen = 'connection';
+            document.getElementById('appScreen').innerHTML = renderConnectionScreen();
+        }
+
+        function toggleEmergency() {
+            emergencyMode = !emergencyMode;
+            if (currentScreen === 'dashboard') {
+                showDashboard();
+            }
+        }
+
+        function toggleAllMetrics() {
+            showAll = !showAll;
+            if (currentScreen === 'dashboard') {
+                showDashboard();
+            }
+        }
+
+        function updateDashboardDisplay() {
+            // 실시간 데이터로 UI 업데이트
+            const metrics = ['heartRate', 'bloodPressure', 'bloodOxygen', 'bodyTemperature', 
+                           'bloodSugar', 'steps', 'sleep', 'stress', 'respiration', 'hrv'];
+            
+            metrics.forEach(metricType => {
+                const card = document.querySelector(`[onclick="showDetail('${metricType}')"]`);
+                if (card) {
+                    const metric = biometricData[metricType];
+                    card.className = `metric-card ${metric.status}`;
+                    
+                    // 상태 표시기 업데이트
+                    const statusIndicator = card.querySelector('.status-indicator');
+                    if (statusIndicator) {
+                        statusIndicator.className = `status-indicator status-${metric.status}`;
+                    }
+                    
+                    // 상태 텍스트 업데이트
+                    const statusText = card.querySelector('.metric-status span');
+                    if (statusText) {
+                        statusText.textContent = {
+                            normal: '정상',
+                            warning: '주의',
+                            danger: '위험'
+                        }[metric.status];
+                    }
+                }
+            });
+        }
+
+        // 초기화
+        showDashboard();
+
+        // 실시간 데이터 업데이트 시작 (2초마다)
+        setInterval(updateRealtimeData, 2000);
+
+        // 긴급 상황 시뮬레이션 (랜덤)
+        setInterval(() => {
+            if (Math.random() < 0.1) { // 10% 확률로 긴급 상황
+                // 랜덤 지표를 위험 상태로
+                const dangerousMetrics = ['heartRate', 'bloodPressure', 'bloodOxygen', 'bodyTemperature'];
+                const randomMetric = dangerousMetrics[Math.floor(Math.random() * dangerousMetrics.length)];
+                
+                if (randomMetric === 'heartRate') {
+                    biometricData.heartRate.value = 180 + Math.floor(Math.random() * 20);
+                } else if (randomMetric === 'bloodPressure') {
+                    biometricData.bloodPressure.systolic = 190 + Math.floor(Math.random() * 10);
+                    biometricData.bloodPressure.diastolic = 120 + Math.floor(Math.random() * 10);
+                } else if (randomMetric === 'bloodOxygen') {
+                    biometricData.bloodOxygen.value = 85 + Math.floor(Math.random() * 5);
+                } else if (randomMetric === 'bodyTemperature') {
+                    biometricData.bodyTemperature.value = 39.5 + (Math.random() * 0.5);
+                }
+                
+                updateMetricStatus(randomMetric);
+                emergencyMode = true;
+                if (currentScreen === 'dashboard') {
+                    showDashboard();
+                }
+                
+                // 5초 후 정상으로 복구
+                setTimeout(() => {
+                    updateRealtimeData();
+                    emergencyMode = false;
+                    if (currentScreen === 'dashboard') {
+                        showDashboard();
+                    }
+                }, 5000);
+            }
+        }, 15000); // 15초마다 체크
+    </script>
+</body>
+</html>

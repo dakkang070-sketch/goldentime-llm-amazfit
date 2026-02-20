@@ -2,58 +2,65 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Patient, TriageResult } from "../types";
 
-// Always use process.env.API_KEY and named parameters.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const API_BASE_URL = "/api"; // Proxy configured in vite.config.ts
 
 export const analyzePatientData = async (patient: Patient): Promise<TriageResult> => {
-  // Gemini API 일시 비활성화 - 로컬 분석으로 대체
-  console.log('환자 분석 요청:', patient.name);
-  
   try {
-    const { vitals } = patient;
-    
-    // 안전한 데이터 접근 (undefined 방지)
-    const heartRate = vitals?.heartRate || 70;
-    const oxygenLevel = vitals?.oxygenLevel || 98;
-    const fallDetected = vitals?.fallDetected || false;
-    const ecgPattern = vitals?.ecgPattern || 'Normal';
-    const activityContext = vitals?.activityContext || 'Unknown';
+    // 백엔드 AI 분석 API 호출
+    const response = await fetch(`${API_BASE_URL}/emergency/${patient.id}/analyze`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: patient.name,
+        age: patient.age,
+        gender: patient.gender,
+        emergencyLevel: 3, // Default, as patient.triage doesn't exist
+        biometric: {
+          heartRate: patient.vitals?.heartRate,
+          bloodPressure: patient.vitals?.bloodPressure,
+          spO2: patient.vitals?.oxygenLevel,
+          temperature: patient.vitals?.bodyTemp,
+          stressLevel: patient.vitals?.stressLevel
+        },
+        symptoms: patient.symptoms ? patient.symptoms.join(', ') : '정보 없음'
+      })
+    });
 
-    // 간단한 로컬 분석 로직
-    let severity = 1; // 1-5 점수
-    let priority = 'low';
-    let summary = '정상 범위 내 생체 징후';
-
-    if (heartRate > 120 || oxygenLevel < 90 || fallDetected) {
-      severity = 4;
-      priority = 'critical';
-      summary = '긴급 상황 감지 - 즉시 대응 필요';
-    } else if (heartRate > 100 || oxygenLevel < 95) {
-      severity = 3;
-      priority = 'high';
-      summary = '주의 필요 - 모니터링 강화';
-    } else if (heartRate > 90) {
-      severity = 2;
-      priority = 'medium';
-      summary = '경미한 이상 징후 관찰';
+    if (!response.ok) {
+      throw new Error(`Backend API Error: ${response.status}`);
     }
 
-    return {
-      severityScore: severity,
-      priority: priority as any,
-      analysisSummary: summary,
-      recommendations: [`심박수: ${heartRate}bpm`, `SpO2: ${oxygenLevel}%`]
-    };
+    const data = await response.json();
     
+    if (data.success && data.analysis) {
+      // 백엔드 응답을 프론트엔드 형식으로 변환
+      const analysis = data.analysis;
+      
+      let urgency: 'Immediate' | 'Urgent' | 'Standard' = 'Standard';
+      if (analysis.severityScore >= 4) urgency = 'Immediate';
+      else if (analysis.severityScore >= 3) urgency = 'Urgent';
+      
+      return {
+        severityScore: analysis.severityScore,
+        urgencyLevel: urgency,
+        analysisSummary: analysis.analysisText,
+        requiredSpecialties: [] // Backend analysis text usually contains recommendation
+      };
+    } else {
+      throw new Error('Invalid response format');
+    }
+
   } catch (error) {
-    console.warn('환자 분석 에러 (기본값 사용):', error);
+    console.warn('Backend Analysis Failed, falling back to local logic:', error);
     
-    // 에러 시 안전한 기본값 반환
+    // 에러 시 안전한 기본값 반환 (Fallback)
     return {
       severityScore: 2,
-      priority: 'medium',
-      analysisSummary: '분석 중 - 기본 모니터링',
-      recommendations: ['데이터 분석 중']
+      urgencyLevel: 'Standard',
+      analysisSummary: '서버 분석 지연 - 기본 모니터링 전환',
+      requiredSpecialties: []
     };
   }
 };

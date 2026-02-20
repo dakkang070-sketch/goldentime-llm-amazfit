@@ -1,0 +1,244 @@
+/*
+  Localizable.strings
+  RunmefitSDKDemo
+
+  Created by 星迈 on 2021/11/26.
+  
+*/
+
+///提醒
+"ST_AlarmOpenKey" = "提醒开关";
+"ST_AlarmIntervalKey" = "提醒间隔(单位分钟)";
+
+///闹钟
+"ST_ClocksKey" = "闹钟";
+"ST_ClockOpenKey" = "开关";
+"ST_ClockTypeKey" = "类型";
+"ST_ClockHourKey" = "小时";
+"ST_ClockMinsKey" = "分钟";
+"ST_ClockCycleKey" = "周期(6-0)";
+
+///勿扰
+"ST_NoDisturbOpenKey" = "开关";
+"ST_NoDisturbAllDayKey" = "是否全天勿扰";
+
+///联系人
+"ST_ContactsKey" = "联系人";
+"ST_ContactSOSKey" = "是否SOS";
+"ST_ContactNameKey" = "姓名";
+"ST_ContactPhoneKey" = "电话";
+
+//心率检测间隔和范围
+"ST_StartHourKey" = "开始小时";
+"ST_StartMinsKey" = "开始分钟";
+"ST_EndHourKey" = "结束小时";
+"ST_EndMinsKey" = "结束分钟";
+"ST_IntervalKey" = "检测周期(以分钟为单位)";
+"ST_ThresholdKey" = "静态心率高报警阈值";
+
+//健康数据检测开关
+"ST_SwitchHRKey" = "心率总开关：1开0关";
+"ST_SwitchBPKey" = "血压总开关：1开0关";
+"ST_SwitchBOKey" = "血氧总开关：1开0关";
+"ST_SwitchPPKey" = "压力总开关：1开0关";
+"ST_SwitchTPKey" = "温度总开关：1开0关";
+
+//第三方通知
+"ST_NotiAllKey" = "总开关";
+
+"ST_NotiIncominglKey" = "来电";
+"ST_NotiSmsKey" = "短信";
+"ST_NotiEmailKey" = "邮件";
+"ST_NotiTwitterKey" = "Twitter";
+"ST_NotiFacebookKey" = "Facebook";
+"ST_NotiWhatsappKey" = "WhatsApp";
+"ST_NotiLineKey" = "Line";
+"ST_NotiSkypeKey" = "Skype";
+"ST_NotiQqKey" = "qq";
+"ST_NotiWechatKey" = "微信";
+"ST_NotiInstagramKey" = "Instagram";
+"ST_NotiLinkedinKey" = "LinkedIn";
+"ST_NotiMessagerKey" = "Messenger";
+"ST_NotiVkKey" = "VK";
+"ST_NotiViberKey" = "Viber";
+"ST_NotiTelegramKey" = "Telegram";
+"ST_NotiKakaoTalkKey" = "KakaoTalk";
+"ST_NotiOtherKey" = "其他";
+
+//运动目标
+"ST_TargetStepKey" = "计步目标";
+"ST_TargetCalorieKey" = "热量目标(千卡)";
+"ST_TargetDistanceKey" = "距离目标(千米)";
+
+//用户信息
+"ST_UserGenderKey" = "性别 （0：女，1：男）";
+"ST_UserAgeKey" = "年龄";
+"ST_UserHeightKey" = "身高（单位1 CM）";
+"ST_UserWeightKey" = "体重（单位0.1 KG）";
+
+//时间时区
+"ST_YearKey" = "年";
+"ST_MonthKey" = "月";
+"ST_DayKey" = "日";
+"ST_HourKey" = "时";
+"ST_MinuteKey" = "分";
+"ST_SecondKey" = "秒";
+"ST_ZoneKey" = "时区";
+
+//绑定设备
+"ST_DeviceBindKey" = "绑定设备";
+
+//查找设备
+"ST_FindDeviceKey" = "查找设备";
+
+//获取固件版本号
+"ST_GetVersionNumberKey" = "固件版本号";
+
+//获取固件UI版本号
+"ST_GetUIVersionNumberKey" = "UI版本号";
+
+//获取设备型号
+"ST_GetDeviceModelKey" = "设备型号";
+
+//获取设备MTU
+"ST_GetDeviceMtuKey" = "设备接收buf大小(字节)";
+
+//获取设备宽
+"ST_GetDeviceWidthKey" = "设备宽";
+
+//获取设备高
+"ST_GetDeviceHeightKey" = "设备高";
+
+//获取设备形状(0：圆屏，1：方屏)
+"ST_GetDeviceShapeKey" = "设备形状(0：圆屏，1：方屏)";
+
+//获取电量百分比
+"ST_GetElectricityKey" = "电量百分比";
+
+//获取充电状态(1:充电中)
+"ST_GetElectricityStateKey" = "充电状态(1:充电中)";
+
+//拍照控制(1：进入拍照，2：退出拍照，3：点击拍照)
+"ST_PhotoGraphModeKey" = "拍照控制(1：进入拍照，2：退出拍照，3：点击拍照)";
+
+//#pragma mark - 设备状态
+
+//时间格式设置(0：24小时制，1：12小时制)
+"ST_HourSystemKey" = "时间格式(0：24小时制，1：12小时制)";
+
+//单位制选择(0：公制，1：英制)
+"ST_UnitKey" = "单位制(0：公制，1：英制)";
+
+//温度制选择(0：摄氏，1：华氏)
+"ST_TemperatureUnitKey" = "温度制(0：摄氏，1：华氏)";
+
+//手表语言(0：英语1：中文)
+"ST_LanguageDataKey" = "手表语言(0：英语1：中文)";
+
+//背光时长(秒为单位)
+"ST_BrightDurationKey" = "背光时长(秒为单位)";
+
+//屏幕亮度(百分比)
+"ST_BrightnessKey" = "屏幕亮度(百分比)";
+
+//抬手亮开关
+"ST_TrunWristKey" = "抬手亮开关";
+
+//#pragma mark - 获取当前
+
+//获取当前数据总计步
+"ST_GetCurrentValueStepKey" = "当前数据总计步";
+
+//获取当前数据总卡路里(卡)
+"ST_GetCurrentValueCalorieKey" = "当前数据总卡路里(卡)";
+
+//获取当前数据总距离(m)
+"ST_GetCurrentValueDistanceKey" = "当前数据总距离(m)";
+
+//获取当前数据总睡眠时间(分钟)
+"ST_GetCurrentValueSleepKey" = "当前数据总睡眠时间(分钟)";
+
+//获取当前数据总深睡时间(分钟)
+"ST_GetCurrentValueDeepSleepKey" = "当前数据总深睡时间(分钟)";
+
+//获取当前数据总浅睡时间(分钟)
+"ST_GetCurrentValueLightSleepKey" = "当前数据总浅睡时间(分钟)";
+
+//获取当前数据心率
+"ST_GetCurrentValueHRKey" = "当前数据心率";
+
+//获取当前数据高压
+"ST_GetCurrentValueHeightBPKey" = "当前数据高压";
+
+//获取当前数据低压
+"ST_GetCurrentValueLowBPKey" = "当前数据低压";
+
+//获取当前数据血氧
+"ST_GetCurrentValueBOKey" = "当前数据血氧";
+
+//获取当前数据压力
+"ST_GetCurrentValueHPKey" = "当前数据压力";
+
+//获取当前数据梅脱
+"ST_GetCurrentValueMETKey" = "当前数据梅脱";
+
+//获取当前数据温度
+"ST_GetCurrentValueTemperatureKey" = "当前数据温度";
+
+//#pragma mark - 获取历史
+
+//获取数据有效日期列表
+"ST_GetRecordValidDateKey" = "数据有效日期列表";
+
+//获取历史日期yyyyMMdd
+"ST_GetRecordDateTimeKey" = "获取历史日期yyyyMMdd";
+
+//获取历史采样间隔(mins)
+"ST_GetRecordIntervalKey" = "获取历史采样间隔(mins)";
+
+//获取历史数据
+"ST_GetRecordValueDataKey" = "历史数据";
+
+//获取历史数据运动类型(1计步、2睡眠)
+"ST_GetRecordTypeStepOrSleepKey" = "数据运动类型(1计步、2睡眠)";
+
+//获取历史数据计步
+"ST_GetRecordValueStepKey" = "数据计步";
+
+//获取历史数据卡路里(卡)
+"ST_GetRecordValueCalorieKey" = "历史数据卡路里(卡)";
+
+//获取历史数据距离(m)
+"ST_GetRecordValueDistanceKey" = "历史数据距离(m)";
+
+//获取历史数据睡眠(mins)
+"ST_GetRecordValueSleepKey" = "历史数据睡眠(mins)";
+
+//同步运动数据
+"ST_GetSportRecordDurationKey" = "运动时长（s）";
+"ST_GetSportRecordTypeKey" = "运动类型";
+"ST_GetSportRecordStepKey" = "步数";
+"ST_GetSportRecordDistanceKey" = "距离（m）";
+"ST_GetSportRecordSpeedKey" = "速度（m/s）";
+"ST_GetSportRecordCaloriesKey" = "卡路里";
+"ST_GetSportRecordPaceKey" = "配速";
+"ST_GetSportRecordStrideKey" = "步频";
+"ST_GetSportRecordHRLengthKey" = "心率长度";
+"ST_GetSportRecordHRDetailsKey" = "心率数据";
+
+//#pragma mark - 获取表盘信息
+
+//获取表盘信息列表
+"ST_GetDialInfoKey" = "获取表盘信息列表";
+
+//当前显示表盘
+"ST_GetDialUsedKey" = "当前显示表盘(为1表示当前显示表盘)";
+
+//表盘Id
+"ST_GetDialIdKey" = "表盘Id";
+
+//表盘颜色值
+"ST_GetDialRGBKey" = "表盘颜色值(rgb565)";
+
+//表盘位置
+"ST_GetDialModeKey" = "表盘位置(1：上  2：中  3：下)";

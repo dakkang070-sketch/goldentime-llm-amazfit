@@ -65,20 +65,23 @@ echo ""
 
 # 3. 정상 생체 데이터 업로드
 echo "3️⃣ 정상 생체 데이터 업로드 테스트..."
-NORMAL_RESPONSE=$(curl -s -X POST "$BASE_URL/api/ingest/zepp" \
+NORMAL_RESPONSE=$(curl -s -X POST "$BASE_URL/api/mobile/biometric" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $USER_TOKEN" \
   -d '{
     "heartRate": 72,
-    "stressLevel": 25,
-    "movementStatus": "walking",
+    "bloodPressureSys": 118,
+    "bloodPressureDia": 76,
+    "spO2": 98,
+    "temperature": 36.6,
+    "stress": 25,
     "location": {
       "lat": 37.5665,
       "lng": 126.9780
     }
   }')
 
-EMERGENCY_LEVEL=$(echo "$NORMAL_RESPONSE" | jq -r '.analysis.emergencyLevel // empty' 2>/dev/null)
+EMERGENCY_LEVEL=$(echo "$NORMAL_RESPONSE" | jq -r '.data.biometricData.emergencyLevel // empty' 2>/dev/null)
 if [ "$EMERGENCY_LEVEL" = "1" ]; then
     echo -e "${GREEN}✅ 정상 데이터 처리 성공 (응급도: $EMERGENCY_LEVEL)${NC}"
 else
@@ -88,27 +91,27 @@ echo ""
 
 # 4. 응급 상황 데이터 업로드 (낮은 심박수)
 echo "4️⃣ 응급 상황 데이터 업로드 테스트 (낮은 심박수)..."
-EMERGENCY_RESPONSE=$(curl -s -X POST "$BASE_URL/api/ingest/zepp" \
+EMERGENCY_RESPONSE=$(curl -s -X POST "$BASE_URL/api/mobile/biometric" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $USER_TOKEN" \
   -d '{
     "heartRate": 38,
-    "stressLevel": 90,
-    "movementStatus": "fall_detected",
+    "bloodPressureSys": 185,
+    "bloodPressureDia": 115,
+    "spO2": 88,
+    "temperature": 39.2,
+    "stress": 90,
     "location": {
       "lat": 37.5665,
       "lng": 126.9780
     }
   }')
 
-EMERGENCY_LEVEL=$(echo "$EMERGENCY_RESPONSE" | jq -r '.analysis.emergencyLevel // empty' 2>/dev/null)
-CASE_ID=$(echo "$EMERGENCY_RESPONSE" | jq -r '.analysis.createdCaseId // empty' 2>/dev/null)
-
-if [ -n "$CASE_ID" ] && [ "$CASE_ID" != "null" ]; then
-    echo -e "${GREEN}✅ 응급 케이스 자동 생성 성공 (케이스 ID: ${CASE_ID:0:10}...)${NC}"
-    echo -e "${GREEN}   응급도: $EMERGENCY_LEVEL${NC}"
+EMERGENCY_LEVEL=$(echo "$EMERGENCY_RESPONSE" | jq -r '.data.biometricData.emergencyLevel // empty' 2>/dev/null)
+if [ "$EMERGENCY_LEVEL" = "4" ] || [ "$EMERGENCY_LEVEL" = "5" ]; then
+    echo -e "${GREEN}✅ 응급 데이터 처리 성공 (응급도: $EMERGENCY_LEVEL)${NC}"
 else
-    echo -e "${YELLOW}⚠️ 응급 케이스가 생성되지 않았습니다 (응급도: $EMERGENCY_LEVEL)${NC}"
+    echo -e "${YELLOW}⚠️ 응급도: $EMERGENCY_LEVEL${NC}"
 fi
 echo ""
 
