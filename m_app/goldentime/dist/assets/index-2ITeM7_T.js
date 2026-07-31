@@ -19764,12 +19764,12 @@ const jj = {
                     }, fe))
                 })]
             }), d === 0 && u.jsxs("section", {
-                className: "rounded-lg border border-slate-300 bg-white p-4 space-y-2.5",
+                className: "rounded-lg border border-slate-300 bg-white p-4 space-y-3",
                 children: [u.jsxs("div", {
-                    className: "flex items-center gap-2 pb-2",
-                    style: { borderBottom: "1px solid #e2e8f0" },
+                    className: "flex items-center gap-3",
+                    style: { borderBottom: "1px solid #e2e8f0", paddingBottom: "12px" },
                     children: [u.jsxs("label", {
-                        className: "flex flex-1 items-center gap-2 cursor-pointer",
+                        className: "flex flex-1 items-center gap-3 cursor-pointer",
                         children: [u.jsx("input", {
                             type: "checkbox",
                             checked: h.agreedService && h.agreedPrivacy && h.agreedLocation && h.agreedBiometric && h.agreedThirdParty && h.agreedWearable,
@@ -19783,9 +19783,9 @@ const jj = {
                         })]
                     })]
                 }), u.jsxs("div", {
-                    className: "flex items-center gap-2",
+                    className: "flex items-center gap-3 py-1",
                     children: [u.jsxs("label", {
-                        className: "flex flex-1 items-center gap-2 cursor-pointer",
+                        className: "flex flex-1 items-center gap-3 cursor-pointer",
                         children: [u.jsx("input", {
                             type: "checkbox",
                             checked: h.agreedService,
@@ -19798,14 +19798,14 @@ const jj = {
                     }), u.jsx("button", {
                         type: "button",
                         onClick: () => T("service"),
-                        className: "shrink-0 rounded-md border border-slate-300 bg-slate-50 px-2.5 py-1 text-[12px] text-slate-500 hover:bg-slate-100 hover:text-slate-600",
+                        className: "h-8 shrink-0 rounded-md border border-slate-300 bg-slate-50 px-3 text-[12px] text-slate-500 hover:bg-slate-100 hover:text-slate-600",
                         "aria-label": "서비스 이용약관 보기",
                         children: "약관보기"
                     })]
                 }), u.jsxs("div", {
-                    className: "flex items-center gap-2",
+                    className: "flex items-center gap-3 py-1",
                     children: [u.jsxs("label", {
-                        className: "flex flex-1 items-center gap-2 cursor-pointer",
+                        className: "flex flex-1 items-center gap-3 cursor-pointer",
                         children: [u.jsx("input", {
                             type: "checkbox",
                             checked: h.agreedPrivacy,
@@ -19818,14 +19818,14 @@ const jj = {
                     }), u.jsx("button", {
                         type: "button",
                         onClick: () => T("privacy"),
-                        className: "shrink-0 rounded-md border border-slate-300 bg-slate-50 px-2.5 py-1 text-[12px] text-slate-500 hover:bg-slate-100 hover:text-slate-600",
+                        className: "h-8 shrink-0 rounded-md border border-slate-300 bg-slate-50 px-3 text-[12px] text-slate-500 hover:bg-slate-100 hover:text-slate-600",
                         "aria-label": "개인정보 수집 및 이용 동의 보기",
                         children: "약관보기"
                     })]
                 }), u.jsxs("div", {
-                    className: "flex items-center gap-2",
+                    className: "flex items-center gap-3 py-1",
                     children: [u.jsxs("label", {
-                        className: "flex flex-1 items-center gap-2 cursor-pointer",
+                        className: "flex flex-1 items-center gap-3 cursor-pointer",
                         children: [u.jsx("input", {
                             type: "checkbox",
                             checked: h.agreedLocation,
@@ -19838,14 +19838,14 @@ const jj = {
                     }), u.jsx("button", {
                         type: "button",
                         onClick: () => T("location"),
-                        className: "shrink-0 rounded-md border border-slate-300 bg-slate-50 px-2.5 py-1 text-[12px] text-slate-500 hover:bg-slate-100 hover:text-slate-600",
+                        className: "h-8 shrink-0 rounded-md border border-slate-300 bg-slate-50 px-3 text-[12px] text-slate-500 hover:bg-slate-100 hover:text-slate-600",
                         "aria-label": "위치정보 수집 및 이용 동의 보기",
                         children: "약관보기"
                     })]
                 }), u.jsxs("div", {
-                    className: "flex items-center gap-2",
+                    className: "flex items-center gap-3 py-1",
                     children: [u.jsxs("label", {
-                        className: "flex flex-1 items-center gap-2 cursor-pointer",
+                        className: "flex flex-1 items-center gap-3 cursor-pointer",
                         children: [u.jsx("input", {
                             type: "checkbox",
                             checked: h.agreedBiometric,
@@ -19858,14 +19858,14 @@ const jj = {
                     }), u.jsx("button", {
                         type: "button",
                         onClick: () => T("biometric"),
-                        className: "shrink-0 rounded-md border border-slate-300 bg-slate-50 px-2.5 py-1 text-[12px] text-slate-500 hover:bg-slate-100 hover:text-slate-600",
+                        className: "h-8 shrink-0 rounded-md border border-slate-300 bg-slate-50 px-3 text-[12px] text-slate-500 hover:bg-slate-100 hover:text-slate-600",
                         "aria-label": "생체데이터 수집 및 이용 동의 보기",
                         children: "약관보기"
                     })]
                 }), u.jsxs("div", {
-                    className: "flex items-center gap-2",
+                    className: "flex items-center gap-3 py-1",
                     children: [u.jsxs("label", {
-                        className: "flex flex-1 items-center gap-2 cursor-pointer",
+                        className: "flex flex-1 items-center gap-3 cursor-pointer",
                         children: [u.jsx("input", {
                             type: "checkbox",
                             checked: h.agreedThirdParty,
@@ -19878,14 +19878,14 @@ const jj = {
                     }), u.jsx("button", {
                         type: "button",
                         onClick: () => T("thirdParty"),
-                        className: "shrink-0 rounded-md border border-slate-300 bg-slate-50 px-2.5 py-1 text-[12px] text-slate-500 hover:bg-slate-100 hover:text-slate-600",
+                        className: "h-8 shrink-0 rounded-md border border-slate-300 bg-slate-50 px-3 text-[12px] text-slate-500 hover:bg-slate-100 hover:text-slate-600",
                         "aria-label": "제3자 정보 제공 동의 보기",
                         children: "약관보기"
                     })]
                 }), u.jsxs("div", {
-                    className: "flex items-center gap-2",
+                    className: "flex items-center gap-3 py-1",
                     children: [u.jsxs("label", {
-                        className: "flex flex-1 items-center gap-2 cursor-pointer",
+                        className: "flex flex-1 items-center gap-3 cursor-pointer",
                         children: [u.jsx("input", {
                             type: "checkbox",
                             checked: h.agreedWearable,
@@ -19898,7 +19898,7 @@ const jj = {
                     }), u.jsx("button", {
                         type: "button",
                         onClick: () => T("wearable"),
-                        className: "shrink-0 rounded-md border border-slate-300 bg-slate-50 px-2.5 py-1 text-[12px] text-slate-500 hover:bg-slate-100 hover:text-slate-600",
+                        className: "h-8 shrink-0 rounded-md border border-slate-300 bg-slate-50 px-3 text-[12px] text-slate-500 hover:bg-slate-100 hover:text-slate-600",
                         "aria-label": "웨어러블 기기 연동 서비스 이용약관 보기",
                         children: "약관보기"
                     })]
