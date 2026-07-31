@@ -19764,9 +19764,9 @@ const jj = {
                     }, fe))
                 })]
             }), d === 0 && u.jsxs("section", {
-                className: "rounded-lg border border-slate-200 bg-white p-4 space-y-2.5",
+                className: "rounded-lg border border-orange-100 bg-white p-4 space-y-3.5",
                 children: [u.jsxs("div", {
-                    className: "flex items-center gap-2 pb-2 border-b border-slate-100",
+                    className: "flex items-center gap-2 pb-2 border-b border-orange-100",
                     children: [u.jsxs("label", {
                         className: "flex flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
