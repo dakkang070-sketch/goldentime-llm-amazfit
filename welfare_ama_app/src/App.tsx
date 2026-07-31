@@ -2929,11 +2929,10 @@ export default function App() {
                       }))
                     }
                     className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-teal-600"
-                    style={{ color: '#0f172a', backgroundColor: '#ffffff' }}
                   >
-                    <option value="" style={{ color: '#0f172a', backgroundColor: '#ffffff' }}>시/도 선택</option>
+                    <option value="">시/도 선택</option>
                     {MEMBER_REGION_CATALOG.map((city) => (
-                      <option key={city.name} value={city.name} style={{ color: '#0f172a', backgroundColor: '#ffffff' }}>
+                      <option key={city.name} value={city.name}>
                         {city.name}
                       </option>
                     ))}
@@ -2952,11 +2951,10 @@ export default function App() {
                     }
                     disabled={!signupForm.city}
                     className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-teal-600 disabled:bg-slate-100 disabled:text-slate-400"
-                    style={{ color: '#0f172a', backgroundColor: '#ffffff' }}
                   >
-                    <option value="" style={{ color: '#0f172a', backgroundColor: '#ffffff' }}>시/군/구 선택</option>
+                    <option value="">시/군/구 선택</option>
                     {signupDistrictOptions.map((district) => (
-                      <option key={district.name} value={district.name} style={{ color: '#0f172a', backgroundColor: '#ffffff' }}>
+                      <option key={district.name} value={district.name}>
                         {district.name}
                       </option>
                     ))}
@@ -2969,11 +2967,10 @@ export default function App() {
                     onChange={(event) => setSignupForm((prev) => ({ ...prev, dong: event.target.value }))}
                     disabled={!signupForm.district}
                     className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-teal-600 disabled:bg-slate-100 disabled:text-slate-400"
-                    style={{ color: '#0f172a', backgroundColor: '#ffffff' }}
                   >
-                    <option value="" style={{ color: '#0f172a', backgroundColor: '#ffffff' }}>읍/면/동 선택</option>
+                    <option value="">읍/면/동 선택</option>
                     {signupAreaOptions.map((area) => (
-                      <option key={area} value={area} style={{ color: '#0f172a', backgroundColor: '#ffffff' }}>
+                      <option key={area} value={area}>
                         {area}
                       </option>
                     ))}
