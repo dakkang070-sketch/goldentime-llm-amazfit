@@ -19783,8 +19783,7 @@ const jj = {
                         })]
                     })]
                 }), u.jsxs("div", {
-                    className: "flex items-center justify-between gap-2",
-                    style: { minHeight: "42px", paddingTop: "10px" },
+                    className: "flex items-center gap-2 pt-1",
                     children: [u.jsxs("label", {
                         className: "flex min-w-0 flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
@@ -19799,14 +19798,12 @@ const jj = {
                     }), u.jsx("button", {
                         type: "button",
                         onClick: () => T("service"),
-                        className: "inline-flex h-7 shrink-0 items-center justify-center rounded border border-slate-300 bg-slate-50 px-2.5 text-[12px] leading-none text-slate-500 hover:bg-slate-100 hover:text-slate-600",
-                        style: { width: "68px" },
+                        className: "shrink-0 rounded border border-slate-200 px-2.5 py-1 text-[12px] text-slate-400 hover:bg-slate-50 hover:text-slate-600",
                         "aria-label": "서비스 이용약관 보기",
                         children: "약관보기"
                     })]
                 }), u.jsxs("div", {
-                    className: "flex items-center justify-between gap-2",
-                    style: { minHeight: "42px" },
+                    className: "flex items-center gap-2",
                     children: [u.jsxs("label", {
                         className: "flex min-w-0 flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
@@ -19821,14 +19818,12 @@ const jj = {
                     }), u.jsx("button", {
                         type: "button",
                         onClick: () => T("privacy"),
-                        className: "inline-flex h-7 shrink-0 items-center justify-center rounded border border-slate-300 bg-slate-50 px-2.5 text-[12px] leading-none text-slate-500 hover:bg-slate-100 hover:text-slate-600",
-                        style: { width: "68px" },
+                        className: "shrink-0 rounded border border-slate-200 px-2.5 py-1 text-[12px] text-slate-400 hover:bg-slate-50 hover:text-slate-600",
                         "aria-label": "개인정보 수집 및 이용 동의 보기",
                         children: "약관보기"
                     })]
                 }), u.jsxs("div", {
-                    className: "flex items-center justify-between gap-2",
-                    style: { minHeight: "42px" },
+                    className: "flex items-center gap-2",
                     children: [u.jsxs("label", {
                         className: "flex min-w-0 flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
@@ -19843,14 +19838,12 @@ const jj = {
                     }), u.jsx("button", {
                         type: "button",
                         onClick: () => T("location"),
-                        className: "inline-flex h-7 shrink-0 items-center justify-center rounded border border-slate-300 bg-slate-50 px-2.5 text-[12px] leading-none text-slate-500 hover:bg-slate-100 hover:text-slate-600",
-                        style: { width: "68px" },
+                        className: "shrink-0 rounded border border-slate-200 px-2.5 py-1 text-[12px] text-slate-400 hover:bg-slate-50 hover:text-slate-600",
                         "aria-label": "위치정보 수집 및 이용 동의 보기",
                         children: "약관보기"
                     })]
                 }), u.jsxs("div", {
-                    className: "flex items-center justify-between gap-2",
-                    style: { minHeight: "42px" },
+                    className: "flex items-center gap-2",
                     children: [u.jsxs("label", {
                         className: "flex min-w-0 flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
@@ -19865,14 +19858,12 @@ const jj = {
                     }), u.jsx("button", {
                         type: "button",
                         onClick: () => T("biometric"),
-                        className: "inline-flex h-7 shrink-0 items-center justify-center rounded border border-slate-300 bg-slate-50 px-2.5 text-[12px] leading-none text-slate-500 hover:bg-slate-100 hover:text-slate-600",
-                        style: { width: "68px" },
+                        className: "shrink-0 rounded border border-slate-200 px-2.5 py-1 text-[12px] text-slate-400 hover:bg-slate-50 hover:text-slate-600",
                         "aria-label": "생체데이터 수집 및 이용 동의 보기",
                         children: "약관보기"
                     })]
                 }), u.jsxs("div", {
-                    className: "flex items-center justify-between gap-2",
-                    style: { minHeight: "42px" },
+                    className: "flex items-center gap-2",
                     children: [u.jsxs("label", {
                         className: "flex min-w-0 flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
@@ -19887,14 +19878,12 @@ const jj = {
                     }), u.jsx("button", {
                         type: "button",
                         onClick: () => T("thirdParty"),
-                        className: "inline-flex h-7 shrink-0 items-center justify-center rounded border border-slate-300 bg-slate-50 px-2.5 text-[12px] leading-none text-slate-500 hover:bg-slate-100 hover:text-slate-600",
-                        style: { width: "68px" },
+                        className: "shrink-0 rounded border border-slate-200 px-2.5 py-1 text-[12px] text-slate-400 hover:bg-slate-50 hover:text-slate-600",
                         "aria-label": "제3자 정보 제공 동의 보기",
                         children: "약관보기"
                     })]
                 }), u.jsxs("div", {
-                    className: "flex items-center justify-between gap-2",
-                    style: { minHeight: "42px" },
+                    className: "flex items-center gap-2",
                     children: [u.jsxs("label", {
                         className: "flex min-w-0 flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
@@ -19909,8 +19898,7 @@ const jj = {
                     }), u.jsx("button", {
                         type: "button",
                         onClick: () => T("wearable"),
-                        className: "inline-flex h-7 shrink-0 items-center justify-center rounded border border-slate-300 bg-slate-50 px-2.5 text-[12px] leading-none text-slate-500 hover:bg-slate-100 hover:text-slate-600",
-                        style: { width: "68px" },
+                        className: "shrink-0 rounded border border-slate-200 px-2.5 py-1 text-[12px] text-slate-400 hover:bg-slate-50 hover:text-slate-600",
                         "aria-label": "웨어러블 기기 연동 서비스 이용약관 보기",
                         children: "약관보기"
                     })]
@@ -20472,26 +20460,23 @@ const jj = {
                             opacity: 0,
                             y: 20
                         },
-                        className: "fixed inset-x-0 bottom-0 z-50 max-h-[78vh] overflow-hidden rounded-t-[28px] border border-slate-200 bg-white px-5 pb-6 pt-5 shadow-[0_-10px_40px_rgba(15,23,42,0.16)]",
+                        className: "fixed inset-x-0 bottom-0 z-50 max-h-[78vh] overflow-hidden rounded-t-[28px] border border-orange-100 bg-white px-5 pb-6 pt-5 shadow-[0_-10px_40px_rgba(15,23,42,0.16)]",
                         children: [u.jsx("div", {
-                            className: "mx-auto mb-4 h-1.5 w-12 rounded-full bg-slate-200"
+                            className: "mx-auto mb-4 h-1.5 w-12 rounded-full bg-orange-100"
                         }), u.jsxs("div", {
-                            className: "flex items-start justify-between gap-3",
-                            children: [u.jsx("div", {
-                                className: "flex-1 rounded-lg border border-slate-200 bg-white px-4 py-4 shadow-sm",
-                                children: u.jsxs("div", {
-                                    children: [u.jsx("div", {
-                                        className: "text-[14px] font-bold tracking-[0.08em] text-slate-400",
-                                        children: "개인정보 및 약관"
-                                    }), u.jsx("div", {
-                                        className: "mt-2 text-lg font-semibold text-slate-900",
-                                        children: R0[Ne].title
-                                    })]
-                                })
+                            className: "flex items-center justify-between gap-3",
+                            children: [u.jsxs("div", {
+                                children: [u.jsx("div", {
+                                    className: "text-lg font-semibold text-slate-900",
+                                    children: R0[Ne].title
+                                }), u.jsx("div", {
+                                    className: "mt-1 text-xs text-slate-500",
+                                    children: "회원가입 전에 반드시 내용을 확인해주세요."
+                                })]
                             }), u.jsx("button", {
                                 type: "button",
                                 onClick: () => T(null),
-                                className: "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500",
+                                className: "inline-flex h-9 w-9 items-center justify-center rounded-full border border-orange-100 bg-orange-50 text-slate-500",
                                 "aria-label": "약관 닫기",
                                 children: u.jsx(vs, {
                                     size: 16
@@ -20499,61 +20484,19 @@ const jj = {
                             })]
                         }), u.jsxs("div", {
                             className: "mt-4 max-h-[58vh] space-y-4 overflow-y-auto pr-1",
-                            children: [u.jsxs("div", {
-                                className: "grid grid-cols-3 gap-2",
-                                children: [u.jsx("button", {
-                                    type: "button",
-                                    onClick: () => T("service"),
-                                    className: `inline-flex h-9 items-center justify-center rounded-lg border px-2 text-[12px] font-semibold shadow-sm transition ${Ne==="service"?"border-orange-200 bg-gradient-to-r from-orange-600 to-orange-500 text-white":"border-slate-200 bg-white text-slate-600"}`,
-                                    children: "서비스 이용약관"
-                                }), u.jsx("button", {
-                                    type: "button",
-                                    onClick: () => T("privacy"),
-                                    className: `inline-flex h-9 items-center justify-center rounded-lg border px-2 text-[12px] font-semibold shadow-sm transition ${Ne==="privacy"?"border-orange-200 bg-gradient-to-r from-orange-600 to-orange-500 text-white":"border-slate-200 bg-white text-slate-600"}`,
-                                    children: "개인정보"
-                                }), u.jsx("button", {
-                                    type: "button",
-                                    onClick: () => T("location"),
-                                    className: `inline-flex h-9 items-center justify-center rounded-lg border px-2 text-[12px] font-semibold shadow-sm transition ${Ne==="location"?"border-orange-200 bg-gradient-to-r from-orange-600 to-orange-500 text-white":"border-slate-200 bg-white text-slate-600"}`,
-                                    children: "위치정보"
-                                }), u.jsx("button", {
-                                    type: "button",
-                                    onClick: () => T("biometric"),
-                                    className: `inline-flex h-9 items-center justify-center rounded-lg border px-2 text-[12px] font-semibold shadow-sm transition ${Ne==="biometric"?"border-orange-200 bg-gradient-to-r from-orange-600 to-orange-500 text-white":"border-slate-200 bg-white text-slate-600"}`,
-                                    children: "생체데이터"
-                                }), u.jsx("button", {
-                                    type: "button",
-                                    onClick: () => T("thirdParty"),
-                                    className: `inline-flex h-9 items-center justify-center rounded-lg border px-2 text-[12px] font-semibold shadow-sm transition ${Ne==="thirdParty"?"border-orange-200 bg-gradient-to-r from-orange-600 to-orange-500 text-white":"border-slate-200 bg-white text-slate-600"}`,
-                                    children: "제3자 제공"
-                                }), u.jsx("button", {
-                                    type: "button",
-                                    onClick: () => T("wearable"),
-                                    className: `inline-flex h-9 items-center justify-center rounded-lg border px-2 text-[12px] font-semibold shadow-sm transition ${Ne==="wearable"?"border-orange-200 bg-gradient-to-r from-orange-600 to-orange-500 text-white":"border-slate-200 bg-white text-slate-600"}`,
-                                    children: "기기 연동"
-                                })]
-                            }), u.jsxs("div", {
-                                className: "rounded-lg border border-slate-200 bg-white px-4 py-4 shadow-sm",
+                            children: R0[Ne].sections.map(R => u.jsxs("div", {
+                                className: "rounded-lg border border-orange-100 bg-orange-50/30 px-4 py-4",
                                 children: [u.jsx("div", {
-                                    className: "text-[14px] font-bold tracking-[0.08em] text-slate-400",
-                                    children: R0[Ne].title
+                                    className: "text-sm font-semibold text-slate-900",
+                                    children: R.heading
                                 }), u.jsx("div", {
-                                    className: "mt-3.5 space-y-4",
-                                    children: R0[Ne].sections.map(R => u.jsxs("div", {
-                                        className: "rounded-lg border border-slate-200 bg-slate-50 px-4 py-4",
-                                        children: [u.jsx("div", {
-                                            className: "text-sm font-semibold text-slate-900",
-                                            children: R.heading
-                                        }), u.jsx("div", {
-                                            className: "mt-2 space-y-2",
-                                            children: R.body.map(fe => u.jsx("p", {
-                                                className: "text-sm leading-6 text-slate-600",
-                                                children: fe
-                                            }, fe))
-                                        })]
-                                    }, R.heading))
+                                    className: "mt-2 space-y-2",
+                                    children: R.body.map(fe => u.jsx("p", {
+                                        className: "text-sm leading-6 text-slate-600",
+                                        children: fe
+                                    }, fe))
                                 })]
-                            })]
+                            }, R.heading))
                         })]
                     })]
                 })
