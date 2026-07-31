@@ -19668,7 +19668,7 @@ const jj = {
                     type: "button",
                     onClick: () => he(R),
                     disabled: Bi(R),
-                    className: "relative flex w-full items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-left disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400",
+                    className: "relative flex w-full items-center gap-3 rounded-lg border border-orange-100 bg-white px-4 py-3 text-left disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400",
                     children: [Je === "map" && u.jsx(cg, {
                         size: 16,
                         className: "shrink-0 text-orange-500"
