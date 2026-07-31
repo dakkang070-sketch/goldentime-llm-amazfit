@@ -19766,7 +19766,8 @@ const jj = {
             }), d === 0 && u.jsxs("section", {
                 className: "rounded-lg border border-slate-300 bg-white p-4 space-y-2.5",
                 children: [u.jsxs("div", {
-                    className: "flex items-center gap-2 pb-2 border-b border-slate-200",
+                    className: "flex items-center gap-2 pb-2",
+                    style: { borderBottom: "1px solid #e2e8f0" },
                     children: [u.jsxs("label", {
                         className: "flex flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
