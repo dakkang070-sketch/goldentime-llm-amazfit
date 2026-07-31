@@ -19784,7 +19784,7 @@ const jj = {
                     })]
                 }), u.jsxs("div", {
                     className: "flex items-center justify-between gap-2",
-                    style: { minHeight: "40px", paddingTop: "8px" },
+                    style: { minHeight: "42px", paddingTop: "10px" },
                     children: [u.jsxs("label", {
                         className: "flex min-w-0 flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
@@ -19800,12 +19800,13 @@ const jj = {
                         type: "button",
                         onClick: () => T("service"),
                         className: "inline-flex h-7 shrink-0 items-center justify-center rounded border border-slate-300 bg-slate-50 px-2.5 text-[12px] leading-none text-slate-500 hover:bg-slate-100 hover:text-slate-600",
+                        style: { width: "68px" },
                         "aria-label": "서비스 이용약관 보기",
                         children: "약관보기"
                     })]
                 }), u.jsxs("div", {
                     className: "flex items-center justify-between gap-2",
-                    style: { minHeight: "40px" },
+                    style: { minHeight: "42px" },
                     children: [u.jsxs("label", {
                         className: "flex min-w-0 flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
@@ -19821,12 +19822,13 @@ const jj = {
                         type: "button",
                         onClick: () => T("privacy"),
                         className: "inline-flex h-7 shrink-0 items-center justify-center rounded border border-slate-300 bg-slate-50 px-2.5 text-[12px] leading-none text-slate-500 hover:bg-slate-100 hover:text-slate-600",
+                        style: { width: "68px" },
                         "aria-label": "개인정보 수집 및 이용 동의 보기",
                         children: "약관보기"
                     })]
                 }), u.jsxs("div", {
                     className: "flex items-center justify-between gap-2",
-                    style: { minHeight: "40px" },
+                    style: { minHeight: "42px" },
                     children: [u.jsxs("label", {
                         className: "flex min-w-0 flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
@@ -19842,12 +19844,13 @@ const jj = {
                         type: "button",
                         onClick: () => T("location"),
                         className: "inline-flex h-7 shrink-0 items-center justify-center rounded border border-slate-300 bg-slate-50 px-2.5 text-[12px] leading-none text-slate-500 hover:bg-slate-100 hover:text-slate-600",
+                        style: { width: "68px" },
                         "aria-label": "위치정보 수집 및 이용 동의 보기",
                         children: "약관보기"
                     })]
                 }), u.jsxs("div", {
                     className: "flex items-center justify-between gap-2",
-                    style: { minHeight: "40px" },
+                    style: { minHeight: "42px" },
                     children: [u.jsxs("label", {
                         className: "flex min-w-0 flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
@@ -19863,12 +19866,13 @@ const jj = {
                         type: "button",
                         onClick: () => T("biometric"),
                         className: "inline-flex h-7 shrink-0 items-center justify-center rounded border border-slate-300 bg-slate-50 px-2.5 text-[12px] leading-none text-slate-500 hover:bg-slate-100 hover:text-slate-600",
+                        style: { width: "68px" },
                         "aria-label": "생체데이터 수집 및 이용 동의 보기",
                         children: "약관보기"
                     })]
                 }), u.jsxs("div", {
                     className: "flex items-center justify-between gap-2",
-                    style: { minHeight: "40px" },
+                    style: { minHeight: "42px" },
                     children: [u.jsxs("label", {
                         className: "flex min-w-0 flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
@@ -19884,12 +19888,13 @@ const jj = {
                         type: "button",
                         onClick: () => T("thirdParty"),
                         className: "inline-flex h-7 shrink-0 items-center justify-center rounded border border-slate-300 bg-slate-50 px-2.5 text-[12px] leading-none text-slate-500 hover:bg-slate-100 hover:text-slate-600",
+                        style: { width: "68px" },
                         "aria-label": "제3자 정보 제공 동의 보기",
                         children: "약관보기"
                     })]
                 }), u.jsxs("div", {
                     className: "flex items-center justify-between gap-2",
-                    style: { minHeight: "40px" },
+                    style: { minHeight: "42px" },
                     children: [u.jsxs("label", {
                         className: "flex min-w-0 flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
@@ -19905,6 +19910,7 @@ const jj = {
                         type: "button",
                         onClick: () => T("wearable"),
                         className: "inline-flex h-7 shrink-0 items-center justify-center rounded border border-slate-300 bg-slate-50 px-2.5 text-[12px] leading-none text-slate-500 hover:bg-slate-100 hover:text-slate-600",
+                        style: { width: "68px" },
                         "aria-label": "웨어러블 기기 연동 서비스 이용약관 보기",
                         children: "약관보기"
                     })]
