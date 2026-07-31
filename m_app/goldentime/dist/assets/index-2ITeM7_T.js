@@ -20115,9 +20115,9 @@ const jj = {
                     })]
                 })]
             }), d === 2 && u.jsxs("section", {
-                className: "space-y-4 rounded-lg border-2 border-orange-200 bg-orange-50/40 p-5 shadow-sm",
+                className: "space-y-4 rounded-lg border border-orange-100 bg-white p-5 shadow-sm",
                 children: [u.jsxs("div", {
-                    className: "flex items-center gap-2 text-sm font-semibold text-orange-700",
+                    className: "flex items-center gap-2 text-sm font-semibold text-slate-900",
                     children: [u.jsx(cg, {
                         size: 16
                     }), "지역 소속"]
@@ -20125,7 +20125,7 @@ const jj = {
                     className: "text-xs text-slate-500",
                     children: "실제 등록된 담당 복지사 기준으로 소속(지역)을 선택해 주세요. 이 단계 항목은 모두 필수입니다."
                 }), P && u.jsx("div", {
-                    className: "rounded-lg border border-orange-100 bg-orange-50 px-4 py-3 text-sm text-slate-600",
+                    className: "rounded-lg border border-orange-100 bg-orange-50/40 px-4 py-3 text-sm text-slate-600",
                     children: "소속 정보를 불러오는 중입니다."
                 }), !P && U.length === 0 && u.jsx("div", {
                     className: "rounded-lg border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-600",
