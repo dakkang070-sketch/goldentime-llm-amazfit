@@ -19784,7 +19784,7 @@ const jj = {
                     })]
                 }), u.jsxs("div", {
                     className: "flex items-center justify-between gap-2",
-                    style: { minHeight: "38px", paddingTop: "6px" },
+                    style: { minHeight: "40px", paddingTop: "8px" },
                     children: [u.jsxs("label", {
                         className: "flex min-w-0 flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
@@ -19805,7 +19805,7 @@ const jj = {
                     })]
                 }), u.jsxs("div", {
                     className: "flex items-center justify-between gap-2",
-                    style: { minHeight: "38px" },
+                    style: { minHeight: "40px" },
                     children: [u.jsxs("label", {
                         className: "flex min-w-0 flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
@@ -19826,7 +19826,7 @@ const jj = {
                     })]
                 }), u.jsxs("div", {
                     className: "flex items-center justify-between gap-2",
-                    style: { minHeight: "38px" },
+                    style: { minHeight: "40px" },
                     children: [u.jsxs("label", {
                         className: "flex min-w-0 flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
@@ -19847,7 +19847,7 @@ const jj = {
                     })]
                 }), u.jsxs("div", {
                     className: "flex items-center justify-between gap-2",
-                    style: { minHeight: "38px" },
+                    style: { minHeight: "40px" },
                     children: [u.jsxs("label", {
                         className: "flex min-w-0 flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
@@ -19868,7 +19868,7 @@ const jj = {
                     })]
                 }), u.jsxs("div", {
                     className: "flex items-center justify-between gap-2",
-                    style: { minHeight: "38px" },
+                    style: { minHeight: "40px" },
                     children: [u.jsxs("label", {
                         className: "flex min-w-0 flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
@@ -19889,7 +19889,7 @@ const jj = {
                     })]
                 }), u.jsxs("div", {
                     className: "flex items-center justify-between gap-2",
-                    style: { minHeight: "38px" },
+                    style: { minHeight: "40px" },
                     children: [u.jsxs("label", {
                         className: "flex min-w-0 flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
