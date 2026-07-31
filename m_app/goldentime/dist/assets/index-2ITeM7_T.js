@@ -19775,7 +19775,7 @@ const jj = {
                             onChange: R => {
                                 Ve("agreedService", R.target.checked), Ve("agreedPrivacy", R.target.checked), Ve("agreedLocation", R.target.checked), Ve("agreedBiometric", R.target.checked), Ve("agreedThirdParty", R.target.checked), Ve("agreedWearable", R.target.checked)
                             },
-                            className: "peer sr-only"
+                            className: "peer sr-only appearance-none"
                         }), u.jsx("span", {
                             className: "flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 border-slate-300 peer-checked:border-orange-500 peer-checked:bg-orange-500 transition-colors",
                             children: u.jsx("svg", {
@@ -19801,7 +19801,7 @@ const jj = {
                             type: "checkbox",
                             checked: h.agreedService,
                             onChange: R => Ve("agreedService", R.target.checked),
-                            className: "peer sr-only"
+                            className: "peer sr-only appearance-none"
                         }), u.jsx("span", {
                             className: "flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 border-slate-300 peer-checked:border-orange-500 peer-checked:bg-orange-500 transition-colors",
                             children: u.jsx("svg", {
@@ -19833,7 +19833,7 @@ const jj = {
                             type: "checkbox",
                             checked: h.agreedPrivacy,
                             onChange: R => Ve("agreedPrivacy", R.target.checked),
-                            className: "peer sr-only"
+                            className: "peer sr-only appearance-none"
                         }), u.jsx("span", {
                             className: "flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 border-slate-300 peer-checked:border-orange-500 peer-checked:bg-orange-500 transition-colors",
                             children: u.jsx("svg", {
@@ -19865,7 +19865,7 @@ const jj = {
                             type: "checkbox",
                             checked: h.agreedLocation,
                             onChange: R => Ve("agreedLocation", R.target.checked),
-                            className: "peer sr-only"
+                            className: "peer sr-only appearance-none"
                         }), u.jsx("span", {
                             className: "flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 border-slate-300 peer-checked:border-orange-500 peer-checked:bg-orange-500 transition-colors",
                             children: u.jsx("svg", {
@@ -19897,7 +19897,7 @@ const jj = {
                             type: "checkbox",
                             checked: h.agreedBiometric,
                             onChange: R => Ve("agreedBiometric", R.target.checked),
-                            className: "peer sr-only"
+                            className: "peer sr-only appearance-none"
                         }), u.jsx("span", {
                             className: "flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 border-slate-300 peer-checked:border-orange-500 peer-checked:bg-orange-500 transition-colors",
                             children: u.jsx("svg", {
@@ -19929,7 +19929,7 @@ const jj = {
                             type: "checkbox",
                             checked: h.agreedThirdParty,
                             onChange: R => Ve("agreedThirdParty", R.target.checked),
-                            className: "peer sr-only"
+                            className: "peer sr-only appearance-none"
                         }), u.jsx("span", {
                             className: "flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 border-slate-300 peer-checked:border-orange-500 peer-checked:bg-orange-500 transition-colors",
                             children: u.jsx("svg", {
@@ -19961,7 +19961,7 @@ const jj = {
                             type: "checkbox",
                             checked: h.agreedWearable,
                             onChange: R => Ve("agreedWearable", R.target.checked),
-                            className: "peer sr-only"
+                            className: "peer sr-only appearance-none"
                         }), u.jsx("span", {
                             className: "flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 border-slate-300 peer-checked:border-orange-500 peer-checked:bg-orange-500 transition-colors",
                             children: u.jsx("svg", {
