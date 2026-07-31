@@ -19776,7 +19776,7 @@ const jj = {
                             onChange: R => {
                                 Ve("agreedService", R.target.checked), Ve("agreedPrivacy", R.target.checked), Ve("agreedLocation", R.target.checked), Ve("agreedBiometric", R.target.checked), Ve("agreedThirdParty", R.target.checked), Ve("agreedWearable", R.target.checked)
                             },
-                            className: "h-4 w-4 rounded border border-slate-300 accent-slate-500"
+                            className: "h-4 w-4 rounded border border-slate-300 accent-orange-500"
                         }), u.jsx("span", {
                             className: "text-[13px] font-semibold text-slate-900",
                             children: "필수 약관 모두 동의"
@@ -19791,7 +19791,7 @@ const jj = {
                             type: "checkbox",
                             checked: h.agreedService,
                             onChange: R => Ve("agreedService", R.target.checked),
-                            className: "h-4 w-4 rounded border border-slate-300 accent-slate-500"
+                            className: "h-4 w-4 rounded border border-slate-300 accent-orange-500"
                         }), u.jsx("span", {
                             className: "text-[13px] text-slate-700",
                             children: "서비스 이용약관 동의 (필수)"
@@ -19812,7 +19812,7 @@ const jj = {
                             type: "checkbox",
                             checked: h.agreedPrivacy,
                             onChange: R => Ve("agreedPrivacy", R.target.checked),
-                            className: "h-4 w-4 rounded border border-slate-300 accent-slate-500"
+                            className: "h-4 w-4 rounded border border-slate-300 accent-orange-500"
                         }), u.jsx("span", {
                             className: "text-[13px] text-slate-700",
                             children: "개인정보 수집/이용 동의 (필수)"
@@ -19833,7 +19833,7 @@ const jj = {
                             type: "checkbox",
                             checked: h.agreedLocation,
                             onChange: R => Ve("agreedLocation", R.target.checked),
-                            className: "h-4 w-4 rounded border border-slate-300 accent-slate-500"
+                            className: "h-4 w-4 rounded border border-slate-300 accent-orange-500"
                         }), u.jsx("span", {
                             className: "text-[13px] text-slate-700",
                             children: "위치정보 수집 및 이용 동의 (필수)"
@@ -19854,7 +19854,7 @@ const jj = {
                             type: "checkbox",
                             checked: h.agreedBiometric,
                             onChange: R => Ve("agreedBiometric", R.target.checked),
-                            className: "h-4 w-4 rounded border border-slate-300 accent-slate-500"
+                            className: "h-4 w-4 rounded border border-slate-300 accent-orange-500"
                         }), u.jsx("span", {
                             className: "text-[13px] text-slate-700",
                             children: "생체데이터 수집 및 이용 동의 (필수)"
@@ -19875,7 +19875,7 @@ const jj = {
                             type: "checkbox",
                             checked: h.agreedThirdParty,
                             onChange: R => Ve("agreedThirdParty", R.target.checked),
-                            className: "h-4 w-4 rounded border border-slate-300 accent-slate-500"
+                            className: "h-4 w-4 rounded border border-slate-300 accent-orange-500"
                         }), u.jsx("span", {
                             className: "text-[13px] text-slate-700",
                             children: "제3자 정보 제공 동의 (필수)"
@@ -19896,7 +19896,7 @@ const jj = {
                             type: "checkbox",
                             checked: h.agreedWearable,
                             onChange: R => Ve("agreedWearable", R.target.checked),
-                            className: "h-4 w-4 rounded border border-slate-300 accent-slate-500"
+                            className: "h-4 w-4 rounded border border-slate-300 accent-orange-500"
                         }), u.jsx("span", {
                             className: "text-[13px] text-slate-700",
                             children: "웨어러블 기기 연동 서비스 이용약관 (필수)"
