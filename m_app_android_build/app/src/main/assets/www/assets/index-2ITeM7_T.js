@@ -20628,7 +20628,10 @@ const jj = {
                                 }), u.jsx("button", {
                                     type: "button",
                                     onClick: () => T(null),
-                                    className: "flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600",
+                                    className: "flex h-8 w-8 items-center justify-center rounded-full text-orange-300 hover:bg-orange-50 hover:text-orange-500",
+                                    style: {
+                                        color: "#f97316"
+                                    },
                                     "aria-label": "약관 닫기",
                                     children: u.jsx(vs, {
                                         size: 18
@@ -20638,7 +20641,7 @@ const jj = {
                                 className: "space-y-4",
                                 children: R0[Ne].sections.map(R => u.jsxs("div", {
                                     children: [u.jsxs("div", {
-                                        className: "mb-1 text-[13px] font-bold text-slate-500",
+                                        className: "mb-1 text-[13px] font-bold text-orange-500",
                                         children: ["[", R.heading, "]"]
                                     }), R.body.map(fe => u.jsx("p", {
                                         className: "text-[14px] leading-6 text-slate-700",
