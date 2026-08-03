@@ -2163,6 +2163,40 @@ export default function App() {
 
   const topLocationLabel = buildAffiliationLabel(currentWelfare?.affiliation);
   const topNameLabel = currentWelfare?.name || '홍길동';
+  const welfareTermsModalElement = welfareTermsModal ? (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4" onClick={() => setWelfareTermsModal(null)}>
+      <div
+        className="relative max-h-[80vh] w-full max-w-[480px] overflow-auto rounded-2xl bg-white p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-[16px] font-bold text-slate-900">{POLICY_CONTENT[welfareTermsModal]?.title}</h3>
+          <button
+            type="button"
+            onClick={() => setWelfareTermsModal(null)}
+            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <div className="space-y-4">
+          {(POLICY_CONTENT[welfareTermsModal]?.sections || []).map((section) => (
+            <div key={section.label}>
+              <div className="mb-1 text-[13px] font-bold text-slate-500">[{section.label}]</div>
+              <div className="text-[14px] leading-6 text-slate-700">{section.content}</div>
+            </div>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => setWelfareTermsModal(null)}
+          className="mt-6 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-teal-700 text-[14px] font-semibold text-white shadow-sm transition hover:bg-teal-800 active:scale-[0.98]"
+        >
+          확인
+        </button>
+      </div>
+    </div>
+  ) : null;
   useEffect(() => {
     setProfileForm({
       email: currentWelfare?.email || '',
@@ -2527,6 +2561,7 @@ export default function App() {
   if (!session?.token) {
     return (
       <div className="mx-auto flex min-h-screen max-w-lg flex-col bg-slate-50 px-5 py-8">
+        {welfareTermsModalElement}
         <div className="rounded-lg bg-white p-6 shadow-sm">
           <div className="flex items-center justify-center gap-3">
             <div className="rounded-lg bg-teal-50 p-2 text-teal-600">
@@ -3285,42 +3320,7 @@ export default function App() {
         onClose={() => setSearchOpen(false)}
       />
       <MapOverlay member={mapOpen ? selectedMember : null} onClose={() => setMapOpen(false)} />
-
-      {/* 복지사 약관 보기 모달 */}
-      {welfareTermsModal ? (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4" onClick={() => setWelfareTermsModal(null)}>
-          <div
-            className="relative max-h-[80vh] w-full max-w-[480px] overflow-auto rounded-2xl bg-white p-6 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-[16px] font-bold text-slate-900">{POLICY_CONTENT[welfareTermsModal]?.title}</h3>
-              <button
-                type="button"
-                onClick={() => setWelfareTermsModal(null)}
-                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="space-y-4">
-              {(POLICY_CONTENT[welfareTermsModal]?.sections || []).map((section) => (
-                <div key={section.label}>
-                  <div className="mb-1 text-[13px] font-bold text-slate-500">[{section.label}]</div>
-                  <div className="text-[14px] leading-6 text-slate-700">{section.content}</div>
-                </div>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={() => setWelfareTermsModal(null)}
-              className="mt-6 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-teal-700 text-[14px] font-semibold text-white shadow-sm transition hover:bg-teal-800 active:scale-[0.98]"
-            >
-              확인
-            </button>
-          </div>
-        </div>
-      ) : null}
+      {welfareTermsModalElement}
 
       <main className="pb-10 pt-5">
         {loading ? (
