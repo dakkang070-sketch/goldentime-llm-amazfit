@@ -274,8 +274,12 @@ function applyApprovedMemberProfileChange(user, rawPendingProfileChange = {}) {
     pendingProfileChange.emergencyContact.relationship
       ? pendingProfileChange.emergencyContact
       : undefined;
+  const currentEmergencySettings = user.emergencySettings && typeof user.emergencySettings.toObject === 'function'
+    ? user.emergencySettings.toObject()
+    : (user.emergencySettings || {});
   user.emergencySettings = {
-    ...(user.emergencySettings || {}),
+    ...currentEmergencySettings,
+    guardianAccess: currentEmergencySettings.guardianAccess || {},
     emergencyContacts: pendingProfileChange.emergencyContacts,
   };
 }

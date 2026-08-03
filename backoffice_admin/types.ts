@@ -388,6 +388,7 @@ export interface SystemStats {
  * 관리자 앱 사이드바에서 전환 가능한 페이지 식별자 enum입니다.
  */
 export enum Page {
+  APPROVALS = 'approvals',
   CONTROLLERS = 'controllers',
   WELFARE = 'welfare',
   MEMBERS = 'members',

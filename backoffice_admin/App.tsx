@@ -4,6 +4,7 @@ import { AdminManagement } from './pages/AdminManagement';
 import { ControllerManagement } from './pages/ControllerManagement';
 import { Guardians } from './pages/Guardians';
 import { Members } from './pages/Members';
+import { Approvals } from './pages/Approvals';
 import { History } from './pages/History';
 import { Settings } from './pages/Settings';
 import { WelfareManagement } from './pages/WelfareManagement';
@@ -123,6 +124,8 @@ const App: React.FC = () => {
    */
   const renderContent = () => {
     switch (currentPage) {
+      case Page.APPROVALS:
+        return <Approvals />;
       case Page.ADMINS:
         return <AdminManagement />;
       case Page.CONTROLLERS:

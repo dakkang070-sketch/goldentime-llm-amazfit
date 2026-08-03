@@ -230,6 +230,7 @@ describe('회원 정보수정 승인 관리 테스트', () => {
     expect(user.phone).toBe('01077776666');
     expect(user.affiliation.city).toBe('광주광역시');
     expect(user.emergencySettings.emergencyContacts[0].phone).toBe('01055554444');
+    expect(user.emergencySettings.guardianAccess).toEqual({});
     expect(user.pendingProfileChange).toBeUndefined();
     expect(user.save).toHaveBeenCalled();
   });
