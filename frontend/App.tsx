@@ -69,8 +69,10 @@ import {
   UserMinus,
   Volume2,
   VolumeX,
+  LogOut,
 } from "lucide-react";
 import CrimeList from "./components/CrimeList";
+import { buildApiUrl } from "./services/runtimeConfig";
 import {
   SHOWCASE_EMERGENCY_CASE_GUIDES,
   applyShowcaseEmergencyCase,
@@ -1364,6 +1366,19 @@ type ControlBrowserLocation = {
   updatedAt: string;
 };
 
+type ControllerSession = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  phone?: string;
+  affiliation?: {
+    city?: string;
+    district?: string;
+    dong?: string;
+  };
+};
+
 /**
  * 서버 위치가 IP fallback뿐일 때 관제 브라우저 위치로 화면 좌표를 보정합니다.
  */
@@ -1382,6 +1397,13 @@ function applyControlBrowserLocationOverride(
  * `App` 컴포넌트를 렌더링합니다.
  */
 const App: React.FC = () => {
+  const [authReady, setAuthReady] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState("");
+  const [controllerSession, setControllerSession] = useState<ControllerSession | null>(null);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [simPatients, setSimPatients] = useState<Patient[]>([]);
   const [hospitals, setHospitals] = useState<Hospital[]>(() => INITIAL_HOSPITALS.filter(h => h.location.includes("서울")));
@@ -1573,6 +1595,115 @@ const App: React.FC = () => {
     window.location.port === "7001" ||
     window.location.hostname === "z-cri.goldentime.sbs" ||
     window.location.hostname === "crime.goldentime.sbs";
+  const controlCenterLabel = useMemo(() => {
+    if (isCrimeMode) {
+      return {
+        name: "서울 중앙범죄관제센터",
+        code: "CC-01",
+      };
+    }
+
+    const city = controllerSession?.affiliation?.city || "";
+    const district = controllerSession?.affiliation?.district || "";
+    const label = [city, district].filter(Boolean).join(" ");
+    return {
+      name: label || "응급 관제센터",
+      code: controllerSession?.role === "admin" ? "ADM" : "CTR",
+    };
+  }, [controllerSession, isCrimeMode]);
+
+  /**
+   * 저장된 토큰으로 현재 관제사 세션을 복구합니다.
+   */
+  const restoreControllerSession = useCallback(async () => {
+    const token = window.localStorage.getItem("token") || "";
+    if (!token) {
+      setControllerSession(null);
+      setIsAuthenticated(false);
+      setAuthReady(true);
+      return;
+    }
+
+    try {
+      const response = await fetch(buildApiUrl("/api/controllers/me"), {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const json = await response.json().catch(() => null);
+      if (!response.ok || !json?.success || !json?.data) {
+        window.localStorage.removeItem("token");
+        setControllerSession(null);
+        setIsAuthenticated(false);
+        setAuthReady(true);
+        return;
+      }
+
+      setControllerSession(json.data);
+      setIsAuthenticated(true);
+      setLoginError("");
+      setAuthReady(true);
+    } catch {
+      window.localStorage.removeItem("token");
+      setControllerSession(null);
+      setIsAuthenticated(false);
+      setAuthReady(true);
+    }
+  }, []);
+
+  /**
+   * 관제사 로그인 요청을 수행하고 성공 시 세션을 저장합니다.
+   */
+  const handleControllerLogin = useCallback(async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!loginEmail || !loginPassword) {
+      setLoginError("이메일과 비밀번호를 입력해주세요.");
+      return;
+    }
+
+    setLoginLoading(true);
+    setLoginError("");
+    try {
+      const response = await fetch(buildApiUrl("/api/controllers/login"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: loginEmail,
+          password: loginPassword,
+        }),
+      });
+      const json = await response.json().catch(() => null);
+      if (!response.ok || !json?.success || !json?.token) {
+        setLoginError(json?.message || "로그인에 실패했습니다.");
+        return;
+      }
+
+      window.localStorage.setItem("token", json.token);
+      setControllerSession(json.controller || null);
+      setIsAuthenticated(true);
+      setLoginPassword("");
+      setLoginError("");
+      await restoreControllerSession();
+    } catch {
+      setLoginError("로그인 중 오류가 발생했습니다.");
+    } finally {
+      setLoginLoading(false);
+    }
+  }, [loginEmail, loginPassword, restoreControllerSession]);
+
+  /**
+   * 관제사 세션을 종료하고 로그인 화면으로 돌아갑니다.
+   */
+  const handleControllerLogout = useCallback(() => {
+    socketService.disconnect();
+    window.localStorage.removeItem("token");
+    setControllerSession(null);
+    setIsAuthenticated(false);
+    setPatients([]);
+    setSelectedPatient(null);
+  }, []);
 
   /**
    * 관제 브라우저에서 직접 위치를 받아 IP fallback 화면 좌표를 즉시 보정합니다.
@@ -1975,11 +2106,22 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    restoreControllerSession();
+  }, [restoreControllerSession]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, isAuthenticated]);
 
   // 관제 소켓으로 들어오는 최신 생체값을 현재 환자 목록에 즉시 덮어씌웁니다.
   useEffect(() => {
+    if (!isAuthenticated) {
+      socketService.disconnect();
+      return undefined;
+    }
     const token = localStorage.getItem("token") || "";
     if (!token) {
       socketService.disconnect();
@@ -2180,9 +2322,12 @@ const App: React.FC = () => {
       socket.off("biometric_data_updated", onBiometric);
       socketService.disconnect();
     };
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      return undefined;
+    }
     const interval = window.setInterval(() => {
       // 숨김 탭에서는 소켓 최신값이 유지되므로 무거운 전체 동기화 폴링은 잠시 멈춥니다.
       if (typeof document !== "undefined" && document.hidden) {
@@ -2192,7 +2337,7 @@ const App: React.FC = () => {
     }, 1500);
 
     return () => window.clearInterval(interval);
-  }, [fetchData]);
+  }, [fetchData, isAuthenticated]);
 
   // 시뮬레이션 로직 제거됨 (실제 데이터 연동)
   /*
@@ -5281,6 +5426,67 @@ const App: React.FC = () => {
     </div>
   );
 
+  if (!authReady) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#020202] text-slate-100">
+        <div className="text-center">
+          <div className="text-sm tracking-[0.3em] text-zinc-400">관제사이트 확인 중</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#020202] px-6 text-slate-100">
+        <form
+          onSubmit={handleControllerLogin}
+          className="w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-950/90 p-8 shadow-2xl"
+        >
+          <div className="mb-8">
+            <div className="text-[12px] uppercase tracking-[0.35em] text-zinc-500">
+              응급 관제사이트
+            </div>
+            <h1 className="mt-3 text-2xl font-semibold text-white">관제 로그인</h1>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <label className="mb-2 block text-sm text-zinc-300">이메일</label>
+              <input
+                value={loginEmail}
+                onChange={(event) => setLoginEmail(event.target.value)}
+                className="h-12 w-full rounded-2xl border border-zinc-700 bg-zinc-900 px-4 text-white outline-none focus:border-red-500"
+                autoComplete="username"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm text-zinc-300">비밀번호</label>
+              <input
+                type="password"
+                value={loginPassword}
+                onChange={(event) => setLoginPassword(event.target.value)}
+                className="h-12 w-full rounded-2xl border border-zinc-700 bg-zinc-900 px-4 text-white outline-none focus:border-red-500"
+                autoComplete="current-password"
+              />
+            </div>
+          </div>
+          {loginError ? (
+            <div className="mt-4 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+              {loginError}
+            </div>
+          ) : null}
+          <button
+            type="submit"
+            disabled={loginLoading}
+            className="mt-6 flex h-12 w-full items-center justify-center rounded-2xl bg-red-600 text-sm font-medium text-white transition hover:bg-red-500 disabled:opacity-60"
+          >
+            {loginLoading ? "로그인 중..." : "로그인"}
+          </button>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-[#020202] text-slate-100 font-sans">
       <style>{`
@@ -5353,10 +5559,10 @@ const App: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <Building2 className="w-3.5 h-3.5 text-blue-500" />
                   <span className="text-[13px] font-normal text-zinc-200">
-                    {isCrimeMode ? "서울 중앙범죄관제센터" : "강남 제1관제센터"}
+                    {controlCenterLabel.name}
                   </span>
                   <span className="text-[10px] font-normal bg-zinc-800 text-zinc-400 px-1 rounded">
-                    {isCrimeMode ? "CC-01" : "GN-01"}
+                    {controlCenterLabel.code}
                   </span>
                 </div>
               </div>
@@ -5367,10 +5573,10 @@ const App: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <UserCheck className="w-3.5 h-3.5 text-green-500" />
                   <span className="text-[13px] font-normal text-zinc-200">
-                    박지성 사원
+                    {controllerSession?.name || "관제사"}
                   </span>
                   <span className="text-[10px] font-normal bg-zinc-800 text-zinc-400 px-1 rounded">
-                    OP-77
+                    {controllerSession?.role === "admin" ? "ADMIN" : "CONTROL"}
                   </span>
                 </div>
               </div>
@@ -5378,6 +5584,14 @@ const App: React.FC = () => {
           </div>
           <div className="flex items-center gap-6 overflow-hidden">
             <div className="flex items-center gap-4 shrink-0 border-l border-zinc-800 pl-6">
+              <button
+                type="button"
+                onClick={handleControllerLogout}
+                className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-[12px] text-zinc-300 transition hover:border-zinc-700 hover:text-white"
+              >
+                <LogOut className="h-4 w-4" />
+                로그아웃
+              </button>
               <div
                 className={`flex px-3 py-1.5 rounded-lg border items-center gap-2.5 transition-all ${isAiMatchingEnabled ? "bg-purple-600/10 border-purple-500/20 shadow-[0_0_10px_rgba(147,51,234,0.1)]" : "bg-zinc-900/50 border-zinc-800"}`}
               >

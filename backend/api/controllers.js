@@ -524,6 +524,102 @@ function hasPendingAffiliationChange(rawPendingAffiliationChange = {}) {
 }
 
 /**
+ * 관제사 소속 값이 전체 범위를 의미하는지 확인합니다.
+ */
+function isWildcardAffiliationValue(value) {
+  const normalized = String(value || '').trim();
+  return !normalized || normalized === '전체';
+}
+
+/**
+ * 관제사 소속 범위와 회원 소속이 일치하는지 확인합니다.
+ */
+function matchesControllerAffiliation(controllerAffiliation = {}, userAffiliation = {}) {
+  const controllerRegion = normalizeAffiliationInput(controllerAffiliation);
+  const userRegion = normalizeAffiliationInput(userAffiliation);
+
+  if (!isWildcardAffiliationValue(controllerRegion.city) && controllerRegion.city !== userRegion.city) {
+    return false;
+  }
+  if (!isWildcardAffiliationValue(controllerRegion.district) && controllerRegion.district !== userRegion.district) {
+    return false;
+  }
+  if (!isWildcardAffiliationValue(controllerRegion.dong) && controllerRegion.dong !== userRegion.dong) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * 현재 로그인한 관제사 문서를 조회합니다.
+ */
+async function getCurrentController(req) {
+  const controllerId = req.user?.sub || req.user?.userId;
+  if (!controllerId) {
+    return null;
+  }
+
+  return Controller.findById(controllerId)
+    .select('name email phone role affiliation accountStatus menuPermissions pendingAffiliationChange assignedUsers')
+    .lean();
+}
+
+/**
+ * 현재 관제사가 접근 가능한 회원 범위를 assignedUsers 또는 소속 기준으로 계산합니다.
+ */
+function buildControllerScopedUserQuery(controller = {}) {
+  const baseQuery = {
+    isEmergencyAppUser: true,
+    accountStatus: 'active',
+  };
+  const assignedUserIds = Array.isArray(controller.assignedUsers)
+    ? controller.assignedUsers.filter(Boolean)
+    : [];
+  const normalizedAffiliation = normalizeAffiliationInput(controller.affiliation);
+  const affiliationQuery = {};
+
+  if (!isWildcardAffiliationValue(normalizedAffiliation.city)) {
+    affiliationQuery['affiliation.city'] = normalizedAffiliation.city;
+  }
+  if (!isWildcardAffiliationValue(normalizedAffiliation.district)) {
+    affiliationQuery['affiliation.district'] = normalizedAffiliation.district;
+  }
+  if (!isWildcardAffiliationValue(normalizedAffiliation.dong)) {
+    affiliationQuery['affiliation.dong'] = normalizedAffiliation.dong;
+  }
+
+  const hasExplicitGlobalScope =
+    normalizedAffiliation.city === '전체' &&
+    normalizedAffiliation.district === '전체' &&
+    normalizedAffiliation.dong === '전체';
+
+  const scopeFilters = [];
+  if (assignedUserIds.length > 0) {
+    scopeFilters.push({ _id: { $in: assignedUserIds } });
+  }
+  if (Object.keys(affiliationQuery).length > 0) {
+    scopeFilters.push(affiliationQuery);
+  }
+
+  if (scopeFilters.length > 0) {
+    return {
+      ...baseQuery,
+      $or: scopeFilters,
+    };
+  }
+
+  if (hasExplicitGlobalScope) {
+    return baseQuery;
+  }
+
+  return {
+    ...baseQuery,
+    _id: { $in: [] },
+  };
+}
+
+/**
  * 관제요원/복지사 관리구역 소속 입력값을 검증합니다.
  */
 function validateStaffAffiliation(role, affiliation) {
@@ -1632,12 +1728,7 @@ router.post('/login', async (req, res) => {
       success: true,
       message: '로그인 성공',
       token,
-      controller: {
-        id: controller._id,
-        name: controller.name,
-        email: controller.email,
-        role: controller.role
-      }
+      controller: serializeControllerSummary(controller),
     });
   } catch (error) {
     console.error('관제사 로그인 오류:', error);
@@ -1645,6 +1736,33 @@ router.post('/login', async (req, res) => {
       success: false,
       message: '로그인 중 오류가 발생했습니다.',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * 현재 로그인한 관제사 기본 정보를 반환합니다.
+ */
+router.get('/me', requireAuth, requireRole('controller'), async (req, res) => {
+  try {
+    const controller = await getCurrentController(req);
+    if (!controller) {
+      return res.status(404).json({
+        success: false,
+        message: '관제사를 찾을 수 없습니다.',
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: serializeControllerSummary(controller),
+    });
+  } catch (error) {
+    console.error('현재 관제사 조회 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '현재 관제사 조회 중 오류가 발생했습니다.',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
 });
@@ -1920,10 +2038,32 @@ router.get('/me/users', requireAuth, requireRole('controller'), async (req, res)
  * 활성 응급 상황 목록 조회
  * GET /api/controllers/emergency-cases
  */
-router.get('/emergency-cases', cacheMiddleware(10), async (req, res) => {
+router.get('/emergency-cases', requireAuth, requireRole('controller'), cacheMiddleware(10), async (req, res) => {
   try {
     const { status, emergencyLevel } = req.query;
     const query = {};
+    const controller = await getCurrentController(req);
+
+    if (!controller) {
+      return res.status(404).json({
+        success: false,
+        message: '관제사를 찾을 수 없습니다.',
+      });
+    }
+
+    const scopedUsers = await User.find(buildControllerScopedUserQuery(controller))
+      .select('_id affiliation')
+      .lean();
+    const allowedUserIds = scopedUsers
+      .filter((user) => matchesControllerAffiliation(controller.affiliation, user.affiliation))
+      .map((user) => user._id);
+
+    if (allowedUserIds.length === 0) {
+      return res.json({
+        success: true,
+        cases: [],
+      });
+    }
 
     if (status) {
       query.status = status;
@@ -1935,6 +2075,7 @@ router.get('/emergency-cases', cacheMiddleware(10), async (req, res) => {
     if (emergencyLevel) {
       query.emergencyLevel = parseInt(emergencyLevel);
     }
+    query.userId = { $in: allowedUserIds };
 
     // 관제 목록은 사용자/구조사/병원 핵심 필드를 populate 한 번으로 같이 내려줍니다.
     const cases = await EmergencyCase.find(query)
@@ -1964,7 +2105,7 @@ router.get('/emergency-cases', cacheMiddleware(10), async (req, res) => {
 /**
  * 최근 수집 여부를 기준으로 관제 대상 사용자와 최신 생체 데이터를 반환합니다.
  */
-router.get('/monitored-users', async (req, res) => {
+router.get('/monitored-users', requireAuth, requireRole('controller'), async (req, res) => {
   try {
     const windowMinutesRaw = req.query?.windowMinutes;
     const windowMinutes = Math.min(
@@ -1972,18 +2113,28 @@ router.get('/monitored-users', async (req, res) => {
       Math.max(1, Number.isFinite(Number(windowMinutesRaw)) ? Number(windowMinutesRaw) : 10),
     );
     const since = new Date(Date.now() - windowMinutes * 60 * 1000);
+    const controller = await getCurrentController(req);
+
+    if (!controller) {
+      return res.status(404).json({
+        success: false,
+        message: '관제사를 찾을 수 없습니다.',
+      });
+    }
 
     const users = await User.find({
-      isEmergencyAppUser: true,
-      accountStatus: 'active',
+      ...buildControllerScopedUserQuery(controller),
       'wearableDevice.deviceId': { $exists: true, $ne: null },
       'wearableDevice.lastSyncAt': { $exists: true, $ne: null, $gte: since },
     })
-      .select('name phone age birthDate bloodType gender wearableDevice emergencyContact accountStatus')
+      .select('name phone age birthDate bloodType gender wearableDevice emergencyContact accountStatus affiliation')
       .sort({ 'wearableDevice.lastSyncAt': -1 })
       .lean();
+    const scopedUsers = users.filter((user) =>
+      matchesControllerAffiliation(controller.affiliation, user.affiliation),
+    );
 
-    const userIds = users.map((u) => u._id);
+    const userIds = scopedUsers.map((u) => u._id);
     const BiometricData = require('../models/BiometricData');
     // 최근 window 안의 최신 1건과 최근 최대 낙상 점수를 각각 집계해 한 응답으로 합칩니다.
     const latestRows =
@@ -2012,7 +2163,7 @@ router.get('/monitored-users', async (req, res) => {
       recentPeakRows.map((r) => [String(r._id), r.recentFallPeakScore]),
     );
 
-    const monitoredUsers = await Promise.all(users.map(async (u) => {
+    const monitoredUsers = await Promise.all(scopedUsers.map(async (u) => {
       const latestBiometricSeed = latestByUserId.get(String(u._id))
         ? {
             ...latestByUserId.get(String(u._id)),
@@ -2430,7 +2581,7 @@ function sanitizeCurrentWatchBiometric(latestBiometric, user) {
 /**
  * 관제에서 현재 가장 최근에 잡힌 워치 1건을 다른 앱에서도 공유할 수 있게 반환합니다.
  */
-router.get('/current-watch', async (req, res) => {
+router.get('/current-watch', requireAuth, requireRole('controller'), async (req, res) => {
   try {
     const windowMinutesRaw = req.query?.windowMinutes;
     const windowMinutes = Math.min(
@@ -2439,17 +2590,24 @@ router.get('/current-watch', async (req, res) => {
     );
     const since = new Date(Date.now() - windowMinutes * 60 * 1000);
     const BiometricData = require('../models/BiometricData');
+    const controller = await getCurrentController(req);
+
+    if (!controller) {
+      return res.status(404).json({
+        success: false,
+        message: '관제사를 찾을 수 없습니다.',
+      });
+    }
 
     const user = await User.findOne({
-      isEmergencyAppUser: true,
-      accountStatus: { $in: ['active', 'pending'] },
+      ...buildControllerScopedUserQuery(controller),
       'wearableDevice.deviceId': { $exists: true, $ne: null },
     })
-      .select('name phone age birthDate bloodType gender wearableDevice emergencyContact accountStatus')
+      .select('name phone age birthDate bloodType gender wearableDevice emergencyContact accountStatus affiliation')
       .sort({ 'wearableDevice.lastSyncAt': -1 })
       .lean();
 
-    if (!user) {
+    if (!user || !matchesControllerAffiliation(controller.affiliation, user.affiliation)) {
       return res.json({
         success: true,
         windowMinutes,
