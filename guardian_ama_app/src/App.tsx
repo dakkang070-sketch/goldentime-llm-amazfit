@@ -1469,6 +1469,7 @@ export default function App() {
   const [isGuardianSignupEmailChecking, setIsGuardianSignupEmailChecking] = useState(false);
   const [guardianForm, setGuardianForm] = useState<GuardianEditableContact>(createDefaultGuardianContact);
   const [isGuardianEditing, setIsGuardianEditing] = useState(false);
+  const [guardianEditMessage, setGuardianEditMessage] = useState('');
   const inviteParamsRef = useRef<GuardianInviteParams | null>(null);
   const realtimeSocketRef = useRef<Socket | null>(null);
   const authTitleClass = 'text-[24px] font-semibold tracking-[-0.02em] text-slate-900';
@@ -2203,13 +2204,21 @@ export default function App() {
     const nextGuardian = {
       name: guardianForm.name.trim() || createDefaultGuardianContact().name,
       relationship: guardianForm.relationship.trim() || createDefaultGuardianContact().relationship,
-      phone: formatPhoneNumber(guardianForm.phone || createDefaultGuardianContact().phone),
+      phone: formatPhoneNumber(profile?.guardian?.phone || guardianForm.phone || createDefaultGuardianContact().phone),
     };
 
     localStorage.setItem(GUARDIAN_PROFILE_STORAGE_KEY, JSON.stringify(nextGuardian));
     setGuardianForm(nextGuardian);
     setProfile((current) => mergeGuardianContactIntoProfile(current, nextGuardian));
+    setGuardianEditMessage('');
     setIsGuardianEditing(false);
+  };
+
+  /**
+   * 보호자 전화번호 변경은 직접 입력 대신 휴대폰 본인인증 경유로 안내합니다.
+   */
+  const handleGuardianPhoneVerificationNotice = () => {
+    setGuardianEditMessage('전화번호 변경은 휴대폰 본인인증 기능 연동 후 지원됩니다.');
   };
 
   /**
@@ -2223,6 +2232,7 @@ export default function App() {
     };
 
     setGuardianForm(nextGuardian);
+    setGuardianEditMessage('');
     setIsGuardianEditing(false);
   };
 
@@ -2545,12 +2555,30 @@ export default function App() {
                 placeholder="관계"
                 className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
               />
-              <input
-                value={guardianForm.phone}
-                onChange={(e) => handleGuardianFormChange('phone', e.target.value)}
-                placeholder="연락처"
-                className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-              />
+              <div className="space-y-2">
+                <div className="flex flex-col gap-2 min-[480px]:flex-row">
+                  <input
+                    value={guardianForm.phone}
+                    readOnly
+                    placeholder="연락처"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-500 outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleGuardianPhoneVerificationNotice}
+                    className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-4 text-sm font-semibold text-indigo-700 shadow-sm"
+                  >
+                    <ShieldCheck size={16} />
+                    휴대폰 본인인증
+                  </button>
+                </div>
+                <p className="text-[12px] text-slate-400">전화번호 변경은 본인인증 완료 후 지원합니다.</p>
+              </div>
+              {guardianEditMessage ? (
+                <div className="rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2 text-[13px] text-indigo-700">
+                  {guardianEditMessage}
+                </div>
+              ) : null}
               <div className="flex gap-2">
                 <button
                   onClick={handleGuardianEditCancel}

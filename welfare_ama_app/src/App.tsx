@@ -2089,6 +2089,22 @@ export default function App() {
   );
 
   /**
+   * 복지사 마이페이지 정보수정에서 선택된 시/도 기준 시군구 목록을 계산합니다.
+   */
+  const profileDistrictOptions = useMemo(
+    () => getMemberDistrictOptions(profileForm.city),
+    [profileForm.city],
+  );
+
+  /**
+   * 복지사 마이페이지 정보수정에서 선택된 시/도와 시군구 기준 읍면동 목록을 계산합니다.
+   */
+  const profileAreaOptions = useMemo(
+    () => getMemberAreaOptions(profileForm.city, profileForm.district),
+    [profileForm.city, profileForm.district],
+  );
+
+  /**
    * 앱 재진입 시 저장된 복지사 세션을 다시 적용합니다.
    */
   useEffect(() => {
@@ -2557,7 +2573,7 @@ export default function App() {
         };
       }>(`/api/controllers/${currentWelfare._id}`, 'PATCH', {
         email: profileForm.email,
-        phone: profileForm.phone,
+        phone: currentWelfare?.phone || profileForm.phone,
         role: currentWelfare.role || 'medical',
         affiliation: {
           city: profileForm.city,
@@ -2585,6 +2601,13 @@ export default function App() {
     } finally {
       setProfileSaving(false);
     }
+  }
+
+  /**
+   * 복지사 전화번호 변경은 직접 입력 대신 휴대폰 본인인증 경유로 안내합니다.
+   */
+  function handleProfilePhoneVerificationNotice() {
+    setProfileMessage('전화번호 변경은 휴대폰 본인인증 기능 연동 후 지원됩니다.');
   }
 
   if (!session?.token) {
@@ -3697,41 +3720,85 @@ export default function App() {
                           </div>
                           <div className="space-y-1.5">
                             <div className="text-[14px] font-semibold text-slate-400">전화번호</div>
-                            <input
-                              type="text"
-                              value={profileForm.phone}
-                              onChange={(event) => setProfileForm((prev) => ({ ...prev, phone: event.target.value }))}
-                              className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100"
-                            />
+                            <div className="flex flex-col gap-2 min-[480px]:flex-row">
+                              <input
+                                type="text"
+                                value={profileForm.phone}
+                                readOnly
+                                className="w-full rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-500 outline-none"
+                              />
+                              <button
+                                type="button"
+                                onClick={handleProfilePhoneVerificationNotice}
+                                className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-4 text-sm font-semibold text-teal-700"
+                              >
+                                <ShieldCheck size={16} />
+                                휴대폰 본인인증
+                              </button>
+                            </div>
+                            <div className="text-[12px] text-slate-400">전화번호 변경은 본인인증 완료 후 지원합니다.</div>
                           </div>
                         </div>
                         <div className="grid grid-cols-1 gap-3 min-[640px]:grid-cols-3">
                           <div className="space-y-1.5">
                             <div className="text-[14px] font-semibold text-slate-400">시</div>
-                            <input
-                              type="text"
+                            <select
                               value={profileForm.city}
-                              onChange={(event) => setProfileForm((prev) => ({ ...prev, city: event.target.value }))}
-                              className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100"
-                            />
+                              onChange={(event) =>
+                                setProfileForm((prev) => ({
+                                  ...prev,
+                                  city: event.target.value,
+                                  district: '',
+                                  dong: '',
+                                }))
+                              }
+                              className="h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100"
+                            >
+                              <option value="">시/도 선택</option>
+                              {MEMBER_REGION_CATALOG.map((city) => (
+                                <option key={city.name} value={city.name}>
+                                  {city.name}
+                                </option>
+                              ))}
+                            </select>
                           </div>
                           <div className="space-y-1.5">
                             <div className="text-[14px] font-semibold text-slate-400">구</div>
-                            <input
-                              type="text"
+                            <select
                               value={profileForm.district}
-                              onChange={(event) => setProfileForm((prev) => ({ ...prev, district: event.target.value }))}
-                              className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100"
-                            />
+                              onChange={(event) =>
+                                setProfileForm((prev) => ({
+                                  ...prev,
+                                  district: event.target.value,
+                                  dong: '',
+                                }))
+                              }
+                              disabled={!profileForm.city}
+                              className="h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100 disabled:bg-slate-100 disabled:text-slate-400"
+                            >
+                              <option value="">시/군/구 선택</option>
+                              {profileDistrictOptions.map((district) => (
+                                <option key={district.name} value={district.name}>
+                                  {district.name}
+                                </option>
+                              ))}
+                            </select>
                           </div>
                           <div className="space-y-1.5">
                             <div className="text-[14px] font-semibold text-slate-400">동</div>
-                            <input
-                              type="text"
+                            <select
                               value={profileForm.dong}
                               onChange={(event) => setProfileForm((prev) => ({ ...prev, dong: event.target.value }))}
-                              className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100"
-                            />
+                              disabled={!profileForm.city || !profileForm.district}
+                              className="h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100 disabled:bg-slate-100 disabled:text-slate-400"
+                            >
+                              <option value="">읍/면/동 선택</option>
+                              {profileAreaOptions.map((area) => (
+                                <option key={area} value={area}>
+                                  {area}
+                                </option>
+                              ))}
+                            </select>
                           </div>
                         </div>
 
