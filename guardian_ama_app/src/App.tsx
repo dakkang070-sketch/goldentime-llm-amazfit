@@ -1674,11 +1674,14 @@ export default function App() {
     setIsLoading(!profile && recentBiometrics.length === 0 && emergencyHistory.length === 0);
     try {
       const currentWatchResponse = await backendService.getCurrentWatch(10);
+      const currentWatchOwnerId = String(
+        currentWatchResponse?.data?._id || currentWatchResponse?.data?.userId || '',
+      ).trim();
       const currentWatchBiometric =
         currentWatchResponse?.data?.latestBiometric &&
         typeof currentWatchResponse.data.latestBiometric === 'object'
           ? createRealtimeBiometricPoint(
-              String(currentWatchResponse.data._id || currentWatchResponse.data.userId || 'control-watch'),
+              String(currentWatchOwnerId || 'control-watch'),
               currentWatchResponse.data.latestBiometric,
             )
           : null;
@@ -1690,6 +1693,7 @@ export default function App() {
       ]);
 
       const profileUser = profileResponse?.data?.user || {};
+      const profileUserId = String(profileUser.id || '').trim();
       const fallbackProfile = createFallbackProfile(session, guardianForm.phone || '010-1234-5678');
       const nextProfile: GuardianProfile = {
         ...fallbackProfile,
@@ -1717,7 +1721,11 @@ export default function App() {
 
       setProfile(mergeGuardianContactIntoProfile(nextProfile, guardianForm));
       setRecentBiometrics(nextBiometrics);
-      setSharedWatchBiometric(currentWatchBiometric);
+      setSharedWatchBiometric(
+        profileUserId && currentWatchOwnerId && profileUserId === currentWatchOwnerId
+          ? currentWatchBiometric
+          : null,
+      );
       setEmergencyHistory(nextHistory);
       setSession((current) => {
         const nextSession = {
