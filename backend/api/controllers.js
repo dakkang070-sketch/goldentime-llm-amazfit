@@ -1410,7 +1410,7 @@ router.patch('/:id/approval', requireAuth, requireRole('admin'), async (req, res
  */
 router.get('/me/users', requireAuth, requireRole('controller'), async (req, res) => {
   try {
-    const controllerId = req.user.userId;
+    const controllerId = req.user?.sub || req.user?.userId;
     const controller = await Controller.findById(controllerId).populate('assignedUsers', 'name phone status hospitalMode');
     
     if (!controller) {
