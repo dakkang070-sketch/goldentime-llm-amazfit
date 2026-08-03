@@ -3652,7 +3652,6 @@ export default function App() {
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <div className="text-[19px] font-extrabold tracking-[-0.03em] text-slate-900">마이페이지</div>
-                          <div className="mt-1 text-[13px] font-medium text-slate-500">태블릿에서는 정보와 설정을 좌우 2단으로 나누어 더 편하게 볼 수 있습니다.</div>
                         </div>
                         <button
                           type="button"
@@ -3724,7 +3723,6 @@ export default function App() {
                       <div className="space-y-3">
                         <div className="card border border-white/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-4 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
                           <div className="text-[16px] font-extrabold tracking-[-0.02em] text-slate-900">계정 설정</div>
-                          <div className="mt-1 text-[13px] font-medium text-slate-500">자주 쓰는 계정 작업을 한 곳에 모았습니다.</div>
                           <div className="mt-4 space-y-3">
                             <button
                               type="button"
@@ -3769,7 +3767,6 @@ export default function App() {
 
                     <div className="card border border-white/80 bg-white/92 px-4 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
                       <div className="text-[19px] font-extrabold tracking-[-0.03em] text-slate-900">정보수정</div>
-                      <div className="mt-1.5 text-[14px] font-medium text-slate-500">이메일과 전화번호는 즉시 반영되고, 소속 변경은 관리자 승인 후 반영됩니다.</div>
                     </div>
 
                     <div className="grid grid-cols-1 gap-3 min-[768px]:grid-cols-[minmax(0,1.45fr)_minmax(260px,0.9fr)] min-[1024px]:gap-4">
@@ -3788,28 +3785,30 @@ export default function App() {
                           <div className="space-y-1.5">
                             <div className="text-[14px] font-semibold text-slate-400">전화번호</div>
                             <div className="flex flex-col gap-2">
-                              <input
-                                type="text"
-                                value={profileForm.phone}
-                                onChange={(event) => {
-                                  setProfileForm((prev) => ({ ...prev, phone: event.target.value }));
-                                  setProfilePhoneCode('');
-                                  setProfilePhoneVerificationToken('');
-                                  setProfilePhoneNotice('');
-                                }}
-                                placeholder="01012345678"
-                                className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100"
-                              />
                               <div className="flex flex-col gap-2 min-[480px]:flex-row">
+                                <input
+                                  type="text"
+                                  value={profileForm.phone}
+                                  onChange={(event) => {
+                                    setProfileForm((prev) => ({ ...prev, phone: event.target.value }));
+                                    setProfilePhoneCode('');
+                                    setProfilePhoneVerificationToken('');
+                                    setProfilePhoneNotice('');
+                                  }}
+                                  placeholder="01012345678"
+                                  className="h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-800 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100"
+                                />
                                 <button
                                   type="button"
                                   onClick={handleProfilePhoneVerificationRequest}
                                   disabled={profilePhoneSending}
-                                  className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-4 text-sm font-semibold text-teal-700 disabled:opacity-60"
+                                  className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-4 text-sm font-semibold text-teal-700 disabled:opacity-60 min-[480px]:min-w-[140px]"
                                 >
                                   <ShieldCheck size={16} />
                                   {profilePhoneSending ? '발송중...' : '인증번호 발송'}
                                 </button>
+                              </div>
+                              <div className="flex flex-col gap-2 min-[480px]:flex-row">
                                 <input
                                   type="text"
                                   value={profilePhoneCode}
@@ -3827,7 +3826,6 @@ export default function App() {
                                 </button>
                               </div>
                             </div>
-                            <div className="text-[12px] text-slate-400">전화번호가 바뀌면 인증번호 발송 후 인증 확인까지 완료해야 저장됩니다.</div>
                             {profilePhoneNotice ? (
                               <div
                                 className={`rounded-lg border px-3 py-2 text-[13px] ${
@@ -3904,14 +3902,6 @@ export default function App() {
                           </div>
                         </div>
 
-                        {currentWelfare?.pendingAffiliationChange ? (
-                          <div className="rounded-[18px] border border-amber-200 bg-[linear-gradient(180deg,#fffbeb_0%,#fef3c7_100%)] px-4 py-3.5 text-[14px] font-medium text-amber-800">
-                            현재 승인 대기 중인 요청:
-                            {' '}
-                            {[currentWelfare.pendingAffiliationChange.city, currentWelfare.pendingAffiliationChange.district, currentWelfare.pendingAffiliationChange.dong].filter(Boolean).join(' ') || '-'}
-                          </div>
-                        ) : null}
-
                         {profileMessage ? (
                           <div className="rounded-[18px] border border-slate-200 bg-[linear-gradient(180deg,#f8fafc_0%,#f1f5f9_100%)] px-4 py-3.5 text-[14px] font-medium text-slate-600">
                             {profileMessage}
@@ -3920,13 +3910,14 @@ export default function App() {
                       </div>
 
                       <div className="space-y-3">
-                        <div className="card border border-white/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-4 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
-                          <div className="text-[16px] font-extrabold tracking-[-0.02em] text-slate-900">수정 안내</div>
-                          <div className="mt-2 space-y-2 text-[14px] leading-6 text-slate-500">
-                            <p>이메일과 전화번호는 실제 운영 중 사용하는 정보로 유지해주세요.</p>
-                            <p>소속 정보는 담당 회원 표시와 연동되며, 저장 즉시 바뀌지 않고 관리자 승인 후 반영됩니다.</p>
+                        {currentWelfare?.pendingAffiliationChange ? (
+                          <div className="card border border-amber-200 bg-[linear-gradient(180deg,#fffaf0_0%,#fef3c7_100%)] px-4 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+                            <div className="text-[14px] font-bold text-amber-800">소속 변경 승인대기</div>
+                            <div className="mt-2 text-[15px] font-semibold text-amber-950">
+                              {[currentWelfare.pendingAffiliationChange.city, currentWelfare.pendingAffiliationChange.district, currentWelfare.pendingAffiliationChange.dong].filter(Boolean).join(' ') || '-'}
+                            </div>
                           </div>
-                        </div>
+                        ) : null}
 
                         <div className="card space-y-3 border border-white/80 bg-white/92 px-4 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
                           <button
