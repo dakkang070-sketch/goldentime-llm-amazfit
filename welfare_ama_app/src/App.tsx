@@ -3567,8 +3567,11 @@ export default function App() {
                 {myPageView === 'main' ? (
                   <>
                     <div className="card border border-white/80 bg-white/92 px-4 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="text-[19px] font-extrabold tracking-[-0.03em] text-slate-900">마이페이지</div>
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <div className="text-[19px] font-extrabold tracking-[-0.03em] text-slate-900">마이페이지</div>
+                          <div className="mt-1 text-[13px] font-medium text-slate-500">태블릿에서는 정보와 설정을 좌우 2단으로 나누어 더 편하게 볼 수 있습니다.</div>
+                        </div>
                         <button
                           type="button"
                           onClick={() => {
@@ -3582,50 +3585,83 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div className="card border border-white/80 bg-white/92 px-4 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
-                      <div className="grid grid-cols-[64px_minmax(0,1fr)] gap-y-2.5 text-[14px] text-slate-800 min-[360px]:grid-cols-[72px_minmax(0,1fr)] min-[360px]:gap-y-3 min-[360px]:text-[15px]">
-                        <div className="font-semibold text-slate-400">아이디</div>
-                        <div className="min-w-0 break-all">{currentWelfare?.email || '-'}</div>
-                        <div className="font-semibold text-slate-400">비밀번호</div>
-                        <div className="min-w-0 break-all">********</div>
-                        <div className="font-semibold text-slate-400">이메일</div>
-                        <div className="min-w-0 break-all">{currentWelfare?.email || '-'}</div>
-                        <div className="font-semibold text-slate-400">전화번호</div>
-                        <div className="min-w-0 break-all">{currentWelfare?.phone || '-'}</div>
-                        <div className="font-semibold text-slate-400">소속</div>
-                        <div className="min-w-0 break-words">{[currentWelfare?.affiliation?.city, currentWelfare?.affiliation?.district, currentWelfare?.affiliation?.dong].filter(Boolean).join(' ') || '-'}</div>
-                        <div className="font-semibold text-slate-400">담당자</div>
-                        <div className="min-w-0 break-words">{currentWelfare?.name || '-'}</div>
-                        <div className="font-semibold text-slate-400">코드</div>
-                        <div className="min-w-0 break-all">{currentWelfare?._id ? currentWelfare._id.slice(-6).toUpperCase() : '-'}</div>
+                    <div className="grid grid-cols-1 gap-3 min-[768px]:grid-cols-[minmax(0,1.45fr)_minmax(260px,0.9fr)] min-[1024px]:gap-4">
+                      <div className="space-y-3">
+                        <div className="card border border-white/80 bg-white/92 px-4 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+                          <div className="mb-3 flex items-center justify-between gap-3">
+                            <div className="text-[16px] font-extrabold tracking-[-0.02em] text-slate-900">기본 정보</div>
+                            <div className="rounded-full bg-slate-100 px-3 py-1 text-[12px] font-bold text-slate-500">복지사 계정</div>
+                          </div>
+                          <div className="grid grid-cols-1 gap-3 min-[640px]:grid-cols-2 min-[768px]:gap-3">
+                            <div className="rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3">
+                              <div className="text-[13px] font-semibold text-slate-400">아이디</div>
+                              <div className="mt-1 min-w-0 break-all text-[15px] font-semibold text-slate-900">{currentWelfare?.email || '-'}</div>
+                            </div>
+                            <div className="rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3">
+                              <div className="text-[13px] font-semibold text-slate-400">비밀번호</div>
+                              <div className="mt-1 min-w-0 break-all text-[15px] font-semibold text-slate-900">********</div>
+                            </div>
+                            <div className="rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3">
+                              <div className="text-[13px] font-semibold text-slate-400">이메일</div>
+                              <div className="mt-1 min-w-0 break-all text-[15px] font-semibold text-slate-900">{currentWelfare?.email || '-'}</div>
+                            </div>
+                            <div className="rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3">
+                              <div className="text-[13px] font-semibold text-slate-400">전화번호</div>
+                              <div className="mt-1 min-w-0 break-all text-[15px] font-semibold text-slate-900">{currentWelfare?.phone || '-'}</div>
+                            </div>
+                            <div className="rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 min-[640px]:col-span-2">
+                              <div className="text-[13px] font-semibold text-slate-400">소속</div>
+                              <div className="mt-1 min-w-0 break-words text-[15px] font-semibold text-slate-900">{[currentWelfare?.affiliation?.city, currentWelfare?.affiliation?.district, currentWelfare?.affiliation?.dong].filter(Boolean).join(' ') || '-'}</div>
+                            </div>
+                            <div className="rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3">
+                              <div className="text-[13px] font-semibold text-slate-400">담당자</div>
+                              <div className="mt-1 min-w-0 break-words text-[15px] font-semibold text-slate-900">{currentWelfare?.name || '-'}</div>
+                            </div>
+                            <div className="rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3">
+                              <div className="text-[13px] font-semibold text-slate-400">코드</div>
+                              <div className="mt-1 min-w-0 break-all text-[15px] font-semibold text-slate-900">{currentWelfare?._id ? currentWelfare._id.slice(-6).toUpperCase() : '-'}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {profileMessage ? (
+                          <div className="rounded-[20px] border border-emerald-200 bg-[linear-gradient(180deg,#ecfdf5_0%,#d1fae5_100%)] px-4 py-3.5 text-[14px] font-semibold text-emerald-700 shadow-[0_12px_24px_rgba(16,185,129,0.10)]">
+                            {profileMessage}
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="card border border-white/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-4 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+                          <div className="text-[16px] font-extrabold tracking-[-0.02em] text-slate-900">계정 설정</div>
+                          <div className="mt-1 text-[13px] font-medium text-slate-500">자주 쓰는 계정 작업을 한 곳에 모았습니다.</div>
+                          <div className="mt-4 space-y-3">
+                            <button
+                              type="button"
+                              onClick={() => setMyPageView('password')}
+                              className="card flex w-full items-center justify-center gap-2 border border-white/80 bg-white px-4 py-4 text-[15px] font-bold text-slate-900 shadow-[0_18px_40px_rgba(15,23,42,0.08)] min-[360px]:text-[16px]"
+                            >
+                              <LockKeyhole size={18} />
+                              비밀번호변경
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={handleAuthLogout}
+                              className="card flex w-full items-center justify-center gap-2 border border-rose-200 bg-rose-50 px-4 py-4 text-[15px] font-bold text-rose-700 shadow-[0_18px_40px_rgba(15,23,42,0.08)] min-[360px]:text-[16px]"
+                            >
+                              <LogOut size={18} />
+                              로그아웃
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="card border border-white/80 bg-white/92 px-4 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+                          <div className="text-[13px] font-semibold uppercase tracking-[0.12em] text-slate-400">App Info</div>
+                          <div className="mt-2 text-[15px] font-bold text-slate-800">Version 0.1</div>
+                        </div>
                       </div>
                     </div>
-
-                    {profileMessage ? (
-                      <div className="rounded-[20px] border border-emerald-200 bg-[linear-gradient(180deg,#ecfdf5_0%,#d1fae5_100%)] px-4 py-3.5 text-[14px] font-semibold text-emerald-700 shadow-[0_12px_24px_rgba(16,185,129,0.10)]">
-                        {profileMessage}
-                      </div>
-                    ) : null}
-
-                    <button
-                      type="button"
-                      onClick={() => setMyPageView('password')}
-                      className="card flex w-full items-center justify-center gap-2 border border-white/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-4 py-4 text-[15px] font-bold text-slate-900 shadow-[0_18px_40px_rgba(15,23,42,0.08)] min-[360px]:text-[16px]"
-                    >
-                      <LockKeyhole size={18} />
-                      비밀번호변경
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleAuthLogout}
-                      className="card flex w-full items-center justify-center gap-2 border border-rose-200 bg-rose-50 px-4 py-4 text-[15px] font-bold text-rose-700 shadow-[0_18px_40px_rgba(15,23,42,0.08)] min-[360px]:text-[16px]"
-                    >
-                      <LogOut size={18} />
-                      로그아웃
-                    </button>
-
-                    <div className="px-1 text-[14px] font-semibold text-slate-400">Version 0.1</div>
                   </>
                 ) : myPageView === 'edit' ? (
                   <>
