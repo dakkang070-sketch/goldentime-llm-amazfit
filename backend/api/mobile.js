@@ -219,6 +219,27 @@ function buildGuardianAuthUserPayload(user) {
     accountStatus: user.accountStatus,
   };
 }
+
+/**
+ * 보호자 계정 조회에 필요한 전화번호를 guardianAccess 우선으로 정규화합니다.
+ */
+function resolveGuardianVerifiedPhone(user) {
+  return normalizePhoneDigits(
+    user?.emergencySettings?.guardianAccess?.verifiedGuardianPhone || user?.emergencyContact?.phone,
+  );
+}
+
+/**
+ * 보호자 계정 이메일을 앞 2자리만 남기고 마스킹합니다.
+ */
+function maskGuardianEmail(email) {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  const [localPart = '', domain = ''] = normalizedEmail.split('@');
+  if (!localPart || !domain) {
+    return '';
+  }
+  return `${localPart.slice(0, 2)}***@${domain}`;
+}
 /**
  * 모바일 회원 계정 승인 상태에 맞는 로그인 차단 메시지를 반환합니다.
  */
@@ -1126,6 +1147,191 @@ router.post('/guardian/account-login', async (req, res) => {
       success: false,
       message: '보호자 로그인 중 오류가 발생했습니다.',
     });
+  }
+});
+
+/**
+ * 보호자 회원가입 시 이메일 중복 여부를 guardianAccess 기준으로 확인합니다.
+ */
+router.post('/guardian/check-email', async (req, res) => {
+  try {
+    const guardianEmail = String(req.body?.guardianEmail || req.body?.email || '').trim().toLowerCase();
+
+    if (!guardianEmail || !validator.isEmail(guardianEmail)) {
+      return res.status(400).json({
+        success: false,
+        available: false,
+        message: '올바른 이메일 형식이 아닙니다.',
+      });
+    }
+
+    const duplicatedGuardian = await User.findOne({
+      isEmergencyAppUser: true,
+      'emergencySettings.guardianAccess.guardianEmail': guardianEmail,
+    })
+      .select('_id')
+      .lean();
+
+    return res.json({
+      success: true,
+      available: !duplicatedGuardian,
+      message: duplicatedGuardian ? '이미 사용 중인 보호자 이메일입니다.' : '사용 가능한 이메일입니다.',
+    });
+  } catch (error) {
+    logger.error('보호자 이메일 중복 확인 오류:', error);
+    return res.status(500).json({
+      success: false,
+      available: false,
+      message: '보호자 이메일 확인 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+/**
+ * 보호자 이름과 전화번호로 가입된 보호자 이메일을 찾아 마스킹해 반환합니다.
+ */
+router.post('/guardian/find-email', authLimiter, async (req, res) => {
+  try {
+    const guardianName = String(req.body?.name || '').trim();
+    const guardianPhone = normalizePhoneDigits(req.body?.phone);
+
+    if (!guardianName || !guardianPhone) {
+      return res.status(400).json({ success: false, message: '이름과 전화번호를 입력해주세요.' });
+    }
+
+    const user = await User.findOne({
+      isEmergencyAppUser: true,
+      'emergencyContact.name': guardianName,
+      $or: [
+        { 'emergencySettings.guardianAccess.verifiedGuardianPhone': guardianPhone },
+        { 'emergencyContact.phone': { $regex: guardianPhone } },
+      ],
+      'emergencySettings.guardianAccess.guardianEmail': { $exists: true, $ne: '' },
+    }).lean();
+
+    const guardianEmail = String(user?.emergencySettings?.guardianAccess?.guardianEmail || '').trim().toLowerCase();
+    if (!user || !guardianEmail) {
+      return res.status(404).json({ success: false, message: '입력하신 정보와 일치하는 보호자 계정을 찾을 수 없습니다.' });
+    }
+
+    return res.json({ success: true, email: maskGuardianEmail(guardianEmail) });
+  } catch (error) {
+    logger.error('보호자 이메일 찾기 오류:', error);
+    return res.status(500).json({ success: false, message: '보호자 이메일 찾기 중 오류가 발생했습니다.' });
+  }
+});
+
+/**
+ * 보호자 비밀번호 재설정을 위한 SMS 인증코드를 발송합니다.
+ */
+router.post('/guardian/reset-password/send-code', authLimiter, async (req, res) => {
+  try {
+    const guardianEmail = String(req.body?.guardianEmail || req.body?.email || '').trim().toLowerCase();
+    const guardianPhone = normalizePhoneDigits(req.body?.guardianPhone || req.body?.phone);
+
+    if (!guardianEmail || !guardianPhone) {
+      return res.status(400).json({ success: false, message: '이메일과 전화번호를 모두 입력해주세요.' });
+    }
+
+    const user = await User.findOne({
+      isEmergencyAppUser: true,
+      'emergencySettings.guardianAccess.guardianEmail': guardianEmail,
+      $or: [
+        { 'emergencySettings.guardianAccess.verifiedGuardianPhone': guardianPhone },
+        { 'emergencyContact.phone': { $regex: guardianPhone } },
+      ],
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: '입력하신 정보와 일치하는 보호자 계정을 찾을 수 없습니다.' });
+    }
+
+    const verifiedGuardianPhone = resolveGuardianVerifiedPhone(user);
+    if (!verifiedGuardianPhone) {
+      return res.status(400).json({ success: false, message: '보호자 인증 전화번호가 등록되어 있지 않습니다.' });
+    }
+
+    const resetCode = String(Math.floor(100000 + Math.random() * 900000));
+    user.emergencySettings = {
+      ...(user.emergencySettings || {}),
+      guardianAccess: {
+        ...(user?.emergencySettings?.guardianAccess || {}),
+        guardianPasswordResetCode: resetCode,
+        guardianPasswordResetCodeExpiresAt: new Date(Date.now() + 3 * 60 * 1000),
+      },
+    };
+    await user.save();
+
+    const maskedPhone = verifiedGuardianPhone.replace(/(\d{3})(\d{4})(\d{4})/, '$1-****-$3');
+    const message = `[골든타임] 보호자 비밀번호 재설정 인증코드: ${resetCode}\n3분 안에 입력해주세요.`;
+    await sendSMS(verifiedGuardianPhone, message);
+
+    logger.info(`보호자 비밀번호 재설정 SMS 발송: ${guardianEmail}`);
+    return res.json({ success: true, message: `인증코드가 ${maskedPhone}로 발송되었습니다.`, maskedPhone });
+  } catch (error) {
+    logger.error('보호자 비밀번호 재설정 SMS 발송 오류:', error);
+    return res.status(500).json({ success: false, message: '인증코드 발송 중 오류가 발생했습니다.' });
+  }
+});
+
+/**
+ * 보호자 SMS 인증코드를 확인한 뒤 새 비밀번호로 재설정합니다.
+ */
+router.post('/guardian/reset-password', authLimiter, async (req, res) => {
+  try {
+    const guardianEmail = String(req.body?.guardianEmail || req.body?.email || '').trim().toLowerCase();
+    const guardianPhone = normalizePhoneDigits(req.body?.guardianPhone || req.body?.phone);
+    const code = String(req.body?.code || '').replace(/[^\d]/g, '');
+    const newPassword = String(req.body?.newPassword || '');
+
+    if (!guardianEmail || !guardianPhone || !code || !newPassword) {
+      return res.status(400).json({ success: false, message: '필수 정보를 모두 입력해주세요.' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: '비밀번호는 6자 이상이어야 합니다.' });
+    }
+
+    const user = await User.findOne({
+      isEmergencyAppUser: true,
+      'emergencySettings.guardianAccess.guardianEmail': guardianEmail,
+      $or: [
+        { 'emergencySettings.guardianAccess.verifiedGuardianPhone': guardianPhone },
+        { 'emergencyContact.phone': { $regex: guardianPhone } },
+      ],
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: '입력하신 정보와 일치하는 보호자 계정을 찾을 수 없습니다.' });
+    }
+
+    const guardianAccess = user?.emergencySettings?.guardianAccess || {};
+    if (!guardianAccess.guardianPasswordResetCode || guardianAccess.guardianPasswordResetCode !== code) {
+      return res.status(400).json({ success: false, message: '인증코드가 일치하지 않습니다.' });
+    }
+    if (
+      !guardianAccess.guardianPasswordResetCodeExpiresAt ||
+      guardianAccess.guardianPasswordResetCodeExpiresAt < new Date()
+    ) {
+      return res.status(400).json({ success: false, message: '인증코드가 만료되었습니다. 다시 요청해주세요.' });
+    }
+
+    user.emergencySettings = {
+      ...(user.emergencySettings || {}),
+      guardianAccess: {
+        ...guardianAccess,
+        guardianPasswordHash: await bcrypt.hash(newPassword, 10),
+        guardianPasswordResetCode: null,
+        guardianPasswordResetCodeExpiresAt: null,
+        guardianLastLoginAt: guardianAccess?.guardianLastLoginAt || new Date(),
+      },
+    };
+    await user.save();
+
+    logger.info(`보호자 비밀번호 재설정 완료: ${guardianEmail}`);
+    return res.json({ success: true, message: '비밀번호가 재설정되었습니다. 새 비밀번호로 로그인해주세요.' });
+  } catch (error) {
+    logger.error('보호자 비밀번호 재설정 오류:', error);
+    return res.status(500).json({ success: false, message: '보호자 비밀번호 재설정 중 오류가 발생했습니다.' });
   }
 });
 

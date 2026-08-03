@@ -1,6 +1,38 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const {
+  decryptStructuredValue,
+  encryptStructuredValue,
+} = require('../utils/personalDataCrypto');
 
+const SENSITIVE_USER_PATHS = [
+  'name',
+  'medicalHistory',
+  'emergencyContact',
+  'affiliation',
+  'emergencySettings.emergencyContacts',
+];
+
+/**
+ * 지정된 사용자 문서 경로에 재귀 변환 함수를 적용합니다.
+ */
+function transformSensitivePaths(doc, transformer) {
+  if (!doc) {
+    return;
+  }
+
+  SENSITIVE_USER_PATHS.forEach((path) => {
+    const currentValue = doc.get(path);
+    if (currentValue === undefined || currentValue === null) {
+      return;
+    }
+    doc.set(path, transformer(currentValue));
+  });
+}
+
+/**
+ * 응급 사용자앱 계정, 보호자/의료 정보, 워치 연동 상태를 함께 저장하는 사용자 스키마입니다.
+ */
 const userSchema = new mongoose.Schema({
   // 본인인증 정보 (추후 연동)
   name: {
@@ -35,6 +67,11 @@ const userSchema = new mongoose.Schema({
   age: {
     type: Number,
     required: true
+  },
+  gender: {
+    type: String,
+    enum: ['male', 'female'],
+    default: 'male'
   },
   height: {
     type: Number, // cm
@@ -74,6 +111,30 @@ const userSchema = new mongoose.Schema({
     phone: String,
     relationship: String
   },
+
+  // 지역 소속 및 담당 복지사
+  affiliation: {
+    city: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    district: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    dong: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    welfareName: {
+      type: String,
+      trim: true,
+      default: ''
+    }
+  },
   
   // 동의 항목
   consents: {
@@ -95,10 +156,10 @@ const userSchema = new mongoose.Schema({
     }
   },
   
-  // STARMAX BLE 기기 정보 (응급 사용자앱 전용)
-  starmaxDevice: {
-    deviceId: String,           // STARMAX BLE 기기 고유 ID
-    deviceName: String,         // STARMAX WATCH ULTRA G1 등
+  // 웨어러블(워치) 기기 정보 (응급 사용자앱 전용)
+  wearableDevice: {
+    deviceId: String,           // BLE 기기 고유 ID
+    deviceName: String,         // 워치 모델명
     deviceType: {               // 기기 종류 (watch/band)
       type: String,
       enum: ['watch', 'band', 'unknown'],
@@ -111,8 +172,37 @@ const userSchema = new mongoose.Schema({
       enum: ['connected', 'disconnected', 'syncing', 'error'],
       default: 'disconnected'
     },
+    manualBloodPressure: {      // 앱 수동 입력 혈압(표시용)
+      systolic: Number,
+      diastolic: Number,
+      updatedAt: Date
+    },
     batteryLevel: Number,       // 배터리 잔량 (0-100)
-    firmwareVersion: String     // 펌웨어 버전
+    firmwareVersion: String,    // 펌웨어 버전
+    lastKnownLocation: {        // 폰(위치서비스) 기반 보조 위치
+      lat: Number,
+      lng: Number,
+      accuracyM: Number,
+      provider: String,
+      source: {
+        type: String,
+        enum: [
+          'watch',
+          'phone',
+          'phone_gps',
+          'wifi_position',
+          'cell_position',
+          'mobile_app',
+          'phone_fallback',
+          'recent_cache',
+          'last_biometric',
+          'unavailable',
+          'unknown',
+        ],
+        default: 'unknown'
+      },
+      updatedAt: Date
+    }
   },
 
   // 응급 사용자앱 전용 플래그
@@ -122,11 +212,11 @@ const userSchema = new mongoose.Schema({
     index: true
   },
 
-  // 계정 상태 (활성, 정지, 해지)
+  // 계정 상태 (승인 대기, 활성, 정지, 해지, 반려)
   accountStatus: {
     type: String,
-    enum: ['active', 'suspended', 'withdrawn'],
-    default: 'active',
+    enum: ['pending', 'active', 'suspended', 'withdrawn', 'rejected'],
+    default: 'pending',
     index: true
   },
 
@@ -150,6 +240,23 @@ const userSchema = new mongoose.Schema({
       type: Number,
       enum: [1, 2, 3],
       default: 2
+    },
+    guardianAccess: {
+      code: String,
+      codeIssuedAt: Date,
+      codeExpiresAt: Date,
+      verifiedAt: Date,
+      verifiedGuardianPhone: String,
+      guardianEmail: {
+        type: String,
+        trim: true,
+        lowercase: true
+      },
+      guardianPasswordHash: String,
+      guardianPasswordResetCode: String,
+      guardianPasswordResetCodeExpiresAt: Date,
+      guardianRegisteredAt: Date,
+      guardianLastLoginAt: Date
     }
   },
   
@@ -175,6 +282,7 @@ const userSchema = new mongoose.Schema({
   
   // 설정
   settings: {
+    // 워치/모바일 수집 주기와 센서 on/off 기본값을 사용자별로 저장합니다.
     biometricCollectionInterval: {
       type: Number,
       default: 60 // 초 단위
@@ -199,6 +307,7 @@ const userSchema = new mongoose.Schema({
   
   // 병원 입원 모드
   hospitalMode: {
+    // 입원 중에는 일반 관제 흐름과 구분하기 위해 병원 체류 상태를 별도 보관합니다.
     isActive: {
       type: Boolean,
       default: false
@@ -217,6 +326,7 @@ const userSchema = new mongoose.Schema({
   
   // 관제사 배정
   assignedController: {
+    // 현재 담당 중인 관제사를 사용자 문서에 직접 연결해 빠른 조회에 사용합니다.
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Controller'
   },
@@ -232,21 +342,63 @@ const userSchema = new mongoose.Schema({
   lastActivity: {
     type: Date,
     default: Date.now
+  },
+  
+  // 비밀번호 재설정 SMS 인증코드
+  passwordResetCode: {
+    type: String,
+    default: null
+  },
+  passwordResetCodeExpiresAt: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true
 });
 
-// 비밀번호 해싱
+/**
+ * 비밀번호가 변경된 저장 시점에만 해시를 다시 생성합니다.
+ */
 userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 10);
+  // 기존 해시를 반복 변환하지 않도록 password 변경 시에만 bcrypt를 적용합니다.
+  if (this.isModified('password')) {
+    this.password = await bcrypt.hash(this.password, 10);
+  }
+
+  if (
+    this.isNew ||
+    SENSITIVE_USER_PATHS.some((path) => this.isModified(path))
+  ) {
+    transformSensitivePaths(this, encryptStructuredValue);
+  }
+
   next();
 });
 
-// 비밀번호 검증 메서드
+/**
+ * MongoDB에서 읽은 직후 민감 필드를 앱에서 사용할 수 있는 복호화 상태로 복원합니다.
+ */
+userSchema.post('init', function(doc) {
+  transformSensitivePaths(doc, decryptStructuredValue);
+});
+
+/**
+ * 저장 직후에도 현재 문서 인스턴스는 복호화 상태를 유지해 후속 응답 구성 시 평문 접근을 보장합니다.
+ */
+userSchema.post('save', function(doc) {
+  transformSensitivePaths(doc, decryptStructuredValue);
+});
+
+/**
+ * 로그인 시 입력 비밀번호와 저장된 해시를 비교합니다.
+ */
 userSchema.methods.comparePassword = async function(candidatePassword) {
+  // 인증 흐름에서는 원문 비밀번호를 저장하지 않고 비교 결과만 반환합니다.
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
+/**
+ * 응급 사용자 계정 모델을 Mongoose 컬렉션으로 등록해 외부에 제공합니다.
+ */
 module.exports = mongoose.model('User', userSchema);
