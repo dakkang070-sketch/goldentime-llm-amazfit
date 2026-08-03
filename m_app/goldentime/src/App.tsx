@@ -51,6 +51,12 @@ interface UserProfile {
     phone?: string;
     relationship?: string;
   };
+  wearableDevice?: {
+    deviceId?: string;
+    deviceName?: string;
+    deviceType?: string;
+    firmwareVersion?: string;
+  };
   pendingProfileChange?: {
     name?: string;
     email?: string;
@@ -218,6 +224,7 @@ function normalizeUserProfile(rawUser: any): UserProfile {
     medicalHistory: rawUser?.medicalHistory || {},
     emergencyContact: rawUser?.emergencyContact || emergencyContacts[0],
     emergencyContacts,
+    wearableDevice: rawUser?.wearableDevice || undefined,
     pendingProfileChange: rawUser?.pendingProfileChange
       ? {
           name: rawUser.pendingProfileChange.name || '',
@@ -308,6 +315,29 @@ export default function App() {
   const [editForm, setEditForm] = useState<SignupFormData>(formData);
 
   /**
+   * 최신 회원 프로필을 다시 조회해 승인 상태와 워치 정보를 동기화합니다.
+   */
+  const refreshProfile = useCallback(async () => {
+    const response = await memberBackendService.getProfile();
+    const nextUser = normalizeUserProfile((response as any).data?.user || (response as any).user);
+    if (!response.success || !nextUser) {
+      return null;
+    }
+
+    setUser(nextUser);
+    syncEditForm(nextUser);
+    localStorage.setItem(
+      'member_last_login',
+      JSON.stringify({
+        ...(memberBackendService.getCachedLogin() || {}),
+        email: nextUser.email,
+        user: nextUser,
+      }),
+    );
+    return nextUser;
+  }, []);
+
+  /**
    * 로그인 캐시와 저장된 아이디를 복구합니다.
    */
   useEffect(() => {
@@ -323,8 +353,9 @@ export default function App() {
       const nextUser = normalizeUserProfile(cached.user);
       setUser(nextUser);
       syncEditForm(nextUser);
+      refreshProfile().catch(() => {});
     }
-  }, []);
+  }, [refreshProfile]);
 
   /**
    * 회원 프로필 데이터를 편집 폼과 동기화합니다.
@@ -462,13 +493,14 @@ export default function App() {
 
         setUser(nextUser);
         syncEditForm(nextUser);
+        refreshProfile().catch(() => {});
       } catch (error: any) {
         setLoginError(error.message || '서버 연결에 실패했습니다.');
       } finally {
         setLoading(false);
       }
     },
-    [autoLogin, loginEmail, loginPassword, savedId],
+    [autoLogin, loginEmail, loginPassword, refreshProfile, savedId],
   );
 
   /**
@@ -1264,6 +1296,29 @@ export default function App() {
                   <p className="text-slate-400">몸무게</p>
                   <p className="font-medium text-slate-900">{user?.weight ? `${user.weight}kg` : '-'}</p>
                 </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-white p-5 shadow-sm">
+              <h3 className="mb-4 text-sm font-medium text-slate-700">등록 워치 정보</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-slate-400">디바이스명</p>
+                  <p className="font-medium text-slate-900">{user?.wearableDevice?.deviceName || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400">디바이스 종류</p>
+                  <p className="font-medium text-slate-900">{user?.wearableDevice?.deviceType || '-'}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-slate-400">디바이스 ID</p>
+                  <p className="font-medium text-slate-900 break-all">
+                    {user?.wearableDevice?.deviceId || '-'}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[13px] text-slate-600">
+                등록된 워치는 관리자 승인 없이 다른 기기로 변경할 수 없습니다.
               </div>
             </div>
           </div>

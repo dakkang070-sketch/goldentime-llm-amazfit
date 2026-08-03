@@ -185,7 +185,7 @@ class MemberBackendService {
    * 회원 탈퇴
    */
   async deleteAccount(): Promise<BackendResponse> {
-    return this.request('/mobile/account', {
+    return this.request('/mobile/profile', {
       method: 'DELETE',
     });
   }
