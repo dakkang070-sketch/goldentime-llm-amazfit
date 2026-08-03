@@ -19764,7 +19764,7 @@ const jj = {
                     }, fe))
                 })]
             }), d === 0 && u.jsxs("section", {
-                className: "rounded-lg border border-slate-200 bg-white p-4 space-y-2.5",
+                className: "rounded-lg border border-slate-200 bg-white p-4 space-y-3.5",
                 children: [u.jsx("div", {
                     className: "flex items-center gap-2",
                     style: {
@@ -19789,7 +19789,7 @@ const jj = {
                         })]
                     })
                 }), u.jsxs("div", {
-                    className: "flex items-center gap-2",
+                    className: "flex items-center gap-2 py-0.5",
                     children: [u.jsxs("label", {
                         className: "flex flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
@@ -19812,7 +19812,7 @@ const jj = {
                         children: "약관보기"
                     })]
                 }), u.jsxs("div", {
-                    className: "flex items-center gap-2",
+                    className: "flex items-center gap-2 py-0.5",
                     children: [u.jsxs("label", {
                         className: "flex flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
@@ -19835,7 +19835,7 @@ const jj = {
                         children: "약관보기"
                     })]
                 }), u.jsxs("div", {
-                    className: "flex items-center gap-2",
+                    className: "flex items-center gap-2 py-0.5",
                     children: [u.jsxs("label", {
                         className: "flex flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
@@ -19858,7 +19858,7 @@ const jj = {
                         children: "약관보기"
                     })]
                 }), u.jsxs("div", {
-                    className: "flex items-center gap-2",
+                    className: "flex items-center gap-2 py-0.5",
                     children: [u.jsxs("label", {
                         className: "flex flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
@@ -19881,7 +19881,7 @@ const jj = {
                         children: "약관보기"
                     })]
                 }), u.jsxs("div", {
-                    className: "flex items-center gap-2",
+                    className: "flex items-center gap-2 py-0.5",
                     children: [u.jsxs("label", {
                         className: "flex flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
@@ -19904,7 +19904,7 @@ const jj = {
                         children: "약관보기"
                     })]
                 }), u.jsxs("div", {
-                    className: "flex items-center gap-2",
+                    className: "flex items-center gap-2 py-0.5",
                     children: [u.jsxs("label", {
                         className: "flex flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
