@@ -20611,45 +20611,47 @@ const jj = {
                         },
                         className: "fixed inset-0 z-50 flex items-center justify-center p-4",
                         children: [u.jsxs("div", {
-                            className: "w-full rounded-2xl border border-orange-100 bg-white px-5 pb-6 pt-5 shadow-[0_16px_48px_rgba(15,23,42,0.18)]",
+                            className: "relative max-h-[80vh] w-full overflow-auto rounded-2xl bg-white p-6 shadow-2xl",
                             style: {
-                                maxWidth: "352px"
+                                maxWidth: "480px"
                             },
                             children: [u.jsxs("div", {
-                                className: "flex items-start justify-between gap-3",
+                                className: "mb-4 flex items-center justify-between",
                                 children: [u.jsxs("div", {
                                     className: "min-w-0 flex-1",
-                                    children: [u.jsx("div", {
-                                        className: "text-[16px] font-semibold text-slate-900",
+                                    children: [u.jsx("h3", {
+                                        className: "text-[16px] font-bold text-slate-900",
                                         children: R0[Ne].title
-                                    }), u.jsx("div", {
-                                        className: "mt-1 text-xs text-slate-500",
-                                        children: "회원가입 전에 반드시 내용을 확인해주세요."
                                     })]
                                 }), u.jsx("button", {
                                     type: "button",
                                     onClick: () => T(null),
-                                    className: "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-orange-100 bg-orange-50 text-slate-500",
+                                    className: "flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600",
                                     "aria-label": "약관 닫기",
                                     children: u.jsx(vs, {
-                                        size: 16
+                                        size: 18
                                     })
                                 })]
                             }), u.jsx("div", {
-                                className: "mt-4 max-h-[60vh] space-y-4 overflow-y-auto pr-1",
+                                className: "space-y-4",
                                 children: R0[Ne].sections.map(R => u.jsxs("div", {
-                                    className: "rounded-lg border border-orange-100 bg-orange-50/35 px-4 py-4",
-                                    children: [u.jsx("div", {
-                                        className: "text-sm font-semibold text-slate-900",
-                                        children: R.heading
-                                    }), u.jsx("div", {
-                                        className: "mt-2 space-y-2",
-                                        children: R.body.map(fe => u.jsx("p", {
-                                            className: "text-sm leading-6 text-slate-600",
-                                            children: fe
-                                        }, fe))
-                                    })]
+                                    children: [u.jsxs("div", {
+                                        className: "mb-1 text-[13px] font-bold text-slate-500",
+                                        children: ["[", R.heading, "]"]
+                                    }), R.body.map(fe => u.jsx("p", {
+                                        className: "text-[14px] leading-6 text-slate-700",
+                                        children: fe
+                                    }, fe))]
                                 }, R.heading))
+                            }), u.jsx("button", {
+                                type: "button",
+                                onClick: () => T(null),
+                                className: "mt-6 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-teal-700 text-[14px] font-semibold text-white shadow-sm transition hover:bg-teal-800 active:scale-[0.98]",
+                                style: {
+                                    backgroundColor: "#0f766e",
+                                    color: "#ffffff"
+                                },
+                                children: "확인"
                             })]
                         })]
                     })]
