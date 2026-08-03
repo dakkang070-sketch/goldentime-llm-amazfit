@@ -19702,6 +19702,25 @@ const jj = {
                 }
                 return d === 2 ? !P && h.city.trim() && h.district.trim() && h.dong.trim() && h.welfareName.trim() : d === 3 ? h.birthDate.trim() && h.bloodType.trim() && Number(h.height) > 0 && Number(h.weight) > 0 : !0
             },
+            renderTermsCheck = R => u.jsx("span", {
+                className: "flex h-4 w-4 shrink-0 items-center justify-center rounded",
+                style: {
+                    border: `2px solid ${R?"#f97316":"rgb(203 213 225)"}`,
+                    backgroundColor: R ? "#f97316" : "#ffffff"
+                },
+                children: R ? u.jsx("svg", {
+                    className: "h-3 w-3 text-white",
+                    viewBox: "0 0 24 24",
+                    fill: "none",
+                    stroke: "currentColor",
+                    strokeWidth: "3",
+                    strokeLinecap: "round",
+                    strokeLinejoin: "round",
+                    children: u.jsx("polyline", {
+                        points: "20 6 9 17 4 12"
+                    })
+                }) : null
+            }),
             ci = async () => {
                 if (!Lt()) {
                     Y(!0), A("필수 항목을 입력해주세요.");
@@ -19764,11 +19783,17 @@ const jj = {
                     }, fe))
                 })]
             }), d === 0 && u.jsxs("section", {
-                className: "rounded-lg border border-slate-200 bg-white p-4 space-y-3.5",
+                className: "rounded-lg border bg-white p-4 shadow-sm",
+                style: {
+                    borderColor: "rgb(255 237 213)",
+                    display: "flex",
+                    flexDirection: "column",
+                    rowGap: "18px"
+                },
                 children: [u.jsx("div", {
                     className: "flex items-center gap-2",
                     style: {
-                        paddingBottom: "8px",
+                        paddingBottom: "10px",
                         borderBottom: "1px solid rgb(241 245 249)"
                     },
                     children: u.jsxs("label", {
@@ -19779,30 +19804,45 @@ const jj = {
                             onChange: R => {
                                 Ve("agreedService", R.target.checked), Ve("agreedPrivacy", R.target.checked), Ve("agreedLocation", R.target.checked), Ve("agreedBiometric", R.target.checked), Ve("agreedThirdParty", R.target.checked), Ve("agreedWearable", R.target.checked)
                             },
-                            className: "h-4 w-4 shrink-0 cursor-pointer rounded border-2 border-slate-300",
+                            className: "sr-only",
                             style: {
-                                accentColor: "#f97316"
+                                position: "absolute",
+                                opacity: 0,
+                                pointerEvents: "none",
+                                width: "1px",
+                                height: "1px"
                             }
-                        }), u.jsx("span", {
+                        }), renderTermsCheck(h.agreedService && h.agreedPrivacy && h.agreedLocation && h.agreedBiometric && h.agreedThirdParty && h.agreedWearable), u.jsx("span", {
                             className: "text-[13px] font-semibold text-slate-900",
                             children: "필수 약관 모두 동의"
                         })]
                     })
                 }), u.jsxs("div", {
-                    className: "flex items-center gap-2 py-0.5",
+                    className: "flex items-center gap-2",
+                    style: {
+                        paddingTop: "5px",
+                        paddingBottom: "5px"
+                    },
                     children: [u.jsxs("label", {
                         className: "flex flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
                             type: "checkbox",
                             checked: h.agreedService,
                             onChange: R => Ve("agreedService", R.target.checked),
-                            className: "h-4 w-4 shrink-0 cursor-pointer rounded border-2 border-slate-300",
+                            className: "sr-only",
                             style: {
-                                accentColor: "#f97316"
+                                position: "absolute",
+                                opacity: 0,
+                                pointerEvents: "none",
+                                width: "1px",
+                                height: "1px"
                             }
-                        }), u.jsx("span", {
+                        }), renderTermsCheck(h.agreedService), u.jsxs("span", {
                             className: "text-[13px] text-slate-700",
-                            children: "서비스 이용약관 동의 (필수)"
+                            children: ["서비스 이용약관 동의 ", u.jsx("span", {
+                                className: "font-semibold text-rose-400",
+                                children: "*"
+                            })]
                         })]
                     }), u.jsx("button", {
                         type: "button",
@@ -19812,20 +19852,31 @@ const jj = {
                         children: "약관보기"
                     })]
                 }), u.jsxs("div", {
-                    className: "flex items-center gap-2 py-0.5",
+                    className: "flex items-center gap-2",
+                    style: {
+                        paddingTop: "5px",
+                        paddingBottom: "5px"
+                    },
                     children: [u.jsxs("label", {
                         className: "flex flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
                             type: "checkbox",
                             checked: h.agreedPrivacy,
                             onChange: R => Ve("agreedPrivacy", R.target.checked),
-                            className: "h-4 w-4 shrink-0 cursor-pointer rounded border-2 border-slate-300",
+                            className: "sr-only",
                             style: {
-                                accentColor: "#f97316"
+                                position: "absolute",
+                                opacity: 0,
+                                pointerEvents: "none",
+                                width: "1px",
+                                height: "1px"
                             }
-                        }), u.jsx("span", {
+                        }), renderTermsCheck(h.agreedPrivacy), u.jsxs("span", {
                             className: "text-[13px] text-slate-700",
-                            children: "개인정보 수집/이용 동의 (필수)"
+                            children: ["개인정보 수집/이용 동의 ", u.jsx("span", {
+                                className: "font-semibold text-rose-400",
+                                children: "*"
+                            })]
                         })]
                     }), u.jsx("button", {
                         type: "button",
@@ -19835,20 +19886,31 @@ const jj = {
                         children: "약관보기"
                     })]
                 }), u.jsxs("div", {
-                    className: "flex items-center gap-2 py-0.5",
+                    className: "flex items-center gap-2",
+                    style: {
+                        paddingTop: "5px",
+                        paddingBottom: "5px"
+                    },
                     children: [u.jsxs("label", {
                         className: "flex flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
                             type: "checkbox",
                             checked: h.agreedLocation,
                             onChange: R => Ve("agreedLocation", R.target.checked),
-                            className: "h-4 w-4 shrink-0 cursor-pointer rounded border-2 border-slate-300",
+                            className: "sr-only",
                             style: {
-                                accentColor: "#f97316"
+                                position: "absolute",
+                                opacity: 0,
+                                pointerEvents: "none",
+                                width: "1px",
+                                height: "1px"
                             }
-                        }), u.jsx("span", {
+                        }), renderTermsCheck(h.agreedLocation), u.jsxs("span", {
                             className: "text-[13px] text-slate-700",
-                            children: "위치정보 수집 및 이용 동의 (필수)"
+                            children: ["위치정보 수집 및 이용 동의 ", u.jsx("span", {
+                                className: "font-semibold text-rose-400",
+                                children: "*"
+                            })]
                         })]
                     }), u.jsx("button", {
                         type: "button",
@@ -19858,20 +19920,31 @@ const jj = {
                         children: "약관보기"
                     })]
                 }), u.jsxs("div", {
-                    className: "flex items-center gap-2 py-0.5",
+                    className: "flex items-center gap-2",
+                    style: {
+                        paddingTop: "5px",
+                        paddingBottom: "5px"
+                    },
                     children: [u.jsxs("label", {
                         className: "flex flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
                             type: "checkbox",
                             checked: h.agreedBiometric,
                             onChange: R => Ve("agreedBiometric", R.target.checked),
-                            className: "h-4 w-4 shrink-0 cursor-pointer rounded border-2 border-slate-300",
+                            className: "sr-only",
                             style: {
-                                accentColor: "#f97316"
+                                position: "absolute",
+                                opacity: 0,
+                                pointerEvents: "none",
+                                width: "1px",
+                                height: "1px"
                             }
-                        }), u.jsx("span", {
+                        }), renderTermsCheck(h.agreedBiometric), u.jsxs("span", {
                             className: "text-[13px] text-slate-700",
-                            children: "생체데이터 수집 및 이용 동의 (필수)"
+                            children: ["생체데이터 수집 및 이용 동의 ", u.jsx("span", {
+                                className: "font-semibold text-rose-400",
+                                children: "*"
+                            })]
                         })]
                     }), u.jsx("button", {
                         type: "button",
@@ -19881,20 +19954,31 @@ const jj = {
                         children: "약관보기"
                     })]
                 }), u.jsxs("div", {
-                    className: "flex items-center gap-2 py-0.5",
+                    className: "flex items-center gap-2",
+                    style: {
+                        paddingTop: "5px",
+                        paddingBottom: "5px"
+                    },
                     children: [u.jsxs("label", {
                         className: "flex flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
                             type: "checkbox",
                             checked: h.agreedThirdParty,
                             onChange: R => Ve("agreedThirdParty", R.target.checked),
-                            className: "h-4 w-4 shrink-0 cursor-pointer rounded border-2 border-slate-300",
+                            className: "sr-only",
                             style: {
-                                accentColor: "#f97316"
+                                position: "absolute",
+                                opacity: 0,
+                                pointerEvents: "none",
+                                width: "1px",
+                                height: "1px"
                             }
-                        }), u.jsx("span", {
+                        }), renderTermsCheck(h.agreedThirdParty), u.jsxs("span", {
                             className: "text-[13px] text-slate-700",
-                            children: "제3자 정보 제공 동의 (필수)"
+                            children: ["제3자 정보 제공 동의 ", u.jsx("span", {
+                                className: "font-semibold text-rose-400",
+                                children: "*"
+                            })]
                         })]
                     }), u.jsx("button", {
                         type: "button",
@@ -19904,20 +19988,31 @@ const jj = {
                         children: "약관보기"
                     })]
                 }), u.jsxs("div", {
-                    className: "flex items-center gap-2 py-0.5",
+                    className: "flex items-center gap-2",
+                    style: {
+                        paddingTop: "5px",
+                        paddingBottom: "5px"
+                    },
                     children: [u.jsxs("label", {
                         className: "flex flex-1 items-center gap-2 cursor-pointer",
                         children: [u.jsx("input", {
                             type: "checkbox",
                             checked: h.agreedWearable,
                             onChange: R => Ve("agreedWearable", R.target.checked),
-                            className: "h-4 w-4 shrink-0 cursor-pointer rounded border-2 border-slate-300",
+                            className: "sr-only",
                             style: {
-                                accentColor: "#f97316"
+                                position: "absolute",
+                                opacity: 0,
+                                pointerEvents: "none",
+                                width: "1px",
+                                height: "1px"
                             }
-                        }), u.jsx("span", {
+                        }), renderTermsCheck(h.agreedWearable), u.jsxs("span", {
                             className: "text-[13px] text-slate-700",
-                            children: "웨어러블 기기 연동 및 실시간 모니터링 서비스 이용약관 (필수)"
+                            children: ["웨어러블 기기 연동 및 실시간 모니터링 서비스 이용약관 ", u.jsx("span", {
+                                className: "font-semibold text-rose-400",
+                                children: "*"
+                            })]
                         })]
                     }), u.jsx("button", {
                         type: "button",
