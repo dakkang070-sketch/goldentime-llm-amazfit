@@ -5,10 +5,30 @@ const ENCRYPTED_PREFIX = 'enc::';
 const ENCRYPTION_ALGORITHM = 'aes-256-gcm';
 
 /**
+ * ObjectId 같은 BSON 스칼라 값은 재귀 객체 순회에서 제외해 원형을 유지합니다.
+ */
+function isPreservedStructuredScalar(value) {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  if (value instanceof Date || Buffer.isBuffer(value)) {
+    return true;
+  }
+
+  return (
+    value._bsontype === 'ObjectId' ||
+    value._bsontype === 'Decimal128' ||
+    value.constructor?.name === 'ObjectId' ||
+    value.constructor?.name === 'Decimal128'
+  );
+}
+
+/**
  * Mongoose 서브문서/배열처럼 내부 순환 참조를 가질 수 있는 값을 평범한 JS 구조로 정규화합니다.
  */
 function normalizeStructuredContainer(value) {
-  if (!value || typeof value !== 'object' || value instanceof Date) {
+  if (!value || typeof value !== 'object' || isPreservedStructuredScalar(value)) {
     return value;
   }
 
@@ -106,7 +126,7 @@ function encryptStructuredValue(value) {
   if (Array.isArray(value)) {
     return Array.from(value, (item) => encryptStructuredValue(item));
   }
-  if (value instanceof Date) {
+  if (isPreservedStructuredScalar(value)) {
     return value;
   }
   const normalizedValue = normalizeStructuredContainer(value);
@@ -129,7 +149,7 @@ function decryptStructuredValue(value) {
   if (Array.isArray(value)) {
     return Array.from(value, (item) => decryptStructuredValue(item));
   }
-  if (value instanceof Date) {
+  if (isPreservedStructuredScalar(value)) {
     return value;
   }
   const normalizedValue = normalizeStructuredContainer(value);

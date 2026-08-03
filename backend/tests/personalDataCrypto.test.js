@@ -115,4 +115,26 @@ describe('personalDataCrypto 단위 테스트', () => {
       chronicDiseases: [{ disease: '고혈압' }],
     });
   });
+
+  /**
+   * 서브문서 내부 ObjectId가 복호화 과정에서 빈 객체로 변형되지 않아야 재저장 시 검증 오류가 나지 않습니다.
+   */
+  test('구조화된 민감정보 내부 ObjectId는 원형을 유지한다', () => {
+    const objectId = new mongoose.Types.ObjectId();
+    const original = {
+      chronicDiseases: [
+        {
+          _id: objectId,
+          disease: '고혈압',
+        },
+      ],
+    };
+
+    const encrypted = encryptStructuredValue(original);
+    const decrypted = decryptStructuredValue(encrypted);
+
+    expect(decrypted.chronicDiseases[0]._id).toBe(objectId);
+    expect(String(decrypted.chronicDiseases[0]._id)).toBe(String(objectId));
+    expect(decrypted.chronicDiseases[0].disease).toBe('고혈압');
+  });
 });
