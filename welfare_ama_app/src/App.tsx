@@ -426,6 +426,35 @@ function clearStoredWelfareSession(): void {
 }
 
 /**
+ * 현재 실행 환경에 맞는 복지사앱 백엔드 기본 주소를 결정합니다.
+ */
+function resolveWelfareApiBase(): string {
+  try {
+    const { hostname, origin, protocol } = window.location;
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0') {
+      return 'http://localhost:4003';
+    }
+    if ((protocol === 'http:' || protocol === 'https:') && origin) {
+      return origin;
+    }
+  } catch {
+    // no-op
+  }
+  return '';
+}
+
+/**
+ * 복지사앱 API 경로를 현재 실행 환경 기준의 절대 주소로 정규화합니다.
+ */
+function resolveWelfareApiUrl(path: string): string {
+  if (/^https?:\/\//.test(path)) {
+    return path;
+  }
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${resolveWelfareApiBase()}${normalizedPath}`;
+}
+
+/**
  * 저장된 복지사 토큰이 있으면 API 요청 헤더에 Authorization을 추가합니다.
  */
 function buildWelfareAuthHeaders(extraHeaders?: Record<string, string>): Record<string, string> {
@@ -447,7 +476,7 @@ function buildWelfareAuthHeaders(extraHeaders?: Record<string, string>): Record<
  * JSON API를 호출하고 파싱된 결과를 반환합니다.
  */
 async function fetchJson<T>(path: string): Promise<T> {
-  const response = await fetch(path, {
+  const response = await fetch(resolveWelfareApiUrl(path), {
     headers: buildWelfareAuthHeaders(),
   });
   if (!response.ok) {
@@ -460,7 +489,7 @@ async function fetchJson<T>(path: string): Promise<T> {
  * 수정/저장 요청에 사용하는 JSON API 호출 공통 함수입니다.
  */
 async function requestJson<T>(path: string, method: 'PATCH' | 'PUT', body: Record<string, unknown>): Promise<T> {
-  const response = await fetch(path, {
+  const response = await fetch(resolveWelfareApiUrl(path), {
     method,
     headers: buildWelfareAuthHeaders({
       'Content-Type': 'application/json',
@@ -2018,7 +2047,7 @@ export default function App() {
     setSignupEmailVerified(false);
 
     try {
-      const res = await fetch('/api/controllers/check-email', {
+      const res = await fetch(resolveWelfareApiUrl('/api/controllers/check-email'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: emailValue, role: 'medical' }),
@@ -2233,7 +2262,7 @@ export default function App() {
       setAuthSubmitting(true);
       setAuthNotice('');
       setAuthError('');
-      const response = await fetch('/api/controllers/login', {
+      const response = await fetch(resolveWelfareApiUrl('/api/controllers/login'), {
         method: 'POST',
         headers: {
           Accept: 'application/json',
@@ -2295,7 +2324,7 @@ export default function App() {
     setWelfareFindEmailLoading(true);
     setWelfareFindEmailResult('');
     try {
-      const res = await fetch('/api/controllers/find-email', {
+      const res = await fetch(resolveWelfareApiUrl('/api/controllers/find-email'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: welfareFindEmailName.trim(), phone: welfareFindEmailPhone.trim() }),
@@ -2322,7 +2351,7 @@ export default function App() {
     setWelfareFindPwLoading(true);
     setWelfareFindPwResult('');
     try {
-      const res = await fetch('/api/controllers/reset-password/send-code', {
+      const res = await fetch(resolveWelfareApiUrl('/api/controllers/reset-password/send-code'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2362,7 +2391,7 @@ export default function App() {
     setWelfareFindPwLoading(true);
     setWelfareFindPwResult('');
     try {
-      const res = await fetch('/api/controllers/reset-password', {
+      const res = await fetch(resolveWelfareApiUrl('/api/controllers/reset-password'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2426,7 +2455,7 @@ export default function App() {
       setAuthSubmitting(true);
       setAuthNotice('');
       setAuthError('');
-      const response = await fetch('/api/controllers/signup', {
+      const response = await fetch(resolveWelfareApiUrl('/api/controllers/signup'), {
         method: 'POST',
         headers: {
           Accept: 'application/json',
