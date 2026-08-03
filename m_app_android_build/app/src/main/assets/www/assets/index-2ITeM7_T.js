@@ -20648,9 +20648,9 @@ const jj = {
                             }), u.jsx("button", {
                                 type: "button",
                                 onClick: () => T(null),
-                                className: "mt-6 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-teal-700 text-[14px] font-semibold text-white shadow-sm transition hover:bg-teal-800 active:scale-[0.98]",
+                                className: "mt-6 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-orange-500 text-[14px] font-semibold text-white shadow-sm transition hover:bg-orange-600 active:scale-[0.98]",
                                 style: {
-                                    backgroundColor: "#0f766e",
+                                    backgroundColor: "#f97316",
                                     color: "#ffffff"
                                 },
                                 children: "확인"
