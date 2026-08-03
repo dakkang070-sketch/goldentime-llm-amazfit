@@ -1272,6 +1272,32 @@ const isApproxIpDisplayLocation = (locationSource?: string, locationProvider?: s
 };
 
 /**
+ * 케이스 기반 바이탈을 실시간/직전 수집 바이탈과 안전하게 합칩니다.
+ * 케이스 문서의 `undefined` placeholder와 오래된 갱신 시각이 최신 모니터링 값을 지우지 않도록 정의된 항목만 덮어씁니다.
+ */
+const mergeCaseVitals = (
+  baseVitals: Patient["vitals"],
+  caseVitals?: Partial<Patient["vitals"]>,
+): Patient["vitals"] => {
+  const mergedVitals = { ...(baseVitals || {}) } as Record<string, unknown>;
+
+  if (caseVitals) {
+    (Object.keys(caseVitals) as Array<keyof Patient["vitals"]>).forEach((key) => {
+      const value = caseVitals[key];
+      if (value !== undefined) {
+        mergedVitals[key as string] = value;
+      }
+    });
+  }
+
+  if (typeof baseVitals?.lastUpdated === "string" && baseVitals.lastUpdated) {
+    mergedVitals.lastUpdated = baseVitals.lastUpdated;
+  }
+
+  return mergedVitals as Patient["vitals"];
+};
+
+/**
  * 첫 진입 직후에도 정지처럼 보이지 않도록 항목별 다음 측정 시점을 분산 배치합니다.
  */
 const createShowcaseMeasurementClock = (
@@ -1710,7 +1736,7 @@ const App: React.FC = () => {
               ...p,
               status: activeCase.status,
               aiAnalysis: activeCase.aiAnalysis || p.aiAnalysis,
-              vitals: { ...p.vitals, ...activeCase.vitals },
+              vitals: mergeCaseVitals(p.vitals, activeCase.vitals),
             };
           }
           
@@ -1934,10 +1960,7 @@ const App: React.FC = () => {
                   ? casePatient.locationAgeMs
                   : prevPatient.locationAgeMs,
               aiAnalysis: casePatient.aiAnalysis || prevPatient.aiAnalysis,
-              vitals: {
-                ...prevPatient.vitals,
-                ...casePatient.vitals,
-              },
+              vitals: mergeCaseVitals(prevPatient.vitals, casePatient.vitals),
             };
           });
 
