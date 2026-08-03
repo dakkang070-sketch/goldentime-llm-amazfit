@@ -2680,7 +2680,7 @@ export default function App() {
         </div>
         )}
 
-        {authError ? (
+        {!guardianFindMode && authError ? (
           <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-600">
             {authError}
           </div>
@@ -2691,7 +2691,7 @@ export default function App() {
           <div className="mt-5 space-y-4">
             <button
               type="button"
-              onClick={() => { setGuardianFindMode(null); setGuardianFindEmailResult(''); }}
+              onClick={() => { setGuardianFindMode(null); setGuardianFindEmailResult(''); setAuthError(''); }}
               className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-100 bg-white px-3 py-1.5 text-[13px] font-medium text-indigo-600 shadow-sm transition hover:bg-indigo-50"
             >
               <ChevronLeft size={14} /> 로그인으로 돌아가기
@@ -2743,7 +2743,7 @@ export default function App() {
           <div className="mt-5 space-y-4">
             <button
               type="button"
-              onClick={() => { setGuardianFindMode(null); setGuardianFindPwResult(''); setGuardianFindPwStep('request'); }}
+              onClick={() => { setGuardianFindMode(null); setGuardianFindPwResult(''); setGuardianFindPwStep('request'); setAuthError(''); }}
               className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-100 bg-white px-3 py-1.5 text-[13px] font-medium text-indigo-600 shadow-sm transition hover:bg-indigo-50"
             >
               <ChevronLeft size={14} /> 로그인으로 돌아가기
@@ -2951,11 +2951,11 @@ export default function App() {
               로그인
             </button>
             <div className="mt-4 text-center">
-              <button type="button" onClick={() => setGuardianFindMode('find-email')} className="text-[13px] text-slate-400 hover:text-slate-600">
+              <button type="button" onClick={() => { setGuardianFindMode('find-email'); setAuthError(''); }} className="text-[13px] text-slate-400 hover:text-slate-600">
                 아이디 찾기
               </button>
               <span className="mx-2 text-slate-300">|</span>
-              <button type="button" onClick={() => setGuardianFindMode('find-password')} className="text-[13px] text-slate-400 hover:text-slate-600">
+              <button type="button" onClick={() => { setGuardianFindMode('find-password'); setAuthError(''); }} className="text-[13px] text-slate-400 hover:text-slate-600">
                 비밀번호 찾기
               </button>
             </div>
