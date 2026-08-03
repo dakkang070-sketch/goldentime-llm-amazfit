@@ -1199,15 +1199,24 @@ router.post('/guardian/find-email', authLimiter, async (req, res) => {
       return res.status(400).json({ success: false, message: '이름과 전화번호를 입력해주세요.' });
     }
 
-    const user = await User.findOne({
+    const candidates = await User.find({
       isEmergencyAppUser: true,
-      'emergencyContact.name': guardianName,
+      'emergencySettings.guardianAccess.guardianEmail': { $exists: true, $ne: '' },
       $or: [
         { 'emergencySettings.guardianAccess.verifiedGuardianPhone': guardianPhone },
-        { 'emergencyContact.phone': { $regex: guardianPhone } },
+        { 'emergencyContact.phone': { $exists: true, $ne: null } },
       ],
-      'emergencySettings.guardianAccess.guardianEmail': { $exists: true, $ne: '' },
-    }).lean();
+    }).select('emergencyContact emergencySettings.guardianAccess.guardianEmail emergencySettings.guardianAccess.verifiedGuardianPhone');
+
+    const user = candidates.find((entry) => {
+      const resolvedGuardianPhone = normalizePhoneDigits(
+        entry?.emergencySettings?.guardianAccess?.verifiedGuardianPhone || entry?.emergencyContact?.phone,
+      );
+      return (
+        String(entry?.emergencyContact?.name || '').trim() === guardianName &&
+        resolvedGuardianPhone === guardianPhone
+      );
+    });
 
     const guardianEmail = String(user?.emergencySettings?.guardianAccess?.guardianEmail || '').trim().toLowerCase();
     if (!user || !guardianEmail) {
