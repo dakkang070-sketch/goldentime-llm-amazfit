@@ -1475,6 +1475,33 @@ router.get('/pending-approvals', requireAuth, requireRole('admin'), async (req, 
 });
 
 /**
+ * 회원앱 회원가입 단계에서 사용할 공개 복지사 소속 목록을 반환합니다.
+ */
+router.get('/public-medical-affiliations', async (req, res) => {
+  try {
+    const staffAccounts = await Controller.find({
+      role: 'medical',
+      accountStatus: 'active',
+    })
+      .select('name affiliation role accountStatus')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json({
+      success: true,
+      data: staffAccounts,
+    });
+  } catch (error) {
+    console.error('공개 복지사 소속 목록 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '복지사 소속 목록 조회 중 오류가 발생했습니다.',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+});
+
+/**
  * 관제요원/복지사 전체 계정 목록을 조회합니다.
  */
 router.get('/', requireAuth, requireRole(['admin', 'medical']), async (req, res) => {
