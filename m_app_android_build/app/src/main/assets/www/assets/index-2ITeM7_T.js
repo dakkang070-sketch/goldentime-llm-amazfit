@@ -20098,52 +20098,55 @@ const jj = {
                                 children: "@"
                             })]
                         }), u.jsxs("div", {
-                            className: "flex h-11 items-center gap-2 overflow-hidden rounded-lg border border-orange-100 bg-white px-4",
-                            children: [u.jsxs("select", {
-                                value: Se,
-                                onChange: R => {
-                                    const fe = R.target.value;
-                                    if (Fe(fe), fe !== "custom") {
-                                        Ae(""), We({
-                                            domainOption: fe,
-                                            customDomain: ""
-                                        });
-                                        return
-                                    }
-                                    We({
-                                        domainOption: fe
-                                    })
-                                },
-                                className: "flex-1 min-w-0 h-full bg-transparent text-sm outline-none border-0",
-                                children: [u.jsx("option", {
-                                    value: "",
-                                    children: "메일 선택"
-                                }), Rx.map(R => u.jsx("option", {
-                                    value: R,
-                                    children: R
-                                }, R)), u.jsx("option", {
-                                    value: "custom",
-                                    children: "직접 입력"
-                                })]
-                            }), Se === "custom" ? u.jsx("input", {
-                                value: ze,
-                                onChange: R => {
-                                    const fe = R.target.value.replace(/\s/g, "").toLowerCase();
-                                    Ae(fe), We({
-                                        customDomain: fe
-                                    })
-                                },
-                                placeholder: "도메인 직접 입력",
-                                className: "flex-1 min-w-0 h-full bg-transparent text-sm outline-none border-0",
-                                inputMode: "email",
-                                autoComplete: "off"
-                            }) : null, u.jsxs("button", {
+                            className: "mt-1 flex items-center gap-2",
+                            children: [u.jsxs("div", {
+                                className: "flex h-11 flex-1 items-center gap-2 overflow-hidden rounded-lg border border-orange-100 bg-white px-4",
+                                children: [u.jsxs("select", {
+                                    value: Se,
+                                    onChange: R => {
+                                        const fe = R.target.value;
+                                        if (Fe(fe), fe !== "custom") {
+                                            Ae(""), We({
+                                                domainOption: fe,
+                                                customDomain: ""
+                                            });
+                                            return
+                                        }
+                                        We({
+                                            domainOption: fe
+                                        })
+                                    },
+                                    className: "flex-1 min-w-0 h-full bg-transparent text-sm outline-none border-0",
+                                    children: [u.jsx("option", {
+                                        value: "",
+                                        children: "메일 선택"
+                                    }), Rx.map(R => u.jsx("option", {
+                                        value: R,
+                                        children: R
+                                    }, R)), u.jsx("option", {
+                                        value: "custom",
+                                        children: "직접 입력"
+                                    })]
+                                }), Se === "custom" ? u.jsx("input", {
+                                    value: ze,
+                                    onChange: R => {
+                                        const fe = R.target.value.replace(/\s/g, "").toLowerCase();
+                                        Ae(fe), We({
+                                            customDomain: fe
+                                        })
+                                    },
+                                    placeholder: "도메인 직접 입력",
+                                    className: "flex-1 min-w-0 h-full bg-transparent text-sm outline-none border-0",
+                                    inputMode: "email",
+                                    autoComplete: "off"
+                                }) : null]
+                            }), u.jsxs("button", {
                                 type: "button",
                                 onClick: Ce,
                                 disabled: Te,
-                                className: "inline-flex h-7 shrink-0 items-center gap-1 rounded-md bg-orange-100 px-2.5 text-[11px] font-semibold text-orange-600 transition hover:bg-orange-200 active:scale-95 disabled:opacity-50",
+                                className: "inline-flex h-11 shrink-0 items-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-3 text-[13px] font-medium text-orange-600 transition hover:bg-orange-100 active:scale-95 disabled:opacity-50",
                                 children: [Te ? u.jsx(io, {
-                                    size: 12,
+                                    size: 14,
                                     className: "animate-spin"
                                 }) : null, "중복확인"]
                             })]
