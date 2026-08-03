@@ -151,4 +151,108 @@ describe('운영자 자기 휴대폰 인증 테스트', () => {
     expect(controllerDoc.phone).toBe('010-9999-8888');
     expect(save).toHaveBeenCalled();
   });
+
+  /**
+   * 복지사 본인이 소속을 바꾸면 즉시 반영하지 않고 승인 대기 요청으로만 저장해야 합니다.
+   */
+  test('복지사 소속 변경은 관리자 승인 대기 요청으로만 저장한다', async () => {
+    const save = jest.fn(async function saveController() {
+      return this;
+    });
+    const controllerDoc = {
+      _id: 'medical-1',
+      role: 'medical',
+      email: 'welfare@example.com',
+      phone: '010-1111-2222',
+      affiliation: {
+        city: '서울특별시',
+        district: '영등포구',
+        dong: '여의동',
+      },
+      pendingAffiliationChange: undefined,
+      menuPermissions: [],
+      save,
+    };
+
+    Controller.findById.mockResolvedValueOnce(controllerDoc);
+    Controller.findOne.mockReturnValueOnce({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue(null),
+      }),
+    });
+
+    const patchRes = await request(app)
+      .patch('/api/controllers/medical-1')
+      .set('Authorization', 'Bearer medical-token')
+      .send({
+        email: 'welfare@example.com',
+        phone: '010-1111-2222',
+        role: 'medical',
+        affiliation: {
+          city: '부산광역시',
+          district: '강서구',
+          dong: '명지1동',
+        },
+      });
+
+    expect(patchRes.statusCode).toBe(200);
+    expect(patchRes.body.message).toBe('소속 변경 요청이 관리자 승인 대기로 접수되었습니다.');
+    expect(controllerDoc.affiliation).toEqual({
+      city: '서울특별시',
+      district: '영등포구',
+      dong: '여의동',
+    });
+    expect(controllerDoc.pendingAffiliationChange).toEqual({
+      city: '부산광역시',
+      district: '강서구',
+      dong: '명지1동',
+      requestedAt: expect.any(Date),
+    });
+    expect(save).toHaveBeenCalled();
+  });
+
+  /**
+   * 관리자가 복지사 소속 변경 요청을 승인하면 실제 현재 소속으로 반영해야 합니다.
+   */
+  test('관리자는 복지사 소속 변경 요청을 승인하면 현재 소속에 반영한다', async () => {
+    const save = jest.fn(async function saveController() {
+      return this;
+    });
+    const controllerDoc = {
+      _id: 'medical-1',
+      role: 'medical',
+      email: 'welfare@example.com',
+      phone: '010-1111-2222',
+      affiliation: {
+        city: '서울특별시',
+        district: '영등포구',
+        dong: '여의동',
+      },
+      pendingAffiliationChange: {
+        city: '부산광역시',
+        district: '강서구',
+        dong: '명지1동',
+        requestedAt: new Date('2026-08-03T10:00:00.000Z'),
+      },
+      menuPermissions: [],
+      save,
+    };
+
+    Controller.findById.mockResolvedValueOnce(controllerDoc);
+
+    const approvalRes = await request(app)
+      .patch('/api/controllers/medical-1/affiliation-approval')
+      .set('Authorization', 'Bearer admin-token')
+      .send({ decision: 'approved' });
+
+    expect(approvalRes.statusCode).toBe(200);
+    expect(approvalRes.body.message).toBe('복지사 소속 변경 요청이 승인되었습니다.');
+    expect(controllerDoc.affiliation).toEqual({
+      city: '부산광역시',
+      district: '강서구',
+      dong: '명지1동',
+    });
+    expect(controllerDoc.pendingAffiliationChange).toBeUndefined();
+    expect(save).toHaveBeenCalled();
+  });
 });

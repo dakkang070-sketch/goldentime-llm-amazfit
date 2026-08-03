@@ -44,6 +44,29 @@ const controllerSchema = new mongoose.Schema({
       default: ''
     }
   },
+
+  // 복지사 소속 변경 승인 대기
+  pendingAffiliationChange: {
+    city: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    district: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    dong: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    requestedAt: {
+      type: Date,
+      default: null
+    }
+  },
   
   // 권한
   role: {

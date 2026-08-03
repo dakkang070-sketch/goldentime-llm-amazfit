@@ -423,6 +423,25 @@ function resolveControllerApprovalMessage(accountStatus) {
 }
 
 /**
+ * 운영자 요약 응답에 공통 필드를 맞춰 반환합니다.
+ */
+function serializeControllerSummary(controller) {
+  return {
+    id: controller._id,
+    name: controller.name,
+    email: controller.email,
+    phone: controller.phone || '',
+    role: controller.role,
+    affiliation: controller.affiliation,
+    accountStatus: controller.accountStatus,
+    menuPermissions: controller.menuPermissions || [],
+    pendingAffiliationChange: hasPendingAffiliationChange(controller.pendingAffiliationChange)
+      ? normalizePendingAffiliationChange(controller.pendingAffiliationChange)
+      : null,
+  };
+}
+
+/**
  * 복지사 이메일을 앞 2자리만 남기고 마스킹합니다.
  */
 function maskControllerEmail(email) {
@@ -473,6 +492,35 @@ function normalizeAffiliationInput(rawAffiliation = {}, fallback = {}) {
     district: String(rawAffiliation.district || fallback.district || '').trim(),
     dong: String(rawAffiliation.dong || fallback.dong || '').trim(),
   };
+}
+
+/**
+ * 두 소속 정보가 같은 행정구역을 가리키는지 비교합니다.
+ */
+function isSameAffiliation(leftAffiliation = {}, rightAffiliation = {}) {
+  const left = normalizeAffiliationInput(leftAffiliation);
+  const right = normalizeAffiliationInput(rightAffiliation);
+  return left.city === right.city && left.district === right.district && left.dong === right.dong;
+}
+
+/**
+ * 승인 대기 중인 복지사 소속 변경 요청을 화면용으로 정규화합니다.
+ */
+function normalizePendingAffiliationChange(rawPendingAffiliationChange = {}) {
+  return {
+    city: String(rawPendingAffiliationChange.city || '').trim(),
+    district: String(rawPendingAffiliationChange.district || '').trim(),
+    dong: String(rawPendingAffiliationChange.dong || '').trim(),
+    requestedAt: rawPendingAffiliationChange.requestedAt || null,
+  };
+}
+
+/**
+ * 복지사 소속 변경 요청이 실제로 채워져 있는지 확인합니다.
+ */
+function hasPendingAffiliationChange(rawPendingAffiliationChange = {}) {
+  const pendingAffiliation = normalizePendingAffiliationChange(rawPendingAffiliationChange);
+  return Boolean(pendingAffiliation.city || pendingAffiliation.district || pendingAffiliation.dong);
 }
 
 /**
@@ -1328,16 +1376,7 @@ router.post('/admin-create', requireAuth, requireRole('admin'), async (req, res)
           : normalizedRole === 'admin'
             ? '관리자가 등록되었습니다.'
             : '관제요원이 등록되었습니다.',
-      data: {
-        id: controller._id,
-        name: controller.name,
-        email: controller.email,
-        phone: controller.phone || '',
-        role: controller.role,
-        affiliation: controller.affiliation,
-        accountStatus: controller.accountStatus,
-        menuPermissions: controller.menuPermissions || [],
-      },
+      data: serializeControllerSummary(controller),
     });
 
     staffPhoneVerificationStore.delete(normalizedPhone);
@@ -1397,6 +1436,7 @@ router.patch('/:id', requireAuth, requireAdminOrSameController, async (req, res)
             ? normalizeMenuPermissions(menuPermissions)
             : controller.menuPermissions || ADMIN_MENU_PERMISSIONS)
         : [];
+    const currentAffiliation = normalizeAffiliationInput(controller.affiliation);
     const normalizedAffiliation = normalizeAffiliationInput(affiliation, {
       city,
       district,
@@ -1450,11 +1490,39 @@ router.patch('/:id', requireAuth, requireAdminOrSameController, async (req, res)
       });
     }
 
+    const affiliationChanged = !isSameAffiliation(currentAffiliation, nextAffiliation);
+    if (requesterRole !== 'admin' && affiliationChanged) {
+      if (controller.role !== 'medical') {
+        return res.status(403).json({
+          success: false,
+          message: '소속 변경은 관리자만 처리할 수 있습니다.',
+        });
+      }
+    }
+    const sameAsPendingAffiliation =
+      requesterRole !== 'admin' &&
+      hasPendingAffiliationChange(controller.pendingAffiliationChange) &&
+      isSameAffiliation(controller.pendingAffiliationChange, nextAffiliation);
+
     controller.email = normalizedEmail;
     controller.phone = String(phone || '').trim();
     controller.role = nextRole;
-    controller.affiliation = nextAffiliation;
     controller.menuPermissions = normalizedMenuPermissions;
+
+    if (requesterRole === 'admin') {
+      controller.affiliation = nextAffiliation;
+      controller.pendingAffiliationChange = undefined;
+    } else if (affiliationChanged) {
+      if (!sameAsPendingAffiliation) {
+        controller.pendingAffiliationChange = {
+          city: nextAffiliation.city,
+          district: nextAffiliation.district,
+          dong: nextAffiliation.dong,
+          requestedAt: new Date(),
+        };
+      }
+    }
+
     await controller.save();
 
     if (requesterRole !== 'admin' && normalizedPhone && normalizedPhone !== currentPhone) {
@@ -1463,17 +1531,11 @@ router.patch('/:id', requireAuth, requireAdminOrSameController, async (req, res)
 
     res.json({
       success: true,
-      message: '운영자 정보가 수정되었습니다.',
-      data: {
-        id: controller._id,
-        name: controller.name,
-        email: controller.email,
-        phone: controller.phone || '',
-        role: controller.role,
-        affiliation: controller.affiliation,
-        accountStatus: controller.accountStatus,
-        menuPermissions: controller.menuPermissions || [],
-      },
+      message:
+        requesterRole !== 'admin' && affiliationChanged && !sameAsPendingAffiliation
+          ? '소속 변경 요청이 관리자 승인 대기로 접수되었습니다.'
+          : '운영자 정보가 수정되었습니다.',
+      data: serializeControllerSummary(controller),
     });
   } catch (error) {
     console.error('운영자 정보 수정 오류:', error);
@@ -1612,6 +1674,37 @@ router.get('/pending-approvals', requireAuth, requireRole('admin'), async (req, 
 });
 
 /**
+ * 복지사 소속 변경 승인 대기 목록을 조회합니다.
+ */
+router.get('/pending-affiliation-approvals', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const pendingAffiliationControllers = await Controller.find({
+      role: 'medical',
+      accountStatus: 'active',
+      'pendingAffiliationChange.requestedAt': { $ne: null },
+    })
+      .select('-password')
+      .sort({ 'pendingAffiliationChange.requestedAt': -1 })
+      .lean();
+
+    res.json({
+      success: true,
+      data: pendingAffiliationControllers.map((controller) => ({
+        ...serializeControllerSummary(controller),
+        requestedAffiliation: normalizePendingAffiliationChange(controller.pendingAffiliationChange),
+      })),
+    });
+  } catch (error) {
+    console.error('복지사 소속 변경 승인 대기 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '복지사 소속 변경 승인 대기 조회 중 오류가 발생했습니다.',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+});
+
+/**
  * 회원앱 회원가입 단계에서 사용할 공개 복지사 소속 목록을 반환합니다.
  */
 router.get('/public-medical-affiliations', async (req, res) => {
@@ -1650,7 +1743,12 @@ router.get('/', requireAuth, requireRole(['admin', 'medical']), async (req, res)
 
     res.json({
       success: true,
-      data: staffAccounts,
+      data: staffAccounts.map((staff) => ({
+        ...staff,
+        pendingAffiliationChange: hasPendingAffiliationChange(staff.pendingAffiliationChange)
+          ? normalizePendingAffiliationChange(staff.pendingAffiliationChange)
+          : null,
+      })),
     });
   } catch (error) {
     console.error('관제요원/복지사 목록 조회 오류:', error);
@@ -1729,6 +1827,60 @@ router.patch('/:id/approval', requireAuth, requireRole('admin'), async (req, res
     res.status(500).json({
       success: false,
       message: '승인 처리 중 오류가 발생했습니다.',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+});
+
+/**
+ * 복지사 소속 변경 요청을 승인 또는 반려합니다.
+ */
+router.patch('/:id/affiliation-approval', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const decision = String(req.body?.decision || '').trim().toLowerCase();
+
+    if (!['approved', 'rejected'].includes(decision)) {
+      return res.status(400).json({
+        success: false,
+        message: '허용되지 않은 처리 유형입니다.',
+      });
+    }
+
+    const controller = await Controller.findById(id);
+    if (!controller || controller.role !== 'medical') {
+      return res.status(404).json({
+        success: false,
+        message: '복지사 계정을 찾을 수 없습니다.',
+      });
+    }
+
+    if (!hasPendingAffiliationChange(controller.pendingAffiliationChange)) {
+      return res.status(400).json({
+        success: false,
+        message: '승인 대기 중인 소속 변경 요청이 없습니다.',
+      });
+    }
+
+    if (decision === 'approved') {
+      controller.affiliation = normalizeAffiliationInput(controller.pendingAffiliationChange);
+    }
+    controller.pendingAffiliationChange = undefined;
+    await controller.save();
+
+    return res.json({
+      success: true,
+      message:
+        decision === 'approved'
+          ? '복지사 소속 변경 요청이 승인되었습니다.'
+          : '복지사 소속 변경 요청이 반려되었습니다.',
+      data: serializeControllerSummary(controller),
+    });
+  } catch (error) {
+    console.error('복지사 소속 변경 승인 처리 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '복지사 소속 변경 승인 처리 중 오류가 발생했습니다.',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }

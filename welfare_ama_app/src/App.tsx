@@ -185,6 +185,7 @@ interface WelfareStaff {
   role?: string;
   accountStatus?: string;
   affiliation?: Affiliation;
+  pendingAffiliationChange?: (Affiliation & { requestedAt?: string | null }) | null;
 }
 
 interface WelfareSession {
@@ -2251,9 +2252,9 @@ export default function App() {
     setProfileForm({
       email: currentWelfare?.email || '',
       phone: currentWelfare?.phone || '',
-      city: currentWelfare?.affiliation?.city || '',
-      district: currentWelfare?.affiliation?.district || '',
-      dong: currentWelfare?.affiliation?.dong || '',
+      city: currentWelfare?.pendingAffiliationChange?.city || currentWelfare?.affiliation?.city || '',
+      district: currentWelfare?.pendingAffiliationChange?.district || currentWelfare?.affiliation?.district || '',
+      dong: currentWelfare?.pendingAffiliationChange?.dong || currentWelfare?.affiliation?.dong || '',
     });
     setProfilePhoneCode('');
     setProfilePhoneVerificationToken('');
@@ -2581,6 +2582,7 @@ export default function App() {
           email: string;
           phone?: string;
           affiliation?: Affiliation;
+          pendingAffiliationChange?: (Affiliation & { requestedAt?: string | null }) | null;
         };
       }>(`/api/controllers/${currentWelfare._id}`, 'PATCH', {
         email: profileForm.email,
@@ -2605,6 +2607,7 @@ export default function App() {
                 email: response.data?.email || profileForm.email,
                 phone: response.data?.phone || profileForm.phone,
                 affiliation: normalizeAffiliation(response.data?.affiliation || profileForm),
+                pendingAffiliationChange: response.data?.pendingAffiliationChange || null,
               }
             : row,
         ),
@@ -3691,6 +3694,14 @@ export default function App() {
                             <div className="rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 min-[640px]:col-span-2">
                               <div className="text-[13px] font-semibold text-slate-400">소속</div>
                               <div className="mt-1 min-w-0 break-words text-[15px] font-semibold text-slate-900">{[currentWelfare?.affiliation?.city, currentWelfare?.affiliation?.district, currentWelfare?.affiliation?.dong].filter(Boolean).join(' ') || '-'}</div>
+                              {currentWelfare?.pendingAffiliationChange ? (
+                                <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                                  <div className="text-[12px] font-bold text-amber-700">승인 대기 중인 소속 변경 요청</div>
+                                  <div className="mt-1 text-[14px] font-semibold text-amber-900">
+                                    {[currentWelfare.pendingAffiliationChange.city, currentWelfare.pendingAffiliationChange.district, currentWelfare.pendingAffiliationChange.dong].filter(Boolean).join(' ') || '-'}
+                                  </div>
+                                </div>
+                              ) : null}
                             </div>
                             <div className="rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3">
                               <div className="text-[13px] font-semibold text-slate-400">담당자</div>
@@ -3758,7 +3769,7 @@ export default function App() {
 
                     <div className="card border border-white/80 bg-white/92 px-4 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
                       <div className="text-[19px] font-extrabold tracking-[-0.03em] text-slate-900">정보수정</div>
-                      <div className="mt-1.5 text-[14px] font-medium text-slate-500">이메일, 전화번호, 소속 정보를 수정할 수 있습니다.</div>
+                      <div className="mt-1.5 text-[14px] font-medium text-slate-500">이메일과 전화번호는 즉시 반영되고, 소속 변경은 관리자 승인 후 반영됩니다.</div>
                     </div>
 
                     <div className="grid grid-cols-1 gap-3 min-[768px]:grid-cols-[minmax(0,1.45fr)_minmax(260px,0.9fr)] min-[1024px]:gap-4">
@@ -3893,6 +3904,14 @@ export default function App() {
                           </div>
                         </div>
 
+                        {currentWelfare?.pendingAffiliationChange ? (
+                          <div className="rounded-[18px] border border-amber-200 bg-[linear-gradient(180deg,#fffbeb_0%,#fef3c7_100%)] px-4 py-3.5 text-[14px] font-medium text-amber-800">
+                            현재 승인 대기 중인 요청:
+                            {' '}
+                            {[currentWelfare.pendingAffiliationChange.city, currentWelfare.pendingAffiliationChange.district, currentWelfare.pendingAffiliationChange.dong].filter(Boolean).join(' ') || '-'}
+                          </div>
+                        ) : null}
+
                         {profileMessage ? (
                           <div className="rounded-[18px] border border-slate-200 bg-[linear-gradient(180deg,#f8fafc_0%,#f1f5f9_100%)] px-4 py-3.5 text-[14px] font-medium text-slate-600">
                             {profileMessage}
@@ -3905,7 +3924,7 @@ export default function App() {
                           <div className="text-[16px] font-extrabold tracking-[-0.02em] text-slate-900">수정 안내</div>
                           <div className="mt-2 space-y-2 text-[14px] leading-6 text-slate-500">
                             <p>이메일과 전화번호는 실제 운영 중 사용하는 정보로 유지해주세요.</p>
-                            <p>소속 정보는 담당 회원 표시와 연동되므로 정확한 지역 기준으로 입력하는 것이 좋습니다.</p>
+                            <p>소속 정보는 담당 회원 표시와 연동되며, 저장 즉시 바뀌지 않고 관리자 승인 후 반영됩니다.</p>
                           </div>
                         </div>
 

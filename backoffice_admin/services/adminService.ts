@@ -13,6 +13,7 @@ import {
   SystemSettings,
   PendingMemberApproval,
   PendingStaffApproval,
+  PendingStaffAffiliationApproval,
   ManualAdminRegistrationInput,
   ManualMemberRegistrationInput,
   ManualStaffRegistrationInput,
@@ -366,6 +367,29 @@ export const adminService = {
   },
 
   /**
+   * 승인 대기 중인 복지사 소속 변경 요청 목록을 조회합니다.
+   */
+  async getPendingStaffAffiliationApprovals(): Promise<PendingStaffAffiliationApproval[]> {
+    try {
+      const json = await apiJson<{ success: boolean; data: any[] }>('/api/controllers/pending-affiliation-approvals')
+      const rows = Array.isArray(json?.data) ? json.data : []
+      return rows.map((staff) => ({
+        id: staff.id || staff._id,
+        name: staff.name || '',
+        email: staff.email || '',
+        phone: staff.phone || '',
+        role: 'medical' as const,
+        affiliation: mapAffiliation(staff.affiliation),
+        requestedAffiliation: mapAffiliation(staff.requestedAffiliation || staff.pendingAffiliationChange),
+        requestedAt: staff.requestedAffiliation?.requestedAt || staff.pendingAffiliationChange?.requestedAt || '',
+      }))
+    } catch (error) {
+      console.error('Failed to fetch pending staff affiliation approvals:', error);
+      return [];
+    }
+  },
+
+  /**
    * 관리자 전체 계정 목록을 조회합니다.
    */
   async getAdminAccounts(): Promise<AdminAccount[]> {
@@ -391,6 +415,22 @@ export const adminService = {
       return true
     } catch (error) {
       console.error('Failed to update staff approval:', error);
+      return false;
+    }
+  },
+
+  /**
+   * 복지사 소속 변경 요청을 승인 또는 반려 처리합니다.
+   */
+  async updateStaffAffiliationApproval(id: string, decision: 'approved' | 'rejected'): Promise<boolean> {
+    try {
+      await apiJson(`/api/controllers/${id}/affiliation-approval`, {
+        method: 'PATCH',
+        body: JSON.stringify({ decision }),
+      })
+      return true
+    } catch (error) {
+      console.error('Failed to update staff affiliation approval:', error);
       return false;
     }
   },
