@@ -20289,9 +20289,10 @@ const jj = {
                         },
                         className: "fixed inset-0 z-50 flex items-center justify-center p-4",
                         children: [u.jsxs("div", {
-                            className: "w-full rounded-2xl border border-orange-100 bg-white px-5 pb-6 pt-5 shadow-[0_16px_48px_rgba(15,23,42,0.18)]",
+                            className: "w-full rounded-[28px] border border-orange-100 bg-white px-5 pb-6 pt-5 shadow-[0_16px_48px_rgba(15,23,42,0.18)]",
                             style: {
-                                maxWidth: "312px"
+                                maxWidth: "312px",
+                                borderRadius: "28px"
                             },
                             children: [u.jsxs("div", {
                                 className: "flex items-start justify-between gap-3",
@@ -20611,9 +20612,10 @@ const jj = {
                         },
                         className: "fixed inset-0 z-50 flex items-center justify-center p-4",
                         children: [u.jsxs("div", {
-                            className: "relative max-h-[80vh] w-full overflow-auto rounded-2xl bg-white p-6 shadow-2xl",
+                            className: "relative max-h-[80vh] w-full overflow-auto rounded-[28px] bg-white p-6 shadow-2xl",
                             style: {
-                                maxWidth: "480px"
+                                maxWidth: "480px",
+                                borderRadius: "28px"
                             },
                             children: [u.jsxs("div", {
                                 className: "mb-4 flex items-center justify-between",
