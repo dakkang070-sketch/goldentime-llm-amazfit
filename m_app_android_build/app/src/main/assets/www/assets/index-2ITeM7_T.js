@@ -20274,26 +20274,43 @@ const jj = {
                     }), u.jsxs(st.section, {
                         initial: {
                             opacity: 0,
-                            y: 20
+                            y: 12,
+                            scale: .98
                         },
                         animate: {
                             opacity: 1,
-                            y: 0
+                            y: 0,
+                            scale: 1
                         },
                         exit: {
                             opacity: 0,
-                            y: 20
+                            y: 12,
+                            scale: .98
                         },
-                        className: "fixed inset-x-0 bottom-0 z-50 rounded-t-[28px] border border-orange-100 bg-white px-5 pb-6 pt-5 shadow-[0_-10px_40px_rgba(15,23,42,0.16)]",
-                        children: [u.jsx("div", {
-                            className: "mx-auto mb-4 h-1.5 w-12 rounded-full bg-orange-100"
-                        }), u.jsx("div", {
-                            className: "text-sm font-semibold text-slate-900",
-                            children: aa(se)
-                        }), u.jsx("div", {
-                            className: "mt-1 text-xs text-slate-500",
-                            children: "선택할 항목을 눌러주세요."
-                        }), u.jsx("div", {
+                        className: "fixed inset-0 z-50 flex items-center justify-center p-4",
+                        children: [u.jsxs("div", {
+                            className: "w-full max-w-[360px] rounded-2xl border border-orange-100 bg-white px-5 pb-6 pt-5 shadow-[0_16px_48px_rgba(15,23,42,0.18)]",
+                            children: [u.jsxs("div", {
+                                className: "flex items-start justify-between gap-3",
+                                children: [u.jsxs("div", {
+                                    className: "min-w-0 flex-1",
+                                    children: [u.jsx("div", {
+                                        className: "text-[16px] font-semibold text-slate-900",
+                                        children: aa(se)
+                                    }), u.jsx("div", {
+                                        className: "mt-1 text-xs text-slate-500",
+                                        children: "선택할 항목을 눌러주세요."
+                                    })]
+                                }), u.jsx("button", {
+                                    type: "button",
+                                    onClick: () => he(null),
+                                    className: "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-orange-100 bg-orange-50 text-slate-500",
+                                    "aria-label": "선택 팝업 닫기",
+                                    children: u.jsx(vs, {
+                                        size: 16
+                                    })
+                                })]
+                            }), u.jsx("div", {
                             className: "mt-4 max-h-[45vh] space-y-2 overflow-y-auto",
                             children: Bn(se).map(R => {
                                 const fe = aa(se) === R;
@@ -20312,6 +20329,7 @@ const jj = {
                         }), Bn(se).length === 0 && u.jsx("div", {
                             className: "mt-4 rounded-lg border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-600",
                             children: "선택 가능한 항목이 없습니다."
+                        })]
                         })]
                     })]
                 })
@@ -20575,97 +20593,57 @@ const jj = {
                     }), u.jsxs(st.section, {
                         initial: {
                             opacity: 0,
-                            y: 20
+                            y: 12,
+                            scale: .98
                         },
                         animate: {
                             opacity: 1,
-                            y: 0
+                            y: 0,
+                            scale: 1
                         },
                         exit: {
                             opacity: 0,
-                            y: 20
+                            y: 12,
+                            scale: .98
                         },
-                        className: "fixed inset-x-0 bottom-0 z-50 max-h-[78vh] overflow-hidden rounded-t-[28px] border border-slate-200 bg-white px-5 pb-6 pt-5 shadow-[0_-10px_40px_rgba(15,23,42,0.16)]",
-                        children: [u.jsx("div", {
-                            className: "mx-auto mb-4 h-1.5 w-12 rounded-full bg-slate-200"
-                        }), u.jsxs("div", {
-                            className: "flex items-start justify-between gap-3",
-                            children: [u.jsx("div", {
-                                className: "flex-1 rounded-lg border border-slate-200 bg-white px-4 py-4 shadow-sm",
-                                children: u.jsxs("div", {
-                                    children: [u.jsx("div", {
-                                        className: "text-[14px] font-bold tracking-[0.08em] text-slate-400",
-                                        children: "개인정보 및 약관"
-                                    }), u.jsx("div", {
-                                        className: "mt-2 text-lg font-semibold text-slate-900",
-                                        children: R0[Ne].title
-                                    })]
-                                })
-                            }), u.jsx("button", {
-                                type: "button",
-                                onClick: () => T(null),
-                                className: "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500",
-                                "aria-label": "약관 닫기",
-                                children: u.jsx(vs, {
-                                    size: 16
-                                })
-                            })]
-                        }), u.jsxs("div", {
-                            className: "mt-4 max-h-[58vh] space-y-4 overflow-y-auto pr-1",
+                        className: "fixed inset-0 z-50 flex items-center justify-center p-4",
+                        children: [u.jsxs("div", {
+                            className: "w-full max-w-[480px] rounded-2xl border border-orange-100 bg-white px-5 pb-6 pt-5 shadow-[0_16px_48px_rgba(15,23,42,0.18)]",
                             children: [u.jsxs("div", {
-                                className: "grid grid-cols-3 gap-2",
-                                children: [u.jsx("button", {
-                                    type: "button",
-                                    onClick: () => T("service"),
-                                    className: `inline-flex h-9 items-center justify-center rounded-lg border px-2 text-[12px] font-semibold shadow-sm transition ${Ne==="service"?"border-teal-200 bg-gradient-to-r from-teal-600 to-teal-500 text-white":"border-slate-200 bg-white text-slate-600"}`,
-                                    children: "서비스 이용약관"
+                                className: "flex items-start justify-between gap-3",
+                                children: [u.jsxs("div", {
+                                    className: "min-w-0 flex-1",
+                                    children: [u.jsx("div", {
+                                        className: "text-[16px] font-semibold text-slate-900",
+                                        children: R0[Ne].title
+                                    }), u.jsx("div", {
+                                        className: "mt-1 text-xs text-slate-500",
+                                        children: "회원가입 전에 반드시 내용을 확인해주세요."
+                                    })]
                                 }), u.jsx("button", {
                                     type: "button",
-                                    onClick: () => T("privacy"),
-                                    className: `inline-flex h-9 items-center justify-center rounded-lg border px-2 text-[12px] font-semibold shadow-sm transition ${Ne==="privacy"?"border-teal-200 bg-gradient-to-r from-teal-600 to-teal-500 text-white":"border-slate-200 bg-white text-slate-600"}`,
-                                    children: "개인정보"
-                                }), u.jsx("button", {
-                                    type: "button",
-                                    onClick: () => T("location"),
-                                    className: `inline-flex h-9 items-center justify-center rounded-lg border px-2 text-[12px] font-semibold shadow-sm transition ${Ne==="location"?"border-teal-200 bg-gradient-to-r from-teal-600 to-teal-500 text-white":"border-slate-200 bg-white text-slate-600"}`,
-                                    children: "위치정보"
-                                }), u.jsx("button", {
-                                    type: "button",
-                                    onClick: () => T("biometric"),
-                                    className: `inline-flex h-9 items-center justify-center rounded-lg border px-2 text-[12px] font-semibold shadow-sm transition ${Ne==="biometric"?"border-teal-200 bg-gradient-to-r from-teal-600 to-teal-500 text-white":"border-slate-200 bg-white text-slate-600"}`,
-                                    children: "생체데이터"
-                                }), u.jsx("button", {
-                                    type: "button",
-                                    onClick: () => T("thirdParty"),
-                                    className: `inline-flex h-9 items-center justify-center rounded-lg border px-2 text-[12px] font-semibold shadow-sm transition ${Ne==="thirdParty"?"border-teal-200 bg-gradient-to-r from-teal-600 to-teal-500 text-white":"border-slate-200 bg-white text-slate-600"}`,
-                                    children: "제3자 제공"
-                                }), u.jsx("button", {
-                                    type: "button",
-                                    onClick: () => T("wearable"),
-                                    className: `inline-flex h-9 items-center justify-center rounded-lg border px-2 text-[12px] font-semibold shadow-sm transition ${Ne==="wearable"?"border-teal-200 bg-gradient-to-r from-teal-600 to-teal-500 text-white":"border-slate-200 bg-white text-slate-600"}`,
-                                    children: "기기 연동"
+                                    onClick: () => T(null),
+                                    className: "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-orange-100 bg-orange-50 text-slate-500",
+                                    "aria-label": "약관 닫기",
+                                    children: u.jsx(vs, {
+                                        size: 16
+                                    })
                                 })]
-                            }), u.jsxs("div", {
-                                className: "rounded-lg border border-slate-200 bg-white px-4 py-4 shadow-sm",
-                                children: [u.jsx("div", {
-                                    className: "text-[14px] font-bold tracking-[0.08em] text-slate-400",
-                                    children: R0[Ne].title
-                                }), u.jsx("div", {
-                                    className: "mt-3.5 space-y-4",
-                                    children: R0[Ne].sections.map(R => u.jsxs("div", {
-                                        className: "rounded-lg border border-slate-200 bg-slate-50 px-4 py-4",
-                                        children: [u.jsx("div", {
-                                            className: "text-sm font-semibold text-slate-900",
-                                            children: R.heading
-                                        }), u.jsx("div", {
-                                            className: "mt-2 space-y-2",
-                                            children: R.body.map(fe => u.jsx("p", {
-                                                className: "text-sm leading-6 text-slate-600",
-                                                children: fe
-                                            }, fe))
-                                        })]
-                                    }, R.heading))
-                                })]
+                            }), u.jsx("div", {
+                                className: "mt-4 max-h-[60vh] space-y-4 overflow-y-auto pr-1",
+                                children: R0[Ne].sections.map(R => u.jsxs("div", {
+                                    className: "rounded-lg border border-orange-100 bg-orange-50/35 px-4 py-4",
+                                    children: [u.jsx("div", {
+                                        className: "text-sm font-semibold text-slate-900",
+                                        children: R.heading
+                                    }), u.jsx("div", {
+                                        className: "mt-2 space-y-2",
+                                        children: R.body.map(fe => u.jsx("p", {
+                                            className: "text-sm leading-6 text-slate-600",
+                                            children: fe
+                                        }, fe))
+                                    })]
+                                }, R.heading))
                             })]
                         })]
                     })]
