@@ -99,6 +99,8 @@ jest.mock('../models/User', () => {
 });
 
 const User = require('../models/User');
+const BiometricData = require('../models/BiometricData');
+const EmergencyCase = require('../models/EmergencyCase');
 const mobileRouter = require('../api/mobile');
 
 /**
@@ -178,6 +180,8 @@ describe('모바일 회원관리 통합 테스트', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    BiometricData.find = jest.fn();
+    EmergencyCase.find = jest.fn();
   });
 
   /**
@@ -371,5 +375,111 @@ describe('모바일 회원관리 통합 테스트', () => {
     expect(res.body.success).toBe(false);
     expect(res.body.accountStatus).toBe('pending');
     expect(res.body.message).toBe('어드민 승인 후 이용할 수 있습니다.');
+  });
+
+  /**
+   * 보호자 토큰은 연결된 회원 프로필을 읽기 전용으로 조회할 수 있어야 합니다.
+   */
+  test('보호자 토큰은 프로필 조회 API에 접근할 수 있다', async () => {
+    const activeUser = createMockUser();
+    User.findById
+      .mockReturnValueOnce(mockSelectable(activeUser))
+      .mockReturnValueOnce({
+        select: jest.fn().mockReturnValue({
+          populate: jest.fn().mockResolvedValue(activeUser),
+        }),
+      });
+
+    const res = await request(app)
+      .get('/api/mobile/profile')
+      .set('Authorization', 'Bearer guardian-token');
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.user.name).toBe('김골든');
+    expect(res.body.data.user.emergencyContact.name).toBe('보호자');
+  });
+
+  /**
+   * 보호자 토큰은 연결된 회원의 최근 생체 데이터 조회도 통과해야 합니다.
+   */
+  test('보호자 토큰은 최근 생체 데이터 조회 API에 접근할 수 있다', async () => {
+    const activeUser = createMockUser();
+    User.findById
+      .mockReturnValueOnce(mockSelectable(activeUser))
+      .mockReturnValueOnce({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({
+            name: '김골든',
+            wearableDevice: {
+              lastSyncAt: new Date('2026-08-03T09:00:00.000Z'),
+            },
+          }),
+        }),
+      });
+    BiometricData.find.mockReturnValueOnce({
+      sort: jest.fn().mockReturnValue({
+        limit: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue([
+            {
+              _id: 'bio-1',
+              collectedAt: '2026-08-03T09:00:00.000Z',
+              heartRate: 72,
+              spO2: 98,
+              bodyTemperature: 36.4,
+              steps: 1234,
+              stressLevel: 22,
+              batteryLevel: 88,
+            },
+          ]),
+        }),
+      }),
+    });
+
+    const res = await request(app)
+      .get('/api/mobile/biometric/recent?limit=24&hours=24')
+      .set('Authorization', 'Bearer guardian-token');
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.biometricData[0].heartRate).toBe(72);
+  });
+
+  /**
+   * 보호자 토큰은 연결된 회원의 응급 이력 조회도 통과해야 합니다.
+   */
+  test('보호자 토큰은 응급 이력 조회 API에 접근할 수 있다', async () => {
+    const activeUser = createMockUser();
+    User.findById.mockReturnValueOnce(mockSelectable(activeUser));
+    EmergencyCase.find.mockReturnValueOnce({
+      sort: jest.fn().mockReturnValue({
+        limit: jest.fn().mockReturnValue({
+          populate: jest.fn().mockReturnValue({
+            populate: jest.fn().mockReturnValue({
+              lean: jest.fn().mockResolvedValue([
+                {
+                  _id: 'case-1',
+                  emergencyLevel: 2,
+                  status: 'detected',
+                  detectedAt: '2026-08-03T09:10:00.000Z',
+                  detectedAnomalies: [{ type: 'fall', description: '낙상 의심' }],
+                  locations: {
+                    detectedAt: { address: '광주광역시 북구' },
+                  },
+                },
+              ]),
+            }),
+          }),
+        }),
+      }),
+    });
+
+    const res = await request(app)
+      .get('/api/mobile/emergency/history?limit=20')
+      .set('Authorization', 'Bearer guardian-token');
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.emergencyCases[0].status).toBe('detected');
   });
 });

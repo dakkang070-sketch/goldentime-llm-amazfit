@@ -703,6 +703,48 @@ async function requireActiveEmergencyUser(req, res, next) {
 }
 
 /**
+ * 보호자앱 읽기 전용 라우트에서는 guardian 계정도 연결된 회원 데이터 조회를 허용합니다.
+ */
+async function requireReadableEmergencyUserOrGuardian(req, res, next) {
+  try {
+    if (!['user', 'guardian'].includes(req.user?.role)) {
+      return res.status(403).json({
+        success: false,
+        message: '회원 또는 보호자 계정만 접근할 수 있습니다.',
+      });
+    }
+
+    const userQuery = User.findById(req.user?.sub);
+    const user =
+      userQuery && typeof userQuery.select === 'function'
+        ? await userQuery.select('accountStatus isEmergencyAppUser')
+        : await userQuery;
+    if (!user || !user.isEmergencyAppUser) {
+      return res.status(404).json({
+        success: false,
+        message: '사용자를 찾을 수 없습니다.',
+      });
+    }
+
+    if (user.accountStatus !== 'active') {
+      return res.status(403).json({
+        success: false,
+        accountStatus: user.accountStatus,
+        message: '어드민 승인 후 이용할 수 있습니다.',
+      });
+    }
+
+    return next();
+  } catch (error) {
+    logger.error('회원/보호자 계정 상태 확인 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '계정 상태 확인 중 오류가 발생했습니다.',
+    });
+  }
+}
+
+/**
  * @swagger
  * /api/mobile/signup:
  *   post:
@@ -1875,7 +1917,7 @@ router.put('/guardian/profile', authenticateToken, async (req, res) => {
 /**
  * 로그인한 응급 사용자의 프로필과 연결 정보를 조회합니다.
  */
-router.get('/profile', authenticateToken, requireActiveEmergencyUser, async (req, res) => {
+router.get('/profile', authenticateToken, requireReadableEmergencyUserOrGuardian, async (req, res) => {
   try {
     const user = await User.findById(req.user.sub)
       .select('-password')
@@ -3904,7 +3946,7 @@ router.post('/emergency-resolve', async (req, res) => {
 /**
  * 사용자의 응급 상황 이력을 상태별로 조회합니다.
  */
-router.get('/emergency/history', authenticateToken, requireActiveEmergencyUser, async (req, res) => {
+router.get('/emergency/history', authenticateToken, requireReadableEmergencyUserOrGuardian, async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 20;
     const status = req.query.status;
@@ -3972,7 +4014,7 @@ router.get('/emergency/history', authenticateToken, requireActiveEmergencyUser, 
 /**
  * 최근 수집된 생체 데이터 목록을 시간 범위 기준으로 조회합니다.
  */
-router.get('/biometric/recent', authenticateToken, requireActiveEmergencyUser, async (req, res) => {
+router.get('/biometric/recent', authenticateToken, requireReadableEmergencyUserOrGuardian, async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 50;
     const hours = parseInt(req.query.hours) || 24;
