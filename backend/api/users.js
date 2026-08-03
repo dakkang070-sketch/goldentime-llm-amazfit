@@ -117,6 +117,170 @@ async function issueGuardianInvite(user) {
 }
 
 /**
+ * 회원 승인/수정 요청 비교에 사용할 이메일 값을 소문자 기준으로 정규화합니다.
+ */
+function normalizeMemberEmail(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+/**
+ * 회원 승인/수정 요청 비교에 사용할 휴대폰 번호를 숫자 기준으로 정규화합니다.
+ */
+function normalizeMemberPhone(value) {
+  const digits = normalizePhoneDigits(value);
+  if (!digits) return '';
+  if (digits.startsWith('82')) {
+    const rest = digits.slice(2);
+    return rest.startsWith('0') ? rest : `0${rest}`;
+  }
+  return digits;
+}
+
+/**
+ * 회원 정보수정 승인 대기 문서의 보호자 정보를 문자열 기준으로 정리합니다.
+ */
+function normalizeMemberEmergencyContact(contact = {}) {
+  return {
+    name: String(contact?.name || '').trim(),
+    phone: normalizeMemberPhone(contact?.phone || ''),
+    relationship: String(contact?.relationship || '').trim(),
+  };
+}
+
+/**
+ * 회원 정보수정 승인 대기 문서의 건강 메모 배열을 비교 가능한 구조로 정규화합니다.
+ */
+function normalizeMemberMedicalHistory(medicalHistory = {}) {
+  const normalizeRows = (rows, field) =>
+    Array.isArray(rows)
+      ? rows
+          .map((row) => {
+            if (typeof row === 'string') {
+              const trimmed = row.trim();
+              return trimmed ? { [field]: trimmed } : null;
+            }
+            if (row && typeof row === 'object') {
+              const trimmed = String(row[field] || '').trim();
+              return trimmed ? { [field]: trimmed } : null;
+            }
+            return null;
+          })
+          .filter(Boolean)
+      : [];
+
+  return {
+    medications: normalizeRows(medicalHistory?.medications, 'name'),
+    allergies: normalizeRows(medicalHistory?.allergies, 'substance'),
+    chronicDiseases: normalizeRows(medicalHistory?.chronicDiseases, 'disease'),
+  };
+}
+
+/**
+ * 회원 정보수정 승인 대기 문서의 보호자 목록을 최대 3명 기준으로 정규화합니다.
+ */
+function normalizeMemberEmergencyContacts(contacts = []) {
+  return Array.isArray(contacts)
+    ? contacts
+        .slice(0, 3)
+        .map((contact, index) => ({
+          ...normalizeMemberEmergencyContact(contact),
+          priority: index + 1,
+        }))
+        .filter((contact) => contact.name || contact.phone || contact.relationship)
+    : [];
+}
+
+/**
+ * 회원 정보수정 승인 대기 문서를 관리자 승인 처리용 구조로 정규화합니다.
+ */
+function normalizePendingMemberProfileChange(rawPendingProfileChange = {}) {
+  return {
+    name: String(rawPendingProfileChange?.name || '').trim(),
+    email: normalizeMemberEmail(rawPendingProfileChange?.email || ''),
+    phone: normalizeMemberPhone(rawPendingProfileChange?.phone || ''),
+    birthDate: rawPendingProfileChange?.birthDate ? new Date(rawPendingProfileChange.birthDate) : null,
+    age: Number(rawPendingProfileChange?.age || 0) || null,
+    gender: String(rawPendingProfileChange?.gender || '').trim(),
+    height: Number(rawPendingProfileChange?.height || 0) || null,
+    weight: Number(rawPendingProfileChange?.weight || 0) || null,
+    bloodType: String(rawPendingProfileChange?.bloodType || '').trim(),
+    medicalHistory: normalizeMemberMedicalHistory(rawPendingProfileChange?.medicalHistory),
+    emergencyContact: normalizeMemberEmergencyContact(rawPendingProfileChange?.emergencyContact),
+    emergencyContacts: normalizeMemberEmergencyContacts(rawPendingProfileChange?.emergencyContacts),
+    affiliation: normalizeMemberAffiliationInput(rawPendingProfileChange?.affiliation),
+    requestedAt: rawPendingProfileChange?.requestedAt ? new Date(rawPendingProfileChange.requestedAt) : null,
+  };
+}
+
+/**
+ * 회원 문서에 실제 승인 대기 중인 정보수정 요청이 있는지 확인합니다.
+ */
+function hasPendingMemberProfileChange(rawPendingProfileChange = {}) {
+  const normalized = normalizePendingMemberProfileChange(rawPendingProfileChange);
+  return Boolean(normalized.requestedAt && !Number.isNaN(normalized.requestedAt.getTime()));
+}
+
+/**
+ * 관리자 승인 화면에 표시할 회원 정보수정 요청 요약 구조를 생성합니다.
+ */
+function serializePendingMemberProfileApproval(user) {
+  const pendingProfileChange = normalizePendingMemberProfileChange(user?.pendingProfileChange);
+  return {
+    id: String(user?._id || ''),
+    name: String(user?.name || '').trim(),
+    email: normalizeMemberEmail(user?.email || ''),
+    phone: normalizeMemberPhone(user?.phone || ''),
+    affiliation: normalizeMemberAffiliationInput(user?.affiliation),
+    requestedProfile: {
+      name: pendingProfileChange.name,
+      email: pendingProfileChange.email,
+      phone: pendingProfileChange.phone,
+      birthDate: pendingProfileChange.birthDate,
+      age: pendingProfileChange.age,
+      gender: pendingProfileChange.gender,
+      height: pendingProfileChange.height,
+      weight: pendingProfileChange.weight,
+      bloodType: pendingProfileChange.bloodType,
+      affiliation: pendingProfileChange.affiliation,
+    },
+    requestedAt: pendingProfileChange.requestedAt,
+    wearableDevice: {
+      deviceId: String(user?.wearableDevice?.deviceId || '').trim(),
+      deviceName: String(user?.wearableDevice?.deviceName || '').trim(),
+    },
+  };
+}
+
+/**
+ * 승인된 회원 정보수정 요청을 실제 회원 문서에 반영합니다.
+ */
+function applyApprovedMemberProfileChange(user, rawPendingProfileChange = {}) {
+  const pendingProfileChange = normalizePendingMemberProfileChange(rawPendingProfileChange);
+
+  user.name = pendingProfileChange.name;
+  user.email = pendingProfileChange.email;
+  user.phone = pendingProfileChange.phone || undefined;
+  user.birthDate = pendingProfileChange.birthDate;
+  user.age = pendingProfileChange.age;
+  user.gender = pendingProfileChange.gender || user.gender;
+  user.height = pendingProfileChange.height;
+  user.weight = pendingProfileChange.weight;
+  user.bloodType = pendingProfileChange.bloodType;
+  user.medicalHistory = pendingProfileChange.medicalHistory;
+  user.affiliation = pendingProfileChange.affiliation;
+  user.emergencyContact =
+    pendingProfileChange.emergencyContact.name ||
+    pendingProfileChange.emergencyContact.phone ||
+    pendingProfileChange.emergencyContact.relationship
+      ? pendingProfileChange.emergencyContact
+      : undefined;
+  user.emergencySettings = {
+    ...(user.emergencySettings || {}),
+    emergencyContacts: pendingProfileChange.emergencyContacts,
+  };
+}
+
+/**
  * @swagger
  * /api/users:
  *   get:
@@ -210,6 +374,29 @@ router.get('/pending-approvals', requireAuth, requireRole('admin'), async (req, 
 });
 
 /**
+ * 승인 대기 중인 회원 정보수정 요청 목록을 조회합니다.
+ */
+router.get('/pending-profile-approvals', requireAuth, requireRole('admin'), async (req, res, next) => {
+  try {
+    const users = await User.find({
+      'pendingProfileChange.requestedAt': { $ne: null },
+    })
+      .select('-password')
+      .sort({ 'pendingProfileChange.requestedAt': -1 })
+      .lean();
+
+    res.json({
+      success: true,
+      data: users
+        .filter((user) => hasPendingMemberProfileChange(user.pendingProfileChange))
+        .map((user) => serializePendingMemberProfileApproval(user)),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * 사용자 가입 신청을 승인 또는 반려 처리합니다.
  */
 router.patch('/:id/approval', requireAuth, requireRole('admin'), async (req, res, next) => {
@@ -257,6 +444,67 @@ router.patch('/:id/approval', requireAuth, requireRole('admin'), async (req, res
     res.json({
       success: true,
       message: accountStatus === 'active' ? '회원 가입이 승인되었습니다.' : '회원 가입 상태가 변경되었습니다.',
+      data: user,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * 회원 정보수정 요청을 승인 또는 반려 처리합니다.
+ */
+router.patch('/:id/profile-approval', requireAuth, requireRole('admin'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { decision } = req.body || {};
+
+    if (!['approved', 'rejected'].includes(decision)) {
+      return res.status(400).json({ success: false, message: '허용되지 않은 처리 값입니다.' });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: '사용자를 찾을 수 없습니다.' });
+    }
+
+    if (!hasPendingMemberProfileChange(user.pendingProfileChange)) {
+      return res.status(400).json({ success: false, message: '승인 대기 중인 회원 정보수정 요청이 없습니다.' });
+    }
+
+    if (decision === 'approved') {
+      const pendingProfileChange = normalizePendingMemberProfileChange(user.pendingProfileChange);
+
+      const emailOwner = await User.findOne({
+        _id: { $ne: user._id },
+        email: pendingProfileChange.email,
+      }).select('_id');
+      if (emailOwner) {
+        return res.status(409).json({ success: false, message: '이미 사용 중인 이메일이라 승인할 수 없습니다.' });
+      }
+
+      if (pendingProfileChange.phone) {
+        const phoneOwner = await User.findOne({
+          _id: { $ne: user._id },
+          phone: pendingProfileChange.phone,
+        }).select('_id');
+        if (phoneOwner) {
+          return res.status(409).json({ success: false, message: '이미 사용 중인 전화번호라 승인할 수 없습니다.' });
+        }
+      }
+
+      applyApprovedMemberProfileChange(user, user.pendingProfileChange);
+    }
+
+    user.pendingProfileChange = undefined;
+    await user.save();
+
+    res.json({
+      success: true,
+      message:
+        decision === 'approved'
+          ? '회원 정보수정 요청이 승인되었습니다.'
+          : '회원 정보수정 요청이 반려되었습니다.',
       data: user,
     });
   } catch (err) {

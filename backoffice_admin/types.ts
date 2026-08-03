@@ -179,6 +179,34 @@ export interface PendingStaffAffiliationApproval {
 }
 
 /**
+ * 승인 화면에서 사용하는 회원 정보수정 요청 요약 구조입니다.
+ */
+export interface PendingMemberProfileApproval {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  affiliation: RegionAffiliation;
+  requestedProfile: {
+    name: string;
+    email: string;
+    phone: string;
+    birthDate: string;
+    age: number | null;
+    gender: string;
+    height: number | null;
+    weight: number | null;
+    bloodType: string;
+    affiliation: RegionAffiliation;
+  };
+  requestedAt: string;
+  wearableDevice: {
+    deviceId: string;
+    deviceName: string;
+  };
+}
+
+/**
  * 관리자 계정이 접근 가능한 백오피스 메뉴 식별자입니다.
  */
 export type AdminMenuPermission = 'controllers' | 'welfare' | 'members' | 'guardians' | 'history' | 'settings' | 'admins';

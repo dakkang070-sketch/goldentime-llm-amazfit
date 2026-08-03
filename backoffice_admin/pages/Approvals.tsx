@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircle2, RefreshCw, ShieldCheck, UserCheck, XCircle } from 'lucide-react';
-import { PendingMemberApproval, PendingStaffAffiliationApproval, PendingStaffApproval } from '../types';
+import {
+  PendingMemberApproval,
+  PendingMemberProfileApproval,
+  PendingStaffAffiliationApproval,
+  PendingStaffApproval,
+} from '../types';
 import { adminService } from '../services/adminService';
 
 /**
@@ -38,6 +43,7 @@ const SummaryCard: React.FC<{ title: string; value: number; icon: React.ElementT
  */
 export const Approvals: React.FC = () => {
   const [pendingMembers, setPendingMembers] = useState<PendingMemberApproval[]>([]);
+  const [pendingMemberProfiles, setPendingMemberProfiles] = useState<PendingMemberProfileApproval[]>([]);
   const [pendingStaff, setPendingStaff] = useState<PendingStaffApproval[]>([]);
   const [pendingStaffAffiliations, setPendingStaffAffiliations] = useState<PendingStaffAffiliationApproval[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,12 +55,14 @@ export const Approvals: React.FC = () => {
   const fetchPendingApprovals = async () => {
     try {
       setLoading(true);
-      const [members, staff, staffAffiliations] = await Promise.all([
+      const [members, memberProfiles, staff, staffAffiliations] = await Promise.all([
         adminService.getPendingMemberApprovals(),
+        adminService.getPendingMemberProfileApprovals(),
         adminService.getPendingStaffApprovals(),
         adminService.getPendingStaffAffiliationApprovals(),
       ]);
       setPendingMembers(members);
+      setPendingMemberProfiles(memberProfiles);
       setPendingStaff(staff);
       setPendingStaffAffiliations(staffAffiliations);
     } finally {
@@ -78,6 +86,23 @@ export const Approvals: React.FC = () => {
     setProcessingKey(null);
     if (!ok) {
       alert('회원 승인 처리에 실패했습니다.');
+      return;
+    }
+    await fetchPendingApprovals();
+  };
+
+  /**
+   * 회원 정보수정 요청을 승인 또는 반려 처리하고 목록을 갱신합니다.
+   */
+  const handleMemberProfileApproval = async (
+    memberId: string,
+    decision: 'approved' | 'rejected',
+  ) => {
+    setProcessingKey(`member-profile:${memberId}:${decision}`);
+    const ok = await adminService.updateMemberProfileApproval(memberId, decision);
+    setProcessingKey(null);
+    if (!ok) {
+      alert('회원 정보수정 승인 처리에 실패했습니다.');
       return;
     }
     await fetchPendingApprovals();
@@ -140,9 +165,9 @@ export const Approvals: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           <SummaryCard title="승인 대기 회원" value={pendingMembers.length} icon={UserCheck} tone="bg-blue-50 text-blue-600" />
+          <SummaryCard title="회원 수정 요청" value={pendingMemberProfiles.length} icon={RefreshCw} tone="bg-amber-50 text-amber-600" />
           <SummaryCard title="승인 대기 운영자" value={pendingStaff.length} icon={ShieldCheck} tone="bg-purple-50 text-purple-600" />
-          <SummaryCard title="소속 변경 요청" value={pendingStaffAffiliations.length} icon={RefreshCw} tone="bg-amber-50 text-amber-600" />
-          <SummaryCard title="전체 승인 대기" value={pendingMembers.length + pendingStaff.length + pendingStaffAffiliations.length} icon={CheckCircle2} tone="bg-emerald-50 text-emerald-600" />
+          <SummaryCard title="전체 승인 대기" value={pendingMembers.length + pendingMemberProfiles.length + pendingStaff.length + pendingStaffAffiliations.length} icon={CheckCircle2} tone="bg-emerald-50 text-emerald-600" />
         </div>
 
         <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -191,6 +216,81 @@ export const Approvals: React.FC = () => {
                           </button>
                           <button
                             onClick={() => handleMemberApproval(member.id, 'rejected')}
+                            disabled={processingKey !== null}
+                            className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-slate-200 text-slate-700 hover:bg-slate-300 disabled:opacity-50"
+                          >
+                            <XCircle size={15} />
+                            반려
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100">
+            <h3 className="text-[20px] text-black">회원 정보수정 요청</h3>
+            <p className="text-[14px] text-slate-500 mt-1">현재 등록 정보는 유지되고, 승인 후에만 변경됩니다.</p>
+          </div>
+          {loading ? (
+            <div className="px-6 py-10 text-[15px] text-slate-500">회원 정보수정 요청을 불러오는 중입니다.</div>
+          ) : pendingMemberProfiles.length === 0 ? (
+            <div className="px-6 py-10 text-[15px] text-slate-500">승인 대기 중인 회원 정보수정 요청이 없습니다.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left">
+                <thead className="bg-slate-50">
+                  <tr className="text-[13px] text-slate-500">
+                    <th className="px-6 py-3 font-medium">회원</th>
+                    <th className="px-6 py-3 font-medium">현재 정보</th>
+                    <th className="px-6 py-3 font-medium">요청 정보</th>
+                    <th className="px-6 py-3 font-medium">등록 워치</th>
+                    <th className="px-6 py-3 font-medium">요청일시</th>
+                    <th className="px-6 py-3 font-medium">처리</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingMemberProfiles.map((member) => (
+                    <tr key={member.id} className="border-t border-slate-100 text-[14px] text-black">
+                      <td className="px-6 py-4">
+                        <div>{member.name}</div>
+                        <div className="text-[13px] text-slate-500 mt-1">{member.email}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div>{member.phone || '-'}</div>
+                        <div className="text-[13px] text-slate-500 mt-1">
+                          {[member.affiliation.city, member.affiliation.district, member.affiliation.dong].filter(Boolean).join(' ') || '-'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div>{member.requestedProfile.phone || '-'}</div>
+                        <div className="text-[13px] text-slate-500 mt-1">{member.requestedProfile.email || '-'}</div>
+                        <div className="text-[13px] text-slate-500 mt-1">
+                          {[member.requestedProfile.affiliation.city, member.requestedProfile.affiliation.district, member.requestedProfile.affiliation.dong].filter(Boolean).join(' ') || '-'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div>{member.wearableDevice.deviceName || '-'}</div>
+                        <div className="text-[13px] text-slate-500 mt-1">{member.wearableDevice.deviceId || '-'}</div>
+                      </td>
+                      <td className="px-6 py-4">{formatSubmittedAt(member.requestedAt)}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleMemberProfileApproval(member.id, 'approved')}
+                            disabled={processingKey !== null}
+                            className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                          >
+                            <CheckCircle2 size={15} />
+                            승인
+                          </button>
+                          <button
+                            onClick={() => handleMemberProfileApproval(member.id, 'rejected')}
                             disabled={processingKey !== null}
                             className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-slate-200 text-slate-700 hover:bg-slate-300 disabled:opacity-50"
                           >

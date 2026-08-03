@@ -302,6 +302,141 @@ function validateMemberAffiliation(affiliation) {
 }
 
 /**
+ * 회원 프로필 저장에 사용할 성별 값을 male/female 기준으로 정규화합니다.
+ */
+function normalizeMemberGender(value, fallback = 'male') {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (!normalized) {
+    return fallback;
+  }
+  if (['female', '여성', '여', 'f'].includes(normalized)) {
+    return 'female';
+  }
+  if (['male', '남성', '남', 'm'].includes(normalized)) {
+    return 'male';
+  }
+  return fallback;
+}
+
+/**
+ * 생년월일로부터 만 나이를 계산해 회원 프로필 검증에 사용합니다.
+ */
+function calculateMemberAgeFromBirthDate(value) {
+  const birthDate = new Date(value);
+  if (Number.isNaN(birthDate.getTime())) {
+    return null;
+  }
+
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age -= 1;
+  }
+  return age;
+}
+
+/**
+ * 회원 프로필의 보호자 목록을 최대 3명까지 저장 가능한 구조로 정규화합니다.
+ */
+function normalizeEmergencyContactsInput(contacts = []) {
+  return Array.isArray(contacts)
+    ? contacts
+        .slice(0, 3)
+        .map((contact, index) => ({
+          ...normalizeEmergencyContactInput(contact),
+          priority: index + 1,
+        }))
+        .filter((contact) => contact.name || contact.relationship || contact.phone)
+    : [];
+}
+
+/**
+ * 워치 등록 비교 전에 MAC/BLE 기기 식별자를 동일한 표기로 정규화합니다.
+ */
+function normalizeWearableDeviceId(value) {
+  const raw = String(value || '').trim().toUpperCase();
+  if (!raw) return '';
+  const noSpace = raw.replace(/\s+/g, '');
+  const withColons = noSpace.includes('-') ? noSpace.replace(/-/g, ':') : noSpace;
+  if (/^[0-9A-F]{12}$/.test(withColons)) {
+    return withColons.match(/.{1,2}/g).join(':');
+  }
+  return withColons;
+}
+
+/**
+ * 회원 현재값과 승인 대기값 비교를 위해 날짜를 안정적인 ISO 문자열로 맞춥니다.
+ */
+function toComparableIsoDate(value) {
+  if (!value) {
+    return '';
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString();
+}
+
+/**
+ * 승인 대기 중인 회원 정보수정 요청을 앱 응답용 구조로 직렬화합니다.
+ */
+function serializePendingProfileChange(rawPendingProfileChange) {
+  const requestedAt = rawPendingProfileChange?.requestedAt
+    ? new Date(rawPendingProfileChange.requestedAt)
+    : null;
+  if (!requestedAt || Number.isNaN(requestedAt.getTime())) {
+    return null;
+  }
+
+  return {
+    name: String(rawPendingProfileChange?.name || '').trim(),
+    email: normalizeMemberEmail(rawPendingProfileChange?.email || ''),
+    phone: normalizeMemberPhone(rawPendingProfileChange?.phone || ''),
+    birthDate: rawPendingProfileChange?.birthDate || null,
+    age: Number(rawPendingProfileChange?.age || 0) || null,
+    gender: normalizeMemberGender(rawPendingProfileChange?.gender || '', 'male'),
+    height: Number(rawPendingProfileChange?.height || 0) || null,
+    weight: Number(rawPendingProfileChange?.weight || 0) || null,
+    bloodType: String(rawPendingProfileChange?.bloodType || '').trim(),
+    medicalHistory: normalizeMedicalHistoryInput(rawPendingProfileChange?.medicalHistory),
+    emergencyContact: normalizeEmergencyContactInput(rawPendingProfileChange?.emergencyContact),
+    emergencyContacts: normalizeEmergencyContactsInput(rawPendingProfileChange?.emergencyContacts),
+    affiliation: normalizeMemberAffiliationInput(rawPendingProfileChange?.affiliation),
+    requestedAt,
+  };
+}
+
+/**
+ * 모바일 회원앱에서 공통으로 쓰는 사용자 응답 구조를 한 곳에서 맞춥니다.
+ */
+function serializeMobileUser(user) {
+  return {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    birthDate: user.birthDate,
+    age: user.age,
+    gender: user.gender,
+    height: user.height,
+    weight: user.weight,
+    bloodType: user.bloodType,
+    medicalHistory: user.medicalHistory,
+    medicalMemo: toDeviceProfileMedicalMemo(user.medicalHistory),
+    emergencyContact: user.emergencyContact,
+    emergencySettings: user.emergencySettings,
+    wearableDevice: user.wearableDevice,
+    baselineBiometric: user.baselineBiometric,
+    assignedController: user.assignedController,
+    affiliation: user.affiliation,
+    consents: user.consents,
+    accountStatus: user.accountStatus,
+    status: user.status,
+    lastActivity: user.lastActivity,
+    pendingProfileChange: serializePendingProfileChange(user.pendingProfileChange),
+  };
+}
+
+/**
  * 프록시/클라우드플레어 환경을 포함해 요청의 실제 클라이언트 IP를 추출합니다.
  */
 function getRequestClientIp(req) {
@@ -954,23 +1089,7 @@ router.post('/login', authLimiter, async (req, res) => {
       success: true,
       message: '로그인 성공',
       data: {
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          gender: user.gender,
-          birthDate: user.birthDate,
-          bloodType: user.bloodType,
-          emergencyContact: user.emergencyContact,
-          medicalHistory: user.medicalHistory,
-          medicalMemo: toDeviceProfileMedicalMemo(user.medicalHistory),
-          wearableDevice: user.wearableDevice,
-          emergencySettings: user.emergencySettings,
-          affiliation: user.affiliation,
-          consents: user.consents,
-          accountStatus: user.accountStatus,
-        },
+        user: serializeMobileUser(user),
         token
       }
     });
@@ -1776,29 +1895,7 @@ router.get('/profile', authenticateToken, requireActiveEmergencyUser, async (req
     res.json({
       success: true,
       data: {
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          birthDate: user.birthDate,
-          age: user.age,
-          height: user.height,
-          weight: user.weight,
-          bloodType: user.bloodType,
-          medicalHistory: user.medicalHistory,
-          medicalMemo: toDeviceProfileMedicalMemo(user.medicalHistory),
-          emergencyContact: user.emergencyContact,
-          emergencySettings: user.emergencySettings,
-          wearableDevice: user.wearableDevice,
-          baselineBiometric: user.baselineBiometric,
-          assignedController: user.assignedController,
-          affiliation: user.affiliation,
-          consents: user.consents,
-          accountStatus: user.accountStatus,
-          status: user.status,
-          lastActivity: user.lastActivity
-        }
+        user: serializeMobileUser(user)
       }
     });
   } catch (error) {
@@ -1872,6 +1969,35 @@ router.put('/profile', authenticateToken, requireActiveEmergencyUser, async (req
       req.body?.medicalHistory !== undefined
         ? normalizeMedicalHistoryInput(req.body.medicalHistory)
         : normalizeMedicalHistoryInput(user.medicalHistory);
+    const nextBirthDate =
+      req.body?.birthDate !== undefined ? new Date(req.body.birthDate) : new Date(user.birthDate);
+    const nextGender =
+      req.body?.gender !== undefined
+        ? normalizeMemberGender(req.body.gender, normalizeMemberGender(user.gender, 'male'))
+        : normalizeMemberGender(user.gender, 'male');
+    const nextHeight =
+      req.body?.height !== undefined ? Number(req.body.height) : Number(user.height || 0);
+    const nextWeight =
+      req.body?.weight !== undefined ? Number(req.body.weight) : Number(user.weight || 0);
+    const nextBloodType =
+      req.body?.bloodType !== undefined ? String(req.body.bloodType || '').trim() : String(user.bloodType || '').trim();
+    const nextAffiliation =
+      req.body?.affiliation !== undefined ||
+      req.body?.city !== undefined ||
+      req.body?.district !== undefined ||
+      req.body?.dong !== undefined ||
+      req.body?.welfareName !== undefined
+        ? normalizeMemberAffiliationInput(req.body.affiliation, req.body)
+        : normalizeMemberAffiliationInput(user.affiliation);
+    const nextEmergencyContacts =
+      req.body?.emergencyContacts !== undefined
+        ? normalizeEmergencyContactsInput(req.body.emergencyContacts)
+        : normalizeEmergencyContactsInput(user.emergencySettings?.emergencyContacts);
+    const nextAge =
+      req.body?.age !== undefined && Number(req.body.age)
+        ? Number(req.body.age)
+        : calculateMemberAgeFromBirthDate(nextBirthDate);
+    const normalizedPendingProfileChange = serializePendingProfileChange(user.pendingProfileChange);
 
     if (!nextName) {
       return res.status(400).json({
@@ -1884,6 +2010,41 @@ router.put('/profile', authenticateToken, requireActiveEmergencyUser, async (req
       return res.status(400).json({
         success: false,
         message: '올바른 이메일 형식을 입력해주세요.',
+      });
+    }
+
+    if (Number.isNaN(nextBirthDate.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: '올바른 생년월일을 입력해주세요.',
+      });
+    }
+
+    if (!nextAge || nextAge < 1 || nextAge > 120) {
+      return res.status(400).json({
+        success: false,
+        message: '나이는 1세에서 120세 사이여야 합니다.',
+      });
+    }
+
+    if (!nextHeight || nextHeight < 50 || nextHeight > 250) {
+      return res.status(400).json({
+        success: false,
+        message: '신장은 50cm에서 250cm 사이여야 합니다.',
+      });
+    }
+
+    if (!nextWeight || nextWeight < 10 || nextWeight > 300) {
+      return res.status(400).json({
+        success: false,
+        message: '체중은 10kg에서 300kg 사이여야 합니다.',
+      });
+    }
+
+    if (!['A', 'B', 'AB', 'O', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].includes(nextBloodType)) {
+      return res.status(400).json({
+        success: false,
+        message: '올바른 혈액형을 선택해주세요.',
       });
     }
 
@@ -1903,6 +2064,14 @@ router.put('/profile', authenticateToken, requireActiveEmergencyUser, async (req
           message: '보호자 연락처 형식을 확인해주세요.',
         });
       }
+    }
+
+    const affiliationError = validateMemberAffiliation(nextAffiliation);
+    if (affiliationError) {
+      return res.status(400).json({
+        success: false,
+        message: affiliationError,
+      });
     }
 
     const emailOwner = await User.findOne({
@@ -1929,51 +2098,108 @@ router.put('/profile', authenticateToken, requireActiveEmergencyUser, async (req
       }
     }
 
-    user.name = nextName;
-    user.email = nextEmail;
-    user.phone = nextPhone || undefined;
-    user.emergencyContact =
-      nextEmergencyContact.name || nextEmergencyContact.relationship || nextEmergencyContact.phone
-        ? nextEmergencyContact
-        : undefined;
-    user.medicalHistory = nextMedicalHistory;
+    const currentComparableProfile = {
+      name: String(user.name || '').trim(),
+      email: normalizeMemberEmail(user.email || ''),
+      phone: normalizeMemberPhone(user.phone || ''),
+      birthDate: toComparableIsoDate(user.birthDate),
+      age: Number(user.age || 0),
+      gender: normalizeMemberGender(user.gender, 'male'),
+      height: Number(user.height || 0),
+      weight: Number(user.weight || 0),
+      bloodType: String(user.bloodType || '').trim(),
+      medicalHistory: normalizeMedicalHistoryInput(user.medicalHistory),
+      emergencyContact: normalizeEmergencyContactInput(user.emergencyContact),
+      emergencyContacts: normalizeEmergencyContactsInput(user.emergencySettings?.emergencyContacts),
+      affiliation: normalizeMemberAffiliationInput(user.affiliation),
+    };
+    const requestedComparableProfile = {
+      name: nextName,
+      email: nextEmail,
+      phone: nextPhone,
+      birthDate: toComparableIsoDate(nextBirthDate),
+      age: nextAge,
+      gender: nextGender,
+      height: nextHeight,
+      weight: nextWeight,
+      bloodType: nextBloodType,
+      medicalHistory: nextMedicalHistory,
+      emergencyContact:
+        nextEmergencyContact.name || nextEmergencyContact.relationship || nextEmergencyContact.phone
+          ? nextEmergencyContact
+          : normalizeEmergencyContactInput(nextEmergencyContacts[0]),
+      emergencyContacts: nextEmergencyContacts,
+      affiliation: nextAffiliation,
+    };
 
-    if (Array.isArray(req.body?.emergencyContacts)) {
-      user.emergencySettings.emergencyContacts = req.body.emergencyContacts
-        .slice(0, 3)
-        .map((contact, index) => ({
-          ...normalizeEmergencyContactInput(contact),
-          priority: index + 1,
-        }))
-        .filter((contact) => contact.name || contact.relationship || contact.phone);
+    if (JSON.stringify(currentComparableProfile) === JSON.stringify(requestedComparableProfile)) {
+      return res.status(400).json({
+        success: false,
+        message: '변경된 내용이 없습니다.',
+      });
     }
 
-    if (req.body?.emergencySettings && typeof req.body.emergencySettings === 'object') {
-      user.emergencySettings = {
-        ...user.emergencySettings,
-        ...req.body.emergencySettings,
-      };
+    const pendingComparableProfile = normalizedPendingProfileChange
+      ? {
+          name: normalizedPendingProfileChange.name,
+          email: normalizedPendingProfileChange.email,
+          phone: normalizedPendingProfileChange.phone,
+          birthDate: toComparableIsoDate(normalizedPendingProfileChange.birthDate),
+          age: normalizedPendingProfileChange.age,
+          gender: normalizeMemberGender(normalizedPendingProfileChange.gender, 'male'),
+          height: normalizedPendingProfileChange.height,
+          weight: normalizedPendingProfileChange.weight,
+          bloodType: normalizedPendingProfileChange.bloodType,
+          medicalHistory: normalizeMedicalHistoryInput(normalizedPendingProfileChange.medicalHistory),
+          emergencyContact: normalizeEmergencyContactInput(normalizedPendingProfileChange.emergencyContact),
+          emergencyContacts: normalizeEmergencyContactsInput(normalizedPendingProfileChange.emergencyContacts),
+          affiliation: normalizeMemberAffiliationInput(normalizedPendingProfileChange.affiliation),
+        }
+      : null;
+    if (
+      pendingComparableProfile &&
+      JSON.stringify(pendingComparableProfile) === JSON.stringify(requestedComparableProfile)
+    ) {
+      return res.json({
+        success: true,
+        message: '이미 동일한 회원 정보 수정 요청이 승인 대기 중입니다.',
+        data: {
+          user: serializeMobileUser(user),
+        },
+      });
     }
+
+    user.pendingProfileChange = {
+      name: nextName,
+      email: nextEmail,
+      phone: nextPhone || undefined,
+      birthDate: nextBirthDate,
+      age: nextAge,
+      gender: nextGender,
+      height: nextHeight,
+      weight: nextWeight,
+      bloodType: nextBloodType,
+      medicalHistory: nextMedicalHistory,
+      emergencyContact:
+        requestedComparableProfile.emergencyContact.name ||
+        requestedComparableProfile.emergencyContact.relationship ||
+        requestedComparableProfile.emergencyContact.phone
+          ? requestedComparableProfile.emergencyContact
+          : undefined,
+      emergencyContacts: nextEmergencyContacts,
+      affiliation: nextAffiliation,
+      requestedAt: new Date(),
+    };
 
     await user.save();
 
-    logger.info(`사용자 프로필 수정: ${user.email}`);
+    logger.info(`사용자 프로필 수정 요청 접수: ${user.email}`);
 
     res.json({
       success: true,
-      message: '프로필이 수정되었습니다.',
+      message: '회원 정보 수정 요청이 관리자 승인 대기로 접수되었습니다.',
       data: {
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          emergencyContact: user.emergencyContact,
-          medicalHistory: user.medicalHistory,
-          medicalMemo: toDeviceProfileMedicalMemo(user.medicalHistory),
-          emergencySettings: user.emergencySettings,
-          accountStatus: user.accountStatus,
-        }
+        user: serializeMobileUser(user)
       }
     });
   } catch (error) {
@@ -2105,16 +2331,15 @@ router.post('/wearable/connect', authenticateToken, requireActiveEmergencyUser, 
     /**
      * 동일 워치가 다른 문서에 먼저 붙어 있으면 현재 가입 계정으로 소유를 이동합니다.
      */
-    const normalizedDeviceId = (() => {
-      const raw = String(deviceId || '').trim().toUpperCase();
-      if (!raw) return '';
-      const noSpace = raw.replace(/\s+/g, '');
-      const withColons = noSpace.includes('-') ? noSpace.replace(/-/g, ':') : noSpace;
-      if (/^[0-9A-F]{12}$/.test(withColons)) {
-        return withColons.match(/.{1,2}/g).join(':');
-      }
-      return withColons;
-    })();
+    const normalizedDeviceId = normalizeWearableDeviceId(deviceId);
+    const registeredDeviceId = normalizeWearableDeviceId(user.wearableDevice?.deviceId);
+
+    if (registeredDeviceId && normalizedDeviceId && registeredDeviceId !== normalizedDeviceId) {
+      return res.status(409).json({
+        success: false,
+        message: '현재 회원 계정에는 기존에 등록된 워치만 연결할 수 있습니다.',
+      });
+    }
 
     if (normalizedDeviceId) {
       const previousOwner = await User.findOne({
@@ -2123,8 +2348,10 @@ router.post('/wearable/connect', authenticateToken, requireActiveEmergencyUser, 
       });
 
       if (previousOwner) {
-        previousOwner.wearableDevice = undefined;
-        await previousOwner.save();
+        return res.status(409).json({
+          success: false,
+          message: '이미 다른 회원에게 등록된 워치입니다.',
+        });
       }
     }
 
@@ -2636,21 +2863,7 @@ router.post('/emergency', authenticateToken, requireActiveEmergencyUser, async (
  * MAC 주소 기반으로 응급 앱 사용자를 찾고 필요 시 자동 생성합니다.
  */
 async function findOrCreateEmergencyAppUserByMac(mac) {
-  /**
-   * `normalizeMac` 기능을 수행합니다.
-   */
-  const normalizeMac = (input) => {
-    const raw = String(input || '').trim().toUpperCase();
-    if (!raw) return '';
-    const noSpace = raw.replace(/\s+/g, '');
-    const withColons = noSpace.includes('-') ? noSpace.replace(/-/g, ':') : noSpace;
-    if (/^[0-9A-F]{12}$/.test(withColons)) {
-      return withColons.match(/.{1,2}/g).join(':');
-    }
-    return withColons;
-  };
-
-  const normalized = normalizeMac(mac);
+  const normalized = normalizeWearableDeviceId(mac);
   if (!normalized) return null;
   if (!/^[0-9A-F]{2}(:[0-9A-F]{2}){5}$/.test(normalized)) return null;
   if (normalized === 'AA:BB:CC:DD:EE:FF') return null;

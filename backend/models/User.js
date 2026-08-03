@@ -11,6 +11,11 @@ const SENSITIVE_USER_PATHS = [
   'emergencyContact',
   'affiliation',
   'emergencySettings.emergencyContacts',
+  'pendingProfileChange.name',
+  'pendingProfileChange.medicalHistory',
+  'pendingProfileChange.emergencyContact',
+  'pendingProfileChange.affiliation',
+  'pendingProfileChange.emergencyContacts',
 ];
 
 /**
@@ -202,6 +207,108 @@ const userSchema = new mongoose.Schema({
         default: 'unknown'
       },
       updatedAt: Date
+    }
+  },
+
+  // 회원 정보 수정 승인 대기
+  pendingProfileChange: {
+    name: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      default: ''
+    },
+    phone: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    birthDate: {
+      type: Date,
+      default: null
+    },
+    age: {
+      type: Number,
+      default: null
+    },
+    gender: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    height: {
+      type: Number,
+      default: null
+    },
+    weight: {
+      type: Number,
+      default: null
+    },
+    bloodType: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    medicalHistory: {
+      medications: [{
+        name: String,
+        dosage: String,
+        frequency: String
+      }],
+      allergies: [{
+        substance: String,
+        severity: String
+      }],
+      chronicDiseases: [{
+        disease: String,
+        diagnosedAt: Date
+      }]
+    },
+    emergencyContact: {
+      name: String,
+      phone: String,
+      relationship: String
+    },
+    emergencyContacts: [{
+      name: String,
+      phone: String,
+      relationship: String,
+      priority: {
+        type: Number,
+        min: 1,
+        max: 3
+      }
+    }],
+    affiliation: {
+      city: {
+        type: String,
+        trim: true,
+        default: ''
+      },
+      district: {
+        type: String,
+        trim: true,
+        default: ''
+      },
+      dong: {
+        type: String,
+        trim: true,
+        default: ''
+      },
+      welfareName: {
+        type: String,
+        trim: true,
+        default: ''
+      }
+    },
+    requestedAt: {
+      type: Date,
+      default: null
     }
   },
 

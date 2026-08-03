@@ -12,6 +12,7 @@ import {
   Incident,
   SystemSettings,
   PendingMemberApproval,
+  PendingMemberProfileApproval,
   PendingStaffApproval,
   PendingStaffAffiliationApproval,
   ManualAdminRegistrationInput,
@@ -313,6 +314,43 @@ export const adminService = {
   },
 
   /**
+   * 승인 대기 중인 회원 정보수정 요청 목록을 조회합니다.
+   */
+  async getPendingMemberProfileApprovals(): Promise<PendingMemberProfileApproval[]> {
+    try {
+      const json = await apiJson<{ success: boolean; data: any[] }>('/api/users/pending-profile-approvals')
+      const rows = Array.isArray(json?.data) ? json.data : []
+      return rows.map((user) => ({
+        id: user.id || user._id,
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        affiliation: mapAffiliation(user.affiliation),
+        requestedProfile: {
+          name: user.requestedProfile?.name || '',
+          email: user.requestedProfile?.email || '',
+          phone: user.requestedProfile?.phone || '',
+          birthDate: user.requestedProfile?.birthDate || '',
+          age: typeof user.requestedProfile?.age === 'number' ? user.requestedProfile.age : null,
+          gender: user.requestedProfile?.gender || '',
+          height: typeof user.requestedProfile?.height === 'number' ? user.requestedProfile.height : null,
+          weight: typeof user.requestedProfile?.weight === 'number' ? user.requestedProfile.weight : null,
+          bloodType: user.requestedProfile?.bloodType || '',
+          affiliation: mapAffiliation(user.requestedProfile?.affiliation),
+        },
+        requestedAt: user.requestedAt || '',
+        wearableDevice: {
+          deviceId: user.wearableDevice?.deviceId || '',
+          deviceName: user.wearableDevice?.deviceName || '',
+        },
+      }))
+    } catch (error) {
+      console.error('Failed to fetch pending member profile approvals:', error);
+      return [];
+    }
+  },
+
+  /**
    * 회원 가입 신청을 승인 또는 반려 처리합니다.
    */
   async updateMemberApproval(id: string, accountStatus: 'active' | 'rejected' | 'suspended'): Promise<boolean> {
@@ -324,6 +362,22 @@ export const adminService = {
       return true
     } catch (error) {
       console.error('Failed to update member approval:', error);
+      return false;
+    }
+  },
+
+  /**
+   * 회원 정보수정 요청을 승인 또는 반려 처리합니다.
+   */
+  async updateMemberProfileApproval(id: string, decision: 'approved' | 'rejected'): Promise<boolean> {
+    try {
+      await apiJson(`/api/users/${id}/profile-approval`, {
+        method: 'PATCH',
+        body: JSON.stringify({ decision }),
+      })
+      return true
+    } catch (error) {
+      console.error('Failed to update member profile approval:', error);
       return false;
     }
   },

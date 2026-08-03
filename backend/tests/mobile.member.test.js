@@ -234,8 +234,7 @@ describe('모바일 회원관리 통합 테스트', () => {
     User.findById
       .mockResolvedValueOnce(activeUser)
       .mockResolvedValueOnce(activeUser);
-    User.findOne
-      .mockReturnValueOnce(mockSelectable({ _id: 'user-2' }));
+    User.findOne.mockReturnValueOnce(mockSelectable({ _id: 'user-2' }));
 
     const res = await request(app)
       .put('/api/mobile/profile')
@@ -249,6 +248,84 @@ describe('모바일 회원관리 통합 테스트', () => {
     expect(res.statusCode).toBe(409);
     expect(res.body.success).toBe(false);
     expect(res.body.message).toBe('이미 가입된 이메일입니다.');
+  });
+
+  /**
+   * 회원정보 수정은 현재 프로필을 바로 바꾸지 않고 승인 대기 요청으로 저장하는지 검증합니다.
+   */
+  test('회원정보 수정은 승인 대기용 pendingProfileChange에 저장한다', async () => {
+    const activeUser = createMockUser();
+    User.findById
+      .mockResolvedValueOnce(activeUser)
+      .mockResolvedValueOnce(activeUser);
+    User.findOne
+      .mockReturnValueOnce(mockSelectable(null))
+      .mockReturnValueOnce(mockSelectable(null));
+
+    const res = await request(app)
+      .put('/api/mobile/profile')
+      .set('Authorization', 'Bearer user-token')
+      .send({
+        name: '김골든수정',
+        email: 'member-updated@example.com',
+        phone: '010-1111-2222',
+        birthDate: '1991-05-10',
+        gender: '여성',
+        height: 166,
+        weight: 58,
+        bloodType: 'B+',
+        affiliation: {
+          city: '광주광역시',
+          district: '북구',
+          dong: '중흥동',
+          welfareName: '빛고을복지관',
+        },
+        emergencyContacts: [
+          {
+            name: '새보호자',
+            phone: '010-3333-4444',
+            relationship: '딸',
+          },
+        ],
+        medicalHistory: {
+          medications: [{ name: '혈압약 변경' }],
+          allergies: [{ substance: '견과류' }],
+          chronicDiseases: [{ disease: '당뇨' }],
+        },
+      });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.message).toBe('회원 정보 수정 요청이 관리자 승인 대기로 접수되었습니다.');
+    expect(activeUser.name).toBe('김골든');
+    expect(activeUser.pendingProfileChange.name).toBe('김골든수정');
+    expect(activeUser.pendingProfileChange.phone).toBe('01011112222');
+    expect(activeUser.pendingProfileChange.affiliation.city).toBe('광주광역시');
+    expect(activeUser.save).toHaveBeenCalled();
+  });
+
+  /**
+   * 다른 회원에게 등록된 워치를 현재 회원 계정으로 강제로 연결하지 못하는지 검증합니다.
+   */
+  test('웨어러블 연결은 다른 회원 소유 워치를 409로 차단한다', async () => {
+    const activeUser = createMockUser();
+    User.findById
+      .mockResolvedValueOnce(activeUser)
+      .mockResolvedValueOnce(activeUser);
+    User.findOne.mockResolvedValueOnce(createMockUser({ _id: 'user-2' }));
+
+    const res = await request(app)
+      .post('/api/mobile/wearable/connect')
+      .set('Authorization', 'Bearer user-token')
+      .send({
+        deviceId: 'AA-BB-CC-DD-EE-11',
+        deviceName: 'T-Rex 3',
+        deviceType: 'watch',
+      });
+
+    expect(res.statusCode).toBe(409);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe('이미 다른 회원에게 등록된 워치입니다.');
   });
 
   /**
