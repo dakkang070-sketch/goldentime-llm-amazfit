@@ -2577,111 +2577,146 @@ export default function App() {
    */
   const renderGuardianTab = () => (
     <div className="space-y-4 px-4 pb-28 pt-6">
-      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <User size={16} className="text-slate-400" />
-            <h3 className="text-[16px] text-slate-900">보호자 정보</h3>
-          </div>
-          {!isGuardianEditing && (
-            <button
-              onClick={() => setIsGuardianEditing(true)}
-              className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
-            >
-              수정
-            </button>
-          )}
-        </div>
-        {!isGuardianEditing && (
-          <div className="space-y-2 text-[14px] text-slate-600">
-            <p>이름: {profile?.guardian?.name || '-'}</p>
-            <p>관계: {profile?.guardian?.relationship || '-'}</p>
-            <p>연락처: {profile?.guardian?.phone || '-'}</p>
-          </div>
-        )}
-        {isGuardianEditing && (
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-            <div className="mb-3 flex items-center gap-2">
-              <Shield size={16} className="text-slate-400" />
-              <h4 className="text-[14px] text-slate-900">보호자 정보 수정</h4>
+      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 bg-gradient-to-r from-indigo-50 via-white to-slate-50 px-4 py-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-600 text-white shadow-sm">
+                <User size={16} />
+              </div>
+              <div>
+                <h3 className="text-[16px] text-slate-900">보호자 정보</h3>
+                <p className="mt-0.5 text-[12px] text-slate-500">{profile?.guardian?.name || '-'}</p>
+              </div>
             </div>
-            <div className="space-y-3">
-              <input
-                value={guardianForm.name}
-                onChange={(e) => handleGuardianFormChange('name', e.target.value)}
-                placeholder="보호자 이름"
-                className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-              />
-              <input
-                value={guardianForm.relationship}
-                onChange={(e) => handleGuardianFormChange('relationship', e.target.value)}
-                placeholder="관계"
-                className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-              />
-              <div className="space-y-2">
-                <div className="flex flex-col gap-2">
-                  <input
-                    value={guardianForm.phone}
-                    onChange={(e) => handleGuardianFormChange('phone', e.target.value)}
-                    placeholder="연락처"
-                    className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-                  />
-                  <div className="flex flex-col gap-2 min-[480px]:flex-row">
-                    <button
-                      type="button"
-                      onClick={handleGuardianPhoneVerificationRequest}
-                      disabled={guardianPhoneSending}
-                      className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-4 text-sm font-semibold text-indigo-700 shadow-sm disabled:opacity-60"
-                    >
-                      <ShieldCheck size={16} />
-                      {guardianPhoneSending ? '발송중...' : '인증번호 발송'}
-                    </button>
+            {!isGuardianEditing && (
+              <button
+                onClick={() => setIsGuardianEditing(true)}
+                className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+              >
+                수정
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="p-4">
+          {!isGuardianEditing && (
+            <div className="grid grid-cols-1 gap-3 min-[520px]:grid-cols-3">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-[12px] text-slate-400">이름</p>
+                <div className="mt-2 flex items-center gap-2">
+                  <User size={15} className="text-indigo-500" />
+                  <p className="text-[15px] font-semibold text-slate-900">{profile?.guardian?.name || '-'}</p>
+                </div>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-[12px] text-slate-400">관계</p>
+                <div className="mt-2 flex items-center gap-2">
+                  <ShieldCheck size={15} className="text-emerald-500" />
+                  <p className="text-[15px] font-semibold text-slate-900">{profile?.guardian?.relationship || '-'}</p>
+                </div>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-[12px] text-slate-400">연락처</p>
+                <div className="mt-2 flex items-center gap-2">
+                  <Phone size={15} className="text-orange-500" />
+                  <p className="text-[15px] font-semibold text-slate-900">{profile?.guardian?.phone || '-'}</p>
+                </div>
+              </div>
+            </div>
+          )}
+          {isGuardianEditing && (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <div className="mb-3 flex items-center gap-2">
+                <Shield size={16} className="text-slate-400" />
+                <h4 className="text-[14px] text-slate-900">보호자 정보 수정</h4>
+              </div>
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-3 min-[520px]:grid-cols-2">
+                  <div>
+                    <p className="mb-1.5 text-[12px] text-slate-500">이름</p>
                     <input
-                      value={guardianPhoneCode}
-                      onChange={(e) => setGuardianPhoneCode(e.target.value)}
-                      placeholder="인증번호 6자리"
-                      className="h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                      value={guardianForm.name}
+                      onChange={(e) => handleGuardianFormChange('name', e.target.value)}
+                      placeholder="보호자 이름"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                     />
-                    <button
-                      type="button"
-                      onClick={handleGuardianPhoneVerificationConfirm}
-                      disabled={guardianPhoneVerifying}
-                      className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-700 shadow-sm disabled:opacity-60"
-                    >
-                      {guardianPhoneVerifying ? '확인중...' : '인증 확인'}
-                    </button>
+                  </div>
+                  <div>
+                    <p className="mb-1.5 text-[12px] text-slate-500">관계</p>
+                    <input
+                      value={guardianForm.relationship}
+                      onChange={(e) => handleGuardianFormChange('relationship', e.target.value)}
+                      placeholder="관계"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                    />
                   </div>
                 </div>
-                <p className="text-[12px] text-slate-400">전화번호가 바뀌면 인증번호 발송 후 인증 확인까지 완료해야 저장됩니다.</p>
-              </div>
-              {guardianEditMessage ? (
-                <div
-                  className={`rounded-lg border px-3 py-2 text-[13px] ${
-                    guardianPhoneVerificationToken
-                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                      : 'border-indigo-100 bg-indigo-50 text-indigo-700'
-                  }`}
-                >
-                  {guardianEditMessage}
+                <div className="rounded-lg border border-slate-200 bg-white p-3">
+                  <p className="mb-3 text-[12px] text-slate-500">연락처</p>
+                  <div className="space-y-2">
+                    <input
+                      value={guardianForm.phone}
+                      onChange={(e) => handleGuardianFormChange('phone', e.target.value)}
+                      placeholder="연락처"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                    />
+                    <div className="grid grid-cols-1 gap-2 min-[560px]:grid-cols-[auto,1fr,auto]">
+                      <button
+                        type="button"
+                        onClick={handleGuardianPhoneVerificationRequest}
+                        disabled={guardianPhoneSending}
+                        className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-4 text-sm font-semibold text-indigo-700 shadow-sm disabled:opacity-60"
+                      >
+                        <ShieldCheck size={16} />
+                        {guardianPhoneSending ? '발송중...' : '인증번호 발송'}
+                      </button>
+                      <input
+                        value={guardianPhoneCode}
+                        onChange={(e) => setGuardianPhoneCode(e.target.value)}
+                        placeholder="인증번호 6자리"
+                        className="h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleGuardianPhoneVerificationConfirm}
+                        disabled={guardianPhoneVerifying}
+                        className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-700 shadow-sm disabled:opacity-60"
+                      >
+                        {guardianPhoneVerifying ? '확인중...' : '인증 확인'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              ) : null}
-              <div className="flex gap-2">
-                <button
-                  onClick={handleGuardianEditCancel}
-                  className="inline-flex h-11 flex-1 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm"
-                >
-                  취소
-                </button>
-                <button
-                  onClick={handleGuardianProfileSave}
-                  className="inline-flex h-11 flex-1 items-center justify-center rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white shadow-lg shadow-indigo-100"
-                >
-                  저장
-                </button>
+                {guardianEditMessage ? (
+                  <div
+                    className={`rounded-lg border px-3 py-2 text-[13px] ${
+                      guardianPhoneVerificationToken
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                        : 'border-indigo-100 bg-indigo-50 text-indigo-700'
+                    }`}
+                  >
+                    {guardianEditMessage}
+                  </div>
+                ) : null}
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleGuardianEditCancel}
+                    className="inline-flex h-11 flex-1 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleGuardianProfileSave}
+                    className="inline-flex h-11 flex-1 items-center justify-center rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white shadow-lg shadow-indigo-100"
+                  >
+                    저장
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -2689,12 +2724,29 @@ export default function App() {
           <Smartphone size={16} className="text-slate-400" />
           <h3 className="text-[16px] text-slate-900">연결된 회원</h3>
         </div>
-        <div className="space-y-2 text-[14px] text-slate-600">
-          <p>이름: {profile?.name || session?.memberName || '-'}</p>
-          <p>이메일: {profile?.email || session?.email || '-'}</p>
-          <p>전화번호: {profile?.phone || '-'}</p>
-          <p>혈액형: {profile?.bloodType || '-'}</p>
-          <p>신장 / 체중: {profile?.height ? `${profile.height}cm` : '-'} / {profile?.weight ? `${profile.weight}kg` : '-'}</p>
+        <div className="grid grid-cols-1 gap-3 min-[520px]:grid-cols-2">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-[12px] text-slate-400">이름</p>
+            <p className="mt-1 text-[15px] font-semibold text-slate-900">{profile?.name || session?.memberName || '-'}</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-[12px] text-slate-400">이메일</p>
+            <p className="mt-1 break-all text-[15px] font-semibold text-slate-900">{profile?.email || session?.email || '-'}</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-[12px] text-slate-400">전화번호</p>
+            <p className="mt-1 text-[15px] font-semibold text-slate-900">{profile?.phone || '-'}</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-[12px] text-slate-400">혈액형</p>
+            <p className="mt-1 text-[15px] font-semibold text-slate-900">{profile?.bloodType || '-'}</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 min-[520px]:col-span-2">
+            <p className="text-[12px] text-slate-400">신장 / 체중</p>
+            <p className="mt-1 text-[15px] font-semibold text-slate-900">
+              {profile?.height ? `${profile.height}cm` : '-'} / {profile?.weight ? `${profile.weight}kg` : '-'}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -2704,17 +2756,17 @@ export default function App() {
           <h3 className="text-[16px] text-slate-900">건강 메모</h3>
         </div>
         <div className="space-y-3 text-[14px] text-slate-600">
-          <div>
-            <p className="text-[13px] text-slate-400">기저 질환</p>
-            <p>{formatGuardianMedicalEntries(profile?.medicalHistory?.chronicDiseases, 'disease')}</p>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-[12px] text-slate-400">기저 질환</p>
+            <p className="mt-1 text-[15px] text-slate-900">{formatGuardianMedicalEntries(profile?.medicalHistory?.chronicDiseases, 'disease')}</p>
           </div>
-          <div>
-            <p className="text-[13px] text-slate-400">복용 중인 약물</p>
-            <p>{formatGuardianMedicalEntries(profile?.medicalHistory?.medications, 'name')}</p>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-[12px] text-slate-400">복용 중인 약물</p>
+            <p className="mt-1 text-[15px] text-slate-900">{formatGuardianMedicalEntries(profile?.medicalHistory?.medications, 'name')}</p>
           </div>
-          <div>
-            <p className="text-[13px] text-slate-400">알레르기</p>
-            <p>{formatGuardianMedicalEntries(profile?.medicalHistory?.allergies, 'substance')}</p>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-[12px] text-slate-400">알레르기</p>
+            <p className="mt-1 text-[15px] text-slate-900">{formatGuardianMedicalEntries(profile?.medicalHistory?.allergies, 'substance')}</p>
           </div>
         </div>
       </div>
@@ -2724,11 +2776,25 @@ export default function App() {
           <Watch size={16} className="text-slate-400" />
           <h3 className="text-[16px] text-slate-900">연결 워치</h3>
         </div>
-        <div className="space-y-2 text-[14px] text-slate-600">
-          <p>기기명: {profile?.wearableDevice?.deviceName || '-'}</p>
-          <p>기기 ID: {profile?.wearableDevice?.deviceId || '-'}</p>
-          <p>연결 상태: {profile?.wearableDevice?.connectionStatus || '-'}</p>
-          <p>마지막 동기화: {profile?.wearableDevice?.lastSyncAt ? new Date(profile.wearableDevice.lastSyncAt).toLocaleString() : '-'}</p>
+        <div className="grid grid-cols-1 gap-3 min-[520px]:grid-cols-2">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-[12px] text-slate-400">기기명</p>
+            <p className="mt-1 text-[15px] font-semibold text-slate-900">{profile?.wearableDevice?.deviceName || '-'}</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-[12px] text-slate-400">기기 ID</p>
+            <p className="mt-1 break-all text-[15px] font-semibold text-slate-900">{profile?.wearableDevice?.deviceId || '-'}</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-[12px] text-slate-400">연결 상태</p>
+            <p className="mt-1 text-[15px] font-semibold text-slate-900">{profile?.wearableDevice?.connectionStatus || '-'}</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-[12px] text-slate-400">마지막 동기화</p>
+            <p className="mt-1 text-[15px] font-semibold text-slate-900">
+              {profile?.wearableDevice?.lastSyncAt ? new Date(profile.wearableDevice.lastSyncAt).toLocaleString() : '-'}
+            </p>
+          </div>
         </div>
       </div>
 
