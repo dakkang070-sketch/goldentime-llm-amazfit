@@ -1986,16 +1986,15 @@ const WorkingMap: React.FC<LiveMapProps> = ({
         setOpenPopupScreenPos(null);
       });
 
-      window.L.tileLayer(
-        "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}",
-        {
-          maxZoom: 20,
-          maxNativeZoom: 20,
-          keepBuffer: 2,
-          updateWhenIdle: true,
-          updateWhenZooming: false,
-        },
-      ).addTo(mapRef.current);
+      window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap contributors",
+        maxZoom: 19,
+        maxNativeZoom: 19,
+        subdomains: ["a", "b", "c"],
+        keepBuffer: 2,
+        updateWhenIdle: true,
+        updateWhenZooming: false,
+      }).addTo(mapRef.current);
 
       setMapReady(true);
     };

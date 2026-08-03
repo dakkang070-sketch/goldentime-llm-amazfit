@@ -2,7 +2,9 @@ import React, { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-// Helper to generate a simple sparkline SVG
+/**
+ * 마커 팝업 안에 표시할 간단한 추이 스파크라인 SVG를 생성합니다.
+ */
 const generateSparkline = (width: number, height: number, color: string, isCritical: boolean) => {
   const pointsCount = 20;
   const data: number[] = [];
@@ -44,6 +46,9 @@ const generateSparkline = (width: number, height: number, color: string, isCriti
   `;
 };
 
+/**
+ * 이미 준비된 수치 배열을 기준으로 스파크라인 SVG 문자열을 생성합니다.
+ */
 const createSparklineSvgFromData = (data: number[], width: number, height: number, color: string) => {
   const stepX = width / (data.length - 1);
   const pathPoints = data.map((val, i) => {
@@ -84,6 +89,9 @@ interface Precinct {
   lng: number;
 }
 
+/**
+ * 범죄 케이스 지도 컴포넌트가 외부에서 전달받는 사건/선택 상태/경찰 자원 prop 구조입니다.
+ */
 interface CrimeMapProps {
   cases: any[];
   selectedCase: any | null;
@@ -92,6 +100,9 @@ interface CrimeMapProps {
   precincts?: Precinct[];
 }
 
+/**
+ * 사건 위치, 관할 자원, 선택된 케이스를 Leaflet 지도에 표시하는 범죄 지도 컴포넌트입니다.
+ */
 const CrimeMap: React.FC<CrimeMapProps> = ({
   cases,
   selectedCase,
@@ -125,10 +136,16 @@ const CrimeMap: React.FC<CrimeMapProps> = ({
 
     const map = mapRef.current as L.Map;
 
+    /**
+     * `handleZoomStart` 동작을 처리합니다.
+     */
     const handleZoomStart = () => {
       zoomStartLevelRef.current = map.getZoom();
     };
 
+    /**
+     * `handleZoomEnd` 동작을 처리합니다.
+     */
     const handleZoomEnd = () => {
       const startZoom = zoomStartLevelRef.current;
       zoomStartLevelRef.current = null;
@@ -190,6 +207,9 @@ const CrimeMap: React.FC<CrimeMapProps> = ({
     const targetPoint = point.subtract([0, 150]);
     const targetLatLng = map.unproject(targetPoint, targetZoom);
 
+    /**
+     * `openSelectedPopup` 기능을 처리합니다.
+     */
     const openSelectedPopup = (retries: number) => {
       const marker = markersRef.current[id];
       if (!marker) {
@@ -232,7 +252,7 @@ const CrimeMap: React.FC<CrimeMapProps> = ({
       selectedCase?.location?.lat && selectedCase?.location?.lng;
     const center: L.LatLngExpression = hasValidLocation
       ? [selectedCase.location.lat, selectedCase.location.lng]
-      : [37.5665, 126.978];
+      : [36.3504, 127.3845];
 
     mapRef.current = L.map(mapContainerRef.current, {
       center: center,
@@ -243,11 +263,12 @@ const CrimeMap: React.FC<CrimeMapProps> = ({
       closePopupOnClick: true
     });
 
-    // Add Google Maps tile layer (Same as WorkingMap)
-    L.tileLayer("https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", {
-      subdomains: ["0", "1", "2", "3"],
+    // 응급 관제 프런트 공통 기준에 맞춰 OSM 타일을 사용합니다.
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors",
+      subdomains: ["a", "b", "c"],
       maxZoom: 22,
-      maxNativeZoom: 20,
+      maxNativeZoom: 19,
     }).addTo(mapRef.current);
 
     // Add Zoom Control to top-right
@@ -274,6 +295,9 @@ const CrimeMap: React.FC<CrimeMapProps> = ({
   }, []);
 
   // Helper to calculate distance
+  /**
+   * 두 좌표 사이 직선 거리를 미터 단위로 계산해 관할 자원 비교에 사용합니다.
+   */
   const getDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
     const R = 6371e3; // metres
     const φ1 = (lat1 * Math.PI) / 180;
@@ -290,6 +314,9 @@ const CrimeMap: React.FC<CrimeMapProps> = ({
   };
 
   // Helper to generate a Manhattan-style route (L-shape) for fallback
+  /**
+   * 실제 라우팅 서버 실패 시 지도에 최소한의 이동 경로를 보여주기 위한 L자 fallback 경로를 만듭니다.
+   */
   const generateManhattanRoute = (start: { lat: number; lng: number }, end: { lat: number; lng: number }) => {
     // 50% chance to go Horizontal first, then Vertical
     // 50% chance to go Vertical first, then Horizontal
@@ -307,6 +334,9 @@ const CrimeMap: React.FC<CrimeMapProps> = ({
   };
 
   // Helper to fetch route from OSRM with failover
+  /**
+   * OSRM 메인/백업 서버를 순회하며 실제 도로 경로와 거리 정보를 가져옵니다.
+   */
   const fetchRoute = async (start: { lat: number; lng: number }, end: { lat: number; lng: number }) => {
     // List of OSRM servers to try (Main + Backup)
     const servers = [
@@ -344,6 +374,9 @@ const CrimeMap: React.FC<CrimeMapProps> = ({
     return null; // All servers failed
   };
 
+  /**
+   * `prefetchDetailedAddress` 기능을 처리합니다.
+   */
   const prefetchDetailedAddress = (id: string, lat: number, lng: number, fallback: string) => {
     const cached = addressCacheRef.current[id];
     if (cached) return;
@@ -351,6 +384,7 @@ const CrimeMap: React.FC<CrimeMapProps> = ({
     const existing = addressRequestRef.current[id];
     if (existing) return;
 
+    // 선택 직후 미리 상세 주소를 읽어 두어 팝업 열릴 때 주소 문구가 늦게 뜨지 않게 합니다.
     const req = (async () => {
       try {
         const controller = new AbortController();
@@ -407,7 +441,13 @@ const CrimeMap: React.FC<CrimeMapProps> = ({
     addressRequestRef.current[id] = req;
   };
 
+  /**
+   * `ensureDetailedAddress` 기능을 처리합니다.
+   */
   const ensureDetailedAddress = async (id: string, lat: number, lng: number, fallback: string) => {
+    /**
+     * `setLine` 처리를 수행합니다.
+     */
     const setLine = (elementId: string, value: string) => {
       const el = document.getElementById(elementId);
       if (!el) return;
@@ -416,6 +456,9 @@ const CrimeMap: React.FC<CrimeMapProps> = ({
       (el as HTMLElement).style.visibility = v ? "visible" : "hidden";
     };
 
+    /**
+     * `setBoth` 처리를 수행합니다.
+     */
     const setBoth = (road: string, detail: string) => {
       setLine(`address-road-${id}`, road);
       setLine(`address-detail-${id}`, detail);
@@ -436,6 +479,9 @@ const CrimeMap: React.FC<CrimeMapProps> = ({
       return value;
     }
 
+    /**
+     * `req` 기능을 처리합니다.
+     */
     const req = (async () => {
       try {
         const controller = new AbortController();
@@ -622,6 +668,9 @@ const CrimeMap: React.FC<CrimeMapProps> = ({
 
     // Draw Route to Nearest Police Station if a case is selected
     if (selectedCase && selectedCase.location && policeStations.length > 0) {
+      /**
+       * `drawRoute` 기능을 처리합니다.
+       */
       const drawRoute = async () => {
         let nearestPs = null;
         let minDirectDist = Infinity;
@@ -1232,4 +1281,7 @@ const CrimeMap: React.FC<CrimeMapProps> = ({
   );
 };
 
+/**
+ * 범죄 지도 컴포넌트를 기본 export로 제공합니다.
+ */
 export default CrimeMap;

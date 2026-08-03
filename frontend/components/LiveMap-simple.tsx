@@ -5,11 +5,17 @@ import { apiService } from '../services/apiService';
 
 declare var L: any;
 
+/**
+ * 단순화된 라이브 지도 컴포넌트가 받는 환자/병원 prop 구조입니다.
+ */
 interface LiveMapProps {
   patient: Patient;
   hospital?: Hospital;
 }
 
+/**
+ * 최소 기능만 남겨 지도 표시를 검증하기 위한 단순형 라이브 지도 컴포넌트입니다.
+ */
 const LiveMapSimple: React.FC<LiveMapProps> = ({ patient, hospital }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
@@ -22,8 +28,13 @@ const LiveMapSimple: React.FC<LiveMapProps> = ({ patient, hospital }) => {
 
   const patientCoords: [number, number] = [patient.lat, patient.lng];
 
-  // Leaflet 라이브러리 로딩
+  /**
+   * 외부 CDN에서 Leaflet 스크립트를 로드하고 준비 상태를 갱신합니다.
+   */
   useEffect(() => {
+    /**
+     * `loadLeaflet` 관련 데이터를 계산하거나 변환합니다.
+     */
     const loadLeaflet = () => {
       return new Promise<void>((resolve, reject) => {
         if (typeof window !== 'undefined' && (window as any).L) {
@@ -54,7 +65,7 @@ const LiveMapSimple: React.FC<LiveMapProps> = ({ patient, hospital }) => {
         
         document.head.appendChild(script);
         
-        // 5초 타임아웃
+        // 외부 CDN 로딩이 끝없이 대기하지 않게 5초 후 타임아웃으로 실패 처리합니다.
         setTimeout(() => {
           if (!leafletLoaded) {
             reject(new Error('Leaflet 로딩 타임아웃'));
@@ -68,7 +79,9 @@ const LiveMapSimple: React.FC<LiveMapProps> = ({ patient, hospital }) => {
     });
   }, []);
 
-  // 지도 초기화
+  /**
+   * Leaflet이 준비되면 전국 뷰 기준의 단순 지도와 줌 이벤트를 초기화합니다.
+   */
   useEffect(() => {
     if (!leafletLoaded || !mapContainerRef.current || mapRef.current) return;
 
@@ -90,8 +103,9 @@ const LiveMapSimple: React.FC<LiveMapProps> = ({ patient, hospital }) => {
         attributionControl: false
       });
       
-      L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
-        attribution: ''
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        subdomains: ['a', 'b', 'c']
       }).addTo(mapRef.current);
       
       // 줌 레벨 변경 이벤트 리스너 추가
@@ -121,8 +135,13 @@ const LiveMapSimple: React.FC<LiveMapProps> = ({ patient, hospital }) => {
     }
   }, [leafletLoaded]);
 
-  // 병원 데이터 가져오기
+  /**
+   * 병원 데이터를 주기적으로 불러오고 실패 시 전국 분포 확인용 fallback 데이터를 채웁니다.
+   */
   useEffect(() => {
+    /**
+     * `fetchHospitals` 관련 데이터를 계산하거나 변환합니다.
+     */
     const fetchHospitals = async () => {
       try {
         console.log('🏥 [전국 병원] API 데이터 요청');
@@ -134,7 +153,7 @@ const LiveMapSimple: React.FC<LiveMapProps> = ({ patient, hospital }) => {
           let hospitals = response.data.hospitals;
           console.log(`✅ [전국 병원] ${hospitals.length}개 실제 병원 데이터 로드 성공`);
           
-          // 같은 좌표를 가진 병원들을 강제로 분산시키기
+          // 지도 검증 단계라 같은 좌표 병원은 강제로 벌려 겹침 여부보다 표시 여부 확인을 우선합니다.
           const processedHospitals = hospitals.map((hospital, index) => ({
             ...hospital,
             lat: hospital.lat + (index * 0.01), // 강제 분산
@@ -154,10 +173,10 @@ const LiveMapSimple: React.FC<LiveMapProps> = ({ patient, hospital }) => {
           console.error('❌ [전국 병원] API 실패:', response.error);
           console.log('🔧 [전국 병원] 강화된 백업 데이터 생성');
           
-          // 강화된 전국 더미 병원 생성 (100개)
+          // API가 비어도 전국 분포 테스트가 가능하도록 넓게 퍼진 더미 병원을 생성합니다.
           const backupHospitals = [];
           const cities = [
-            { name: '서울', lat: 37.5665, lng: 126.9780 },
+            { name: '서울', lat: 36.3504, lng: 127.3845 },
             { name: '부산', lat: 35.1796, lng: 129.0756 },
             { name: '대구', lat: 35.8714, lng: 128.6014 },
             { name: '인천', lat: 37.4563, lng: 126.7052 },
@@ -217,12 +236,14 @@ const LiveMapSimple: React.FC<LiveMapProps> = ({ patient, hospital }) => {
 
     fetchHospitals();
     
-    // 20초마다 데이터 갱신
+    // 운영 실시간성보다 디버그 가시성이 중요해 20초 간격으로 다시 불러 표시 상태를 검증합니다.
     const interval = setInterval(fetchHospitals, 20000);
     return () => clearInterval(interval);
   }, []);
 
-  // 마커 표시 (줌 레벨에 따라 제어)
+  /**
+   * 현재 줌 레벨과 데이터 상태에 맞춰 환자/병원 마커를 다시 그립니다.
+   */
   useEffect(() => {
     if (!mapReady || !mapRef.current || !leafletLoaded || apiHospitals.length === 0) {
       console.log(`⚠️ 마커 표시 조건 확인: 지도준비=${mapReady}, 지도=${!!mapRef.current}, Leaflet=${leafletLoaded}, 병원수=${apiHospitals.length}`);
@@ -269,16 +290,17 @@ const LiveMapSimple: React.FC<LiveMapProps> = ({ patient, hospital }) => {
     let successCount = 0;
     let skippedCount = 0;
 
-    // 줌 레벨이 충분할 때만 병원 마커 생성
+    // 전국 뷰에서는 마커 과밀을 막기 위해 일정 줌 이상일 때만 병원 마커를 생성합니다.
     if (hospitalMarkersVisible) {
       console.log(`🏥 줌 레벨 ${currentZoom} ≥ 8 - 병원 마커 생성 시작`);
       
+      // 실제 병원 표시 전 기준점 몇 개를 먼저 찍어 지도/아이콘 렌더 자체가 되는지 바로 구분합니다.
       // 테스트용 강제 마커 생성 (5개)
       console.log('🔧 [디버깅] 테스트 마커 5개 강제 생성');
       for (let i = 0; i < 5; i++) {
         try {
-          const testLat = 37.5665 + (i * 0.01);
-          const testLng = 126.9780 + (i * 0.01);
+          const testLat = 36.3504 + (i * 0.01);
+          const testLng = 127.3845 + (i * 0.01);
           
           const testMarker = L.circleMarker([testLat, testLng], {
             radius: 10,
@@ -312,7 +334,7 @@ const LiveMapSimple: React.FC<LiveMapProps> = ({ patient, hospital }) => {
             return;
           }
 
-          // 강력한 분산 배치 (겹침 완전 방지)
+          // 디버그 지도라 실제 위치 정밀도보다 "모든 마커가 보이는지" 확인을 우선해 강하게 분산합니다.
           const offsetLat = lat + ((index % 50) - 25) * 0.05; // 50개씩 그룹, ±1.25도 (약 125km)
           const offsetLng = lng + (Math.floor(index / 50) - 4) * 0.05;
           
@@ -392,7 +414,7 @@ const LiveMapSimple: React.FC<LiveMapProps> = ({ patient, hospital }) => {
     console.log(`✅ 전국 병원 마커 생성 완료: 성공 ${successCount}개 / 스킵 ${skippedCount}개 / 총 ${apiHospitals.length}개`);
     console.log(`📍 지도 마커 총 개수: ${Object.keys(markersRef.current).length}개 (환자 1개 + 병원 ${successCount}개)`);
     
-    // 모든 마커가 보이도록 지도 범위 조정
+    // 생성 성공 마커가 있으면 한 화면에 다시 맞춰 디버그 직후 바로 표시 여부를 확인합니다.
     if (successCount > 0) {
       setTimeout(() => {
         try {
@@ -481,7 +503,7 @@ const LiveMapSimple: React.FC<LiveMapProps> = ({ patient, hospital }) => {
         <button 
           onClick={() => {
             if (mapReady && mapRef.current) {
-              mapRef.current.flyTo([37.5665, 126.9780], 11, { duration: 1 });
+              mapRef.current.flyTo([36.3504, 127.3845], 11, { duration: 1 });
               console.log('🏥 [지도 이동] 서울 병원 집중 보기');
             }
           }}
@@ -522,6 +544,7 @@ const LiveMapSimple: React.FC<LiveMapProps> = ({ patient, hospital }) => {
             console.log('🔧 [디버깅] 병원 데이터:', apiHospitals.length);
             console.log('🔧 [디버깅] L 객체:', typeof (window as any).L);
           }} 
+          // 마지막 버튼은 화면 상태를 바꾸지 않고 콘솔 확인용 디버그 정보만 출력합니다.
           className="p-2 bg-red-900/80 backdrop-blur-md border border-red-500/20 rounded-lg text-red-300 hover:text-red-100 shadow-xl active:scale-95 transition-all"
           title="디버깅 정보"
         >
@@ -532,4 +555,7 @@ const LiveMapSimple: React.FC<LiveMapProps> = ({ patient, hospital }) => {
   );
 };
 
+/**
+ * 단순형 라이브 지도 컴포넌트를 기본 export로 제공합니다.
+ */
 export default LiveMapSimple;

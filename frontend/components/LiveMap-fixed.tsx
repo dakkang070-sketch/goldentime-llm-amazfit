@@ -3,11 +3,17 @@ import { Crosshair, MapPin } from 'lucide-react';
 import { Patient, Hospital } from '../types';
 import { apiService } from '../services/apiService';
 
+/**
+ * 고정 좌표 보정형 라이브 지도 컴포넌트가 받는 환자/병원 prop 구조입니다.
+ */
 interface LiveMapFixedProps {
   patient: Patient;
   hospital?: Hospital;
 }
 
+/**
+ * 병원 마커와 환자 위치를 비교적 안정적으로 표시하기 위한 보정형 지도 컴포넌트입니다.
+ */
 const LiveMapFixed: React.FC<LiveMapFixedProps> = ({ patient, hospital }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
@@ -20,6 +26,9 @@ const LiveMapFixed: React.FC<LiveMapFixedProps> = ({ patient, hospital }) => {
 
   // 지도 초기화 (Leaflet이 이미 로드되어 있다고 가정)
   useEffect(() => {
+    /**
+     * `initMap` 처리를 수행합니다.
+     */
     const initMap = () => {
       try {
         console.log('🗺️ 지도 초기화 시작');
@@ -43,8 +52,11 @@ const LiveMapFixed: React.FC<LiveMapFixedProps> = ({ patient, hospital }) => {
           attributionControl: false
         });
 
-        // 타일 레이어 추가
-        L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}').addTo(mapRef.current);
+        // 응급 관제 프런트 공통 기준에 맞춰 OSM 타일을 사용합니다.
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors',
+          subdomains: ['a', 'b', 'c']
+        }).addTo(mapRef.current);
 
         // 환자 마커 추가 (빨간색)
         const patientMarker = L.marker(patientCoords, {
@@ -66,6 +78,7 @@ const LiveMapFixed: React.FC<LiveMapFixedProps> = ({ patient, hospital }) => {
         markersRef.current = [patientMarker];
 
         console.log('✅ 지도 초기화 완료');
+        // 환자 기준 마커까지 만든 뒤 준비 완료로 넘겨야 병원 마커 패스가 첫 요소를 안전하게 재사용할 수 있습니다.
         setIsReady(true);
 
       } catch (error) {
@@ -73,7 +86,7 @@ const LiveMapFixed: React.FC<LiveMapFixedProps> = ({ patient, hospital }) => {
       }
     };
 
-    // Leaflet이 로드될 때까지 대기
+    // 번들 시점에 전역 L이 없을 수 있어 짧은 polling으로 로드 완료를 기다립니다.
     if ((window as any).L) {
       initMap();
     } else {
@@ -105,6 +118,9 @@ const LiveMapFixed: React.FC<LiveMapFixedProps> = ({ patient, hospital }) => {
 
   // 병원 데이터 로딩
   useEffect(() => {
+    /**
+     * `loadHospitals` 관련 데이터를 계산하거나 변환합니다.
+     */
     const loadHospitals = async () => {
       try {
         console.log('🏥 병원 데이터 로딩');
@@ -115,7 +131,7 @@ const LiveMapFixed: React.FC<LiveMapFixedProps> = ({ patient, hospital }) => {
           console.log(`✅ ${hospitalList.length}개 병원 로딩 성공`);
           setHospitals(hospitalList);
         } else {
-          // 테스트 데이터
+          // API가 비어도 병원 현황 패널과 마커 토글 흐름은 검증할 수 있게 샘플 병원을 채웁니다.
           const testHospitals = [
             { id: '1', name: '서울대학교병원', lat: 37.5796, lng: 127.0001, status: 'available' },
             { id: '2', name: '세브란스병원', lat: 37.5623, lng: 126.9408, status: 'busy' },
@@ -134,6 +150,7 @@ const LiveMapFixed: React.FC<LiveMapFixedProps> = ({ patient, hospital }) => {
         }
       } catch (error) {
         console.error('❌ 병원 데이터 로딩 실패:', error);
+        // 보정형 지도도 실패 시 빈 배열로 초기화해 직전 병원 결과가 남아 있는 오해를 막습니다.
         setHospitals([]);
       }
     };
@@ -166,7 +183,7 @@ const LiveMapFixed: React.FC<LiveMapFixedProps> = ({ patient, hospital }) => {
         }
       });
       
-      // 환자 마커만 유지
+      // 환자 마커는 유지하고 병원 마커만 갈아끼워 토글/재조회 시 중복 누적을 막습니다.
       markersRef.current = markersRef.current.slice(0, 1);
 
       let successCount = 0;
@@ -182,7 +199,7 @@ const LiveMapFixed: React.FC<LiveMapFixedProps> = ({ patient, hospital }) => {
             return;
           }
 
-          // 간단한 분산 (겹침 방지)
+          // 같은 지역 병원이 겹쳐 보이지 않도록 소폭 좌표를 벌려 테스트 표시성을 높입니다.
           const offsetLat = lat + ((index % 10) * 0.002);
           const offsetLng = lng + (Math.floor(index / 10) * 0.002);
 
@@ -268,18 +285,28 @@ const LiveMapFixed: React.FC<LiveMapFixedProps> = ({ patient, hospital }) => {
   }, [isReady, hospitals, showHospitals, hospital]);
 
   // 지도 컨트롤 함수들
+  /**
+   * 현재 선택 환자 좌표로 빠르게 이동해 현장 주변 상황을 확대합니다.
+   */
   const flyToPatient = () => {
     if (mapRef.current) {
       mapRef.current.flyTo(patientCoords, 12, { duration: 1 });
     }
   };
 
+  /**
+   * 전국 뷰로 돌아가 전체 병원 분포와 환자 위치를 함께 다시 봅니다.
+   */
   const flyToNational = () => {
     if (mapRef.current) {
+      // 환자 추적 후 전체 분포 확인으로 돌아갈 수 있게 전국 중심/줌을 고정 프리셋으로 둡니다.
       mapRef.current.flyTo([36.3504, 127.3845], 8, { duration: 1.5 });
     }
   };
 
+  /**
+   * 테스트용 병원 마커 표시 여부를 토글해 지도 가독성과 성능을 번갈아 확인합니다.
+   */
   const toggleHospitals = () => {
     setShowHospitals(!showHospitals);
   };
@@ -306,6 +333,7 @@ const LiveMapFixed: React.FC<LiveMapFixedProps> = ({ patient, hospital }) => {
       
       {/* 병원 현황 */}
       {hospitals.length > 0 && (
+        // 하단 패널은 지도 마커를 직접 세지 않고 현재 hospitals 배열 기준으로 상태 분포를 즉시 요약합니다.
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 bg-zinc-900/90 backdrop-blur-2xl border border-white/10 p-4 rounded-xl shadow-lg">
           <div className="flex items-center gap-6 text-sm">
             <span className="text-zinc-300 font-medium">🏥 전국 병원</span>
@@ -355,4 +383,7 @@ const LiveMapFixed: React.FC<LiveMapFixedProps> = ({ patient, hospital }) => {
   );
 };
 
+/**
+ * 보정형 라이브 지도 컴포넌트를 기본 export로 제공합니다.
+ */
 export default LiveMapFixed;

@@ -11,6 +11,9 @@ import 'leaflet/dist/leaflet.css';
 import 'leaflet-routing-machine';
 import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
 
+/**
+ * 라이브 지도 컴포넌트가 외부에서 전달받는 환자, 병원, 구급차 prop 구조입니다.
+ */
 interface LiveMapProps {
   patient: Patient;
   hospital?: Hospital;
@@ -18,6 +21,9 @@ interface LiveMapProps {
   matchedAmbulance?: Ambulance; // 소방소/응급구조대 아이콘 제거로 선택적으로 변경
 }
 
+/**
+ * 환자, 병원, 구급차 경로를 함께 표시하는 실시간 응급 지도 컴포넌트입니다.
+ */
 const LiveMap: React.FC<LiveMapProps> = ({ patient, hospital, ambulances, matchedAmbulance }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
@@ -35,7 +41,9 @@ const LiveMap: React.FC<LiveMapProps> = ({ patient, hospital, ambulances, matche
 
   const patientCoords: [number, number] = [patient.lat, patient.lng];
 
-  // 지도 초기화 함수
+  /**
+   * Leaflet 지도와 기본 타일 레이어를 한 번만 초기화합니다.
+   */
   const initMap = useCallback(() => {
     if (!mapContainerRef.current || mapRef.current) return; // 이미 지도 생성됨
 
@@ -60,15 +68,16 @@ const LiveMap: React.FC<LiveMapProps> = ({ patient, hospital, ambulances, matche
       preferCanvas: false // SVG 렌더링으로 아이콘 품질 향상
     });
 
-    // Google Maps 타일 레이어
-    L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
-      maxZoom: 18,
-      attribution: ''
+    // 응급 관제 프런트 공통 기준에 맞춰 OSM 타일을 사용합니다.
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      subdomains: ['a', 'b', 'c'],
+      maxZoom: 18
     }).addTo(mapRef.current);
 
     console.log('✅ [지도 초기화] Leaflet 지도 생성 완료');
 
-    // 지도 이벤트 리스너
+    // 디버깅 중인 지도라 줌/이동 로그를 남겨 현재 뷰 상태를 계속 추적합니다.
     mapRef.current.on('zoomend', () => {
       const zoom = mapRef.current.getZoom();
       console.log(`🔍 [지도 줌] 현재 줌 레벨: ${zoom}`);
@@ -81,6 +90,9 @@ const LiveMap: React.FC<LiveMapProps> = ({ patient, hospital, ambulances, matche
   }, []);
 
   // 환자 클릭 시 경로 표시
+  /**
+   * 환자 마커 클릭 시 현재 매칭 병원까지의 경로를 지도에 그립니다.
+   */
   const handlePatientClick = (p: Patient) => {
     if (!mapRef.current) return;
 
@@ -120,7 +132,7 @@ const LiveMap: React.FC<LiveMapProps> = ({ patient, hospital, ambulances, matche
         routeWhileDragging: false // 드래그 중 경로 업데이트 비활성화
       }).addTo(mapRef.current);
 
-      // 경로가 로드되면 팝업 열기 (선택 사항)
+      // 경로 탐색 성공 시에는 요약 로그만 남기고 UI는 기존 환자/병원 마커 팝업을 그대로 재사용합니다.
       routeControlRef.current.on('routesfound', function(e: any) {
         const routes = e.routes;
         const summary = routes[0].summary;
@@ -259,6 +271,9 @@ const LiveMap: React.FC<LiveMapProps> = ({ patient, hospital, ambulances, matche
 
   // API에서 병원 데이터 가져오기
   useEffect(() => {
+    /**
+     * `fetchHospitals` 관련 데이터를 계산하거나 변환합니다.
+     */
     const fetchHospitals = async () => {
       console.log('🏥 [프론트엔드] 임시 병원 데이터 로드 중...');
       const fallbackHospitals = [
@@ -268,6 +283,7 @@ const LiveMap: React.FC<LiveMapProps> = ({ patient, hospital, ambulances, matche
         { id: 'hosp-4', name: '세브란스병원', lat: 37.5792, lng: 126.9367, status: 'available' },
         { id: 'hosp-5', name: '고려대학교 안암병원', lat: 37.5878, lng: 127.0298, status: 'busy' },
       ];
+      // 현재는 API 대신 임시 병원 세트를 계속 주입해 지도 마커 렌더링만 검증합니다.
       setApiHospitals(fallbackHospitals);
       setHospitalStats({ available: 2, busy: 2, full: 1, total: 5 });
       console.log('✅ [프론트엔드] 임시 병원 데이터 로드 완료:', fallbackHospitals);
@@ -275,7 +291,7 @@ const LiveMap: React.FC<LiveMapProps> = ({ patient, hospital, ambulances, matche
 
     fetchHospitals();
     
-    // 15초마다 병원 데이터 갱신 (디버깅용)
+    // 디버깅 중인 임시 세트라 15초마다 다시 주입해 마커 갱신/정리 흐름만 반복 검증합니다.
     const interval = setInterval(fetchHospitals, 15000);
     return () => clearInterval(interval);
   }, []);
@@ -332,7 +348,7 @@ const LiveMap: React.FC<LiveMapProps> = ({ patient, hospital, ambulances, matche
       
       // 🚨 강제로 5개 테스트 마커 추가 (무조건 보이는 방식)
       const forceMarkers = [
-        { name: '강제테스트1', lat: 37.5665, lng: 126.9780, color: 'red' },
+        { name: '강제테스트1', lat: 36.3504, lng: 127.3845, color: 'red' },
         { name: '강제테스트2', lat: 37.5700, lng: 126.9800, color: 'blue' }, 
         { name: '강제테스트3', lat: 37.5630, lng: 126.9750, color: 'green' },
         { name: '강제테스트4', lat: 37.5600, lng: 126.9900, color: 'purple' },
@@ -417,7 +433,7 @@ const LiveMap: React.FC<LiveMapProps> = ({ patient, hospital, ambulances, matche
           return;
         }
 
-        // 🔧 간단한 좌표 조정 (같은 좌표 방지)
+        // 동일하거나 가까운 좌표가 겹치지 않게 임시 오프셋을 줘 디버그 마커가 전부 보이게 합니다.
         const offsetLat = hospitalData.lat + (index * 0.003); // 간단한 오프셋
         const offsetLng = hospitalData.lng + ((index % 5) * 0.003); // 5개씩 그룹
 
@@ -492,6 +508,7 @@ const LiveMap: React.FC<LiveMapProps> = ({ patient, hospital, ambulances, matche
     if (!mapRef.current || typeof L === 'undefined') return;
 
     if (markersRef.current.patient) mapRef.current.removeLayer(markersRef.current.patient);
+    // 환자 마커는 최신 좌표/상태 기준으로 매번 다시 그려 클릭 시 경로 탐색 진입점으로 사용합니다.
     const patientIcon = L.divIcon({
       className: 'custom-div-icon',
       html: `<div class="relative flex items-center justify-center">
@@ -514,7 +531,7 @@ const LiveMap: React.FC<LiveMapProps> = ({ patient, hospital, ambulances, matche
   return (
     <div className="relative w-full h-full bg-[#0a0a0b]">
       {/* 전국 병원 아이콘 전용 CSS 스타일 */}
-      <style jsx global>{`
+      <style>{`
         .hospital-black-icon {
           z-index: 1000 !important;
         }
@@ -594,6 +611,7 @@ const LiveMap: React.FC<LiveMapProps> = ({ patient, hospital, ambulances, matche
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 w-[94%] max-w-4xl">
         {/* 병원 현황 통계 */}
         {hospitalStats && (
+          // 하단 요약 패널은 현재 지도에 올린 병원 배열 기준으로 가용/혼잡/포화 분포를 한 번에 보여줍니다.
           <div className="bg-zinc-900/90 backdrop-blur-2xl border border-white/10 p-4 rounded-xl shadow-lg">
             <div className="flex items-center justify-between text-sm">
               <span className="text-zinc-300 font-medium">🏥 실시간 병원 현황</span>
@@ -619,6 +637,7 @@ const LiveMap: React.FC<LiveMapProps> = ({ patient, hospital, ambulances, matche
 
       <div className="absolute top-8 right-8 z-20 flex flex-col gap-3">
         <button 
+          // 첫 버튼은 언제든 환자 현재 좌표로 복귀해 추적 시작점을 다시 맞추는 용도입니다.
           onClick={() => mapRef.current?.flyTo(patientCoords, 12, { duration: 1 })} 
           className="p-3.5 bg-zinc-900/80 backdrop-blur-md border border-white/10 rounded-xl text-zinc-300 hover:text-white shadow-xl active:scale-95 transition-all"
           title="환자 위치로 이동"
@@ -626,7 +645,8 @@ const LiveMap: React.FC<LiveMapProps> = ({ patient, hospital, ambulances, matche
           <Crosshair className="w-7 h-7" />
         </button>
         <button 
-          onClick={() => mapRef.current?.flyTo([37.5665, 126.9780], 11, { duration: 1 })} 
+          // 두 번째 버튼은 서울 병원 밀집 구간으로 바로 점프해 병원 분포를 확인하게 합니다.
+          onClick={() => mapRef.current?.flyTo([36.3504, 127.3845], 11, { duration: 1 })} 
           className="p-3.5 bg-zinc-900/80 backdrop-blur-md border border-white/10 rounded-xl text-zinc-300 hover:text-white shadow-xl active:scale-95 transition-all"
           title="서울 병원 집중 보기"
         >
@@ -635,6 +655,7 @@ const LiveMap: React.FC<LiveMapProps> = ({ patient, hospital, ambulances, matche
           </div>
         </button>
         <button 
+          // 마지막 버튼은 전국 스케일로 축소해 전체 병원 네트워크 분포를 빠르게 보는 용도입니다.
           onClick={() => mapRef.current?.flyTo([36.3504, 127.3845], 7, { duration: 1.5 })} 
           className="p-3.5 bg-zinc-900/80 backdrop-blur-md border border-white/10 rounded-xl text-zinc-300 hover:text-white shadow-xl active:scale-95 transition-all"
           title="전국 지도 보기"
@@ -648,4 +669,7 @@ const LiveMap: React.FC<LiveMapProps> = ({ patient, hospital, ambulances, matche
   );
 };
 
+/**
+ * 실시간 응급 지도 컴포넌트를 기본 export로 제공합니다.
+ */
 export default LiveMap;

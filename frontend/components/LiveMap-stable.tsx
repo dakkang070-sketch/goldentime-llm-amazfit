@@ -5,11 +5,17 @@ import { apiService } from '../services/apiService';
 
 declare var L: any;
 
+/**
+ * 안정화 버전 라이브 지도 컴포넌트가 받는 환자/병원 prop 구조입니다.
+ */
 interface LiveMapProps {
   patient: Patient;
   hospital?: Hospital;
 }
 
+/**
+ * 지도 초기화와 마커 표시를 안정적으로 유지하려는 실험용 안정화 지도 컴포넌트입니다.
+ */
 const LiveMapStable: React.FC<LiveMapProps> = ({ patient, hospital }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
@@ -22,11 +28,14 @@ const LiveMapStable: React.FC<LiveMapProps> = ({ patient, hospital }) => {
 
   // Leaflet 라이브러리 로딩 및 지도 초기화
   useEffect(() => {
+    /**
+     * `initializeMap` 처리를 수행합니다.
+     */
     const initializeMap = async () => {
       try {
         console.log('🗺️ 지도 시스템 초기화 시작');
 
-        // Leaflet 라이브러리 로딩
+        // 안정화 버전은 전역 L이 없을 때만 동적으로 로드해 초기화 실패 원인을 줄입니다.
         if (typeof (window as any).L === 'undefined') {
           console.log('📦 Leaflet 라이브러리 로딩');
           
@@ -56,8 +65,11 @@ const LiveMapStable: React.FC<LiveMapProps> = ({ patient, hospital }) => {
           attributionControl: false
         });
 
-        // 타일 레이어 추가
-        L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}').addTo(mapRef.current);
+        // 응급 관제 프런트 공통 기준에 맞춰 OSM 타일을 사용합니다.
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors',
+          subdomains: ['a', 'b', 'c']
+        }).addTo(mapRef.current);
 
         // 줌 이벤트 리스너
         mapRef.current.on('zoomend', () => {
@@ -105,6 +117,9 @@ const LiveMapStable: React.FC<LiveMapProps> = ({ patient, hospital }) => {
 
   // 병원 데이터 로딩
   useEffect(() => {
+    /**
+     * `loadHospitals` 관련 데이터를 계산하거나 변환합니다.
+     */
     const loadHospitals = async () => {
       try {
         console.log('🏥 병원 데이터 로딩');
@@ -148,7 +163,7 @@ const LiveMapStable: React.FC<LiveMapProps> = ({ patient, hospital }) => {
     try {
       console.log(`🏥 줌 레벨 ${currentZoom} - 병원 마커 ${hospitals.length}개 추가`);
 
-      // 기존 병원 마커 제거 (환자 마커는 유지)
+      // 환자 마커는 남기고 병원 마커만 교체해 줌 변화 시 중복 누적을 막습니다.
       markersRef.current.slice(1).forEach(marker => {
         try {
           mapRef.current.removeLayer(marker);
@@ -166,7 +181,7 @@ const LiveMapStable: React.FC<LiveMapProps> = ({ patient, hospital }) => {
           
           if (isNaN(lat) || isNaN(lng)) return;
 
-          // 간단한 분산 배치
+          // 동일 좌표 병원이 겹쳐 안 보이지 않게 테스트용으로 소폭 분산 배치합니다.
           const offsetLat = lat + (index * 0.001);
           const offsetLng = lng + (index * 0.001);
 
@@ -212,21 +227,30 @@ const LiveMapStable: React.FC<LiveMapProps> = ({ patient, hospital }) => {
   }, [isReady, hospitals, currentZoom, hospital]);
 
   // 지도 컨트롤 함수들
+  /**
+   * 환자 위치로 즉시 이동해 상세 현장 상태를 살펴볼 때 사용합니다.
+   */
   const flyToPatient = () => {
     if (mapRef.current) {
       mapRef.current.flyTo(patientCoords, 12, { duration: 1 });
     }
   };
 
+  /**
+   * 전국 시야로 복귀해 환자와 병원 분포를 전체적으로 다시 확인합니다.
+   */
   const flyToNational = () => {
     if (mapRef.current) {
       mapRef.current.flyTo([36.3504, 127.3845], 8, { duration: 1.5 });
     }
   };
 
+  /**
+   * 서울권으로 이동해 병원 밀집 구간을 빠르게 점검할 때 사용합니다.
+   */
   const flyToSeoul = () => {
     if (mapRef.current) {
-      mapRef.current.flyTo([37.5665, 126.9780], 11, { duration: 1 });
+      mapRef.current.flyTo([36.3504, 127.3845], 11, { duration: 1 });
     }
   };
 
@@ -302,4 +326,7 @@ const LiveMapStable: React.FC<LiveMapProps> = ({ patient, hospital }) => {
   );
 };
 
+/**
+ * 안정화 라이브 지도 컴포넌트를 기본 export로 제공합니다.
+ */
 export default LiveMapStable;
