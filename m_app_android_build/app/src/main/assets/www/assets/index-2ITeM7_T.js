@@ -19709,10 +19709,10 @@ const jj = {
                     backgroundColor: R ? "#f97316" : "#ffffff"
                 },
                 children: R ? u.jsx("svg", {
-                    className: "h-3 w-3 text-white",
+                    className: "h-3 w-3",
                     viewBox: "0 0 24 24",
                     fill: "none",
-                    stroke: "currentColor",
+                    stroke: "#ffffff",
                     strokeWidth: "3",
                     strokeLinecap: "round",
                     strokeLinejoin: "round",
@@ -19788,7 +19788,7 @@ const jj = {
                     borderColor: "rgb(255 237 213)",
                     display: "flex",
                     flexDirection: "column",
-                    rowGap: "16px"
+                    rowGap: "10px"
                 },
                 children: [u.jsx("div", {
                     className: "flex items-center gap-2",
@@ -19820,8 +19820,8 @@ const jj = {
                 }), u.jsxs("div", {
                     className: "flex items-center gap-2",
                     style: {
-                        paddingTop: "4px",
-                        paddingBottom: "4px"
+                        paddingTop: "0px",
+                        paddingBottom: "0px"
                     },
                     children: [u.jsxs("label", {
                         className: "flex flex-1 items-center gap-2 cursor-pointer",
@@ -19854,8 +19854,8 @@ const jj = {
                 }), u.jsxs("div", {
                     className: "flex items-center gap-2",
                     style: {
-                        paddingTop: "4px",
-                        paddingBottom: "4px"
+                        paddingTop: "0px",
+                        paddingBottom: "0px"
                     },
                     children: [u.jsxs("label", {
                         className: "flex flex-1 items-center gap-2 cursor-pointer",
@@ -19888,8 +19888,8 @@ const jj = {
                 }), u.jsxs("div", {
                     className: "flex items-center gap-2",
                     style: {
-                        paddingTop: "4px",
-                        paddingBottom: "4px"
+                        paddingTop: "0px",
+                        paddingBottom: "0px"
                     },
                     children: [u.jsxs("label", {
                         className: "flex flex-1 items-center gap-2 cursor-pointer",
@@ -19922,8 +19922,8 @@ const jj = {
                 }), u.jsxs("div", {
                     className: "flex items-center gap-2",
                     style: {
-                        paddingTop: "4px",
-                        paddingBottom: "4px"
+                        paddingTop: "0px",
+                        paddingBottom: "0px"
                     },
                     children: [u.jsxs("label", {
                         className: "flex flex-1 items-center gap-2 cursor-pointer",
@@ -19956,8 +19956,8 @@ const jj = {
                 }), u.jsxs("div", {
                     className: "flex items-center gap-2",
                     style: {
-                        paddingTop: "4px",
-                        paddingBottom: "4px"
+                        paddingTop: "0px",
+                        paddingBottom: "0px"
                     },
                     children: [u.jsxs("label", {
                         className: "flex flex-1 items-center gap-2 cursor-pointer",
@@ -19990,8 +19990,8 @@ const jj = {
                 }), u.jsxs("div", {
                     className: "flex items-center gap-2",
                     style: {
-                        paddingTop: "4px",
-                        paddingBottom: "4px"
+                        paddingTop: "0px",
+                        paddingBottom: "0px"
                     },
                     children: [u.jsxs("label", {
                         className: "flex flex-1 items-center gap-2 cursor-pointer",
