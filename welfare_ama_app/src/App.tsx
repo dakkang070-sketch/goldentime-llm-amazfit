@@ -488,7 +488,7 @@ async function fetchJson<T>(path: string): Promise<T> {
 /**
  * 수정/저장 요청에 사용하는 JSON API 호출 공통 함수입니다.
  */
-async function requestJson<T>(path: string, method: 'PATCH' | 'PUT', body: Record<string, unknown>): Promise<T> {
+async function requestJson<T>(path: string, method: 'POST' | 'PATCH' | 'PUT', body: Record<string, unknown>): Promise<T> {
   const response = await fetch(resolveWelfareApiUrl(path), {
     method,
     headers: buildWelfareAuthHeaders({
@@ -1936,6 +1936,11 @@ export default function App() {
   });
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMessage, setProfileMessage] = useState('');
+  const [profilePhoneCode, setProfilePhoneCode] = useState('');
+  const [profilePhoneVerificationToken, setProfilePhoneVerificationToken] = useState('');
+  const [profilePhoneNotice, setProfilePhoneNotice] = useState('');
+  const [profilePhoneSending, setProfilePhoneSending] = useState(false);
+  const [profilePhoneVerifying, setProfilePhoneVerifying] = useState(false);
   const [showPasswordText, setShowPasswordText] = useState(false);
   const [showSignupPasswordText, setShowSignupPasswordText] = useState(false);
   const [showSignupPasswordConfirmText, setShowSignupPasswordConfirmText] = useState(false);
@@ -2250,6 +2255,9 @@ export default function App() {
       district: currentWelfare?.affiliation?.district || '',
       dong: currentWelfare?.affiliation?.dong || '',
     });
+    setProfilePhoneCode('');
+    setProfilePhoneVerificationToken('');
+    setProfilePhoneNotice('');
   }, [currentWelfare]);
 
   /**
@@ -2562,6 +2570,9 @@ export default function App() {
     try {
       setProfileSaving(true);
       setProfileMessage('');
+      setProfilePhoneNotice('');
+      const normalizedCurrentPhone = String(currentWelfare?.phone || '').replace(/\D/g, '');
+      const normalizedNextPhone = String(profileForm.phone || '').replace(/\D/g, '');
       const response = await requestJson<{
         success: boolean;
         message?: string;
@@ -2573,8 +2584,12 @@ export default function App() {
         };
       }>(`/api/controllers/${currentWelfare._id}`, 'PATCH', {
         email: profileForm.email,
-        phone: currentWelfare?.phone || profileForm.phone,
+        phone: profileForm.phone,
         role: currentWelfare.role || 'medical',
+        phoneVerificationToken:
+          normalizedNextPhone && normalizedNextPhone !== normalizedCurrentPhone
+            ? profilePhoneVerificationToken
+            : '',
         affiliation: {
           city: profileForm.city,
           district: profileForm.district,
@@ -2595,6 +2610,9 @@ export default function App() {
         ),
       );
       setProfileMessage(response.message || '마이페이지 정보가 수정되었습니다.');
+      setProfilePhoneCode('');
+      setProfilePhoneVerificationToken('');
+      setProfilePhoneNotice('');
       setMyPageView('main');
     } catch (saveError) {
       setProfileMessage(saveError instanceof Error ? saveError.message : '마이페이지 수정 중 오류가 발생했습니다.');
@@ -2604,10 +2622,48 @@ export default function App() {
   }
 
   /**
-   * 복지사 전화번호 변경은 직접 입력 대신 휴대폰 본인인증 경유로 안내합니다.
+   * 복지사 새 전화번호로 인증번호 발송을 요청합니다.
    */
-  function handleProfilePhoneVerificationNotice() {
-    setProfileMessage('전화번호 변경은 휴대폰 본인인증 기능 연동 후 지원됩니다.');
+  async function handleProfilePhoneVerificationRequest() {
+    try {
+      setProfilePhoneSending(true);
+      setProfilePhoneNotice('');
+      setProfilePhoneVerificationToken('');
+      const response = await requestJson<{ success: boolean; message?: string }>(
+        '/api/controllers/me/phone-verification/request',
+        'POST',
+        { phone: profileForm.phone },
+      );
+      setProfilePhoneNotice(response.message || '인증번호를 발송했습니다.');
+    } catch (error) {
+      setProfilePhoneNotice(error instanceof Error ? error.message : '인증번호 발송 중 오류가 발생했습니다.');
+    } finally {
+      setProfilePhoneSending(false);
+    }
+  }
+
+  /**
+   * 복지사 새 전화번호의 인증코드를 확인하고 임시 검증 토큰을 저장합니다.
+   */
+  async function handleProfilePhoneVerificationConfirm() {
+    try {
+      setProfilePhoneVerifying(true);
+      const response = await requestJson<{
+        success: boolean;
+        message?: string;
+        verificationToken?: string;
+      }>('/api/controllers/me/phone-verification/verify', 'POST', {
+        phone: profileForm.phone,
+        code: profilePhoneCode,
+      });
+      setProfilePhoneVerificationToken(response.verificationToken || '');
+      setProfilePhoneNotice(response.message || '휴대폰 인증이 완료되었습니다.');
+    } catch (error) {
+      setProfilePhoneVerificationToken('');
+      setProfilePhoneNotice(error instanceof Error ? error.message : '휴대폰 인증 확인 중 오류가 발생했습니다.');
+    } finally {
+      setProfilePhoneVerifying(false);
+    }
   }
 
   if (!session?.token) {
@@ -3720,23 +3776,58 @@ export default function App() {
                           </div>
                           <div className="space-y-1.5">
                             <div className="text-[14px] font-semibold text-slate-400">전화번호</div>
-                            <div className="flex flex-col gap-2 min-[480px]:flex-row">
+                            <div className="flex flex-col gap-2">
                               <input
                                 type="text"
                                 value={profileForm.phone}
-                                readOnly
-                                className="w-full rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-500 outline-none"
+                                onChange={(event) => {
+                                  setProfileForm((prev) => ({ ...prev, phone: event.target.value }));
+                                  setProfilePhoneCode('');
+                                  setProfilePhoneVerificationToken('');
+                                  setProfilePhoneNotice('');
+                                }}
+                                placeholder="01012345678"
+                                className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100"
                               />
-                              <button
-                                type="button"
-                                onClick={handleProfilePhoneVerificationNotice}
-                                className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-4 text-sm font-semibold text-teal-700"
-                              >
-                                <ShieldCheck size={16} />
-                                휴대폰 본인인증
-                              </button>
+                              <div className="flex flex-col gap-2 min-[480px]:flex-row">
+                                <button
+                                  type="button"
+                                  onClick={handleProfilePhoneVerificationRequest}
+                                  disabled={profilePhoneSending}
+                                  className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-4 text-sm font-semibold text-teal-700 disabled:opacity-60"
+                                >
+                                  <ShieldCheck size={16} />
+                                  {profilePhoneSending ? '발송중...' : '인증번호 발송'}
+                                </button>
+                                <input
+                                  type="text"
+                                  value={profilePhoneCode}
+                                  onChange={(event) => setProfilePhoneCode(event.target.value)}
+                                  placeholder="인증번호 6자리"
+                                  className="h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-800 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={handleProfilePhoneVerificationConfirm}
+                                  disabled={profilePhoneVerifying}
+                                  className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-700 disabled:opacity-60"
+                                >
+                                  {profilePhoneVerifying ? '확인중...' : '인증 확인'}
+                                </button>
+                              </div>
                             </div>
-                            <div className="text-[12px] text-slate-400">전화번호 변경은 본인인증 완료 후 지원합니다.</div>
+                            <div className="text-[12px] text-slate-400">전화번호가 바뀌면 인증번호 발송 후 인증 확인까지 완료해야 저장됩니다.</div>
+                            {profilePhoneNotice ? (
+                              <div
+                                className={`rounded-lg border px-3 py-2 text-[13px] ${
+                                  profilePhoneVerificationToken
+                                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                    : 'border-slate-200 bg-slate-50 text-slate-600'
+                                }`}
+                              >
+                                {profilePhoneNotice}
+                              </div>
+                            ) : null}
                           </div>
                         </div>
                         <div className="grid grid-cols-1 gap-3 min-[640px]:grid-cols-3">

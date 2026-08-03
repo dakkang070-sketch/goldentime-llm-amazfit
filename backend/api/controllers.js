@@ -400,6 +400,18 @@ function isExpiredAt(timestamp) {
 }
 
 /**
+ * 운영자 번호 변경 요청에 포함된 인증 토큰이 해당 번호로 검증 완료된 값인지 확인합니다.
+ */
+function hasVerifiedStaffPhoneToken(normalizedPhone, phoneVerificationToken) {
+  const verificationEntry = staffPhoneVerificationStore.get(normalizedPhone);
+  return Boolean(
+    verificationEntry &&
+      verificationEntry.verifiedToken === String(phoneVerificationToken || '') &&
+      !isExpiredAt(verificationEntry.verifiedUntil),
+  );
+}
+
+/**
  * 관제요원/복지담당자 승인 상태에 맞는 로그인 차단 메시지를 반환합니다.
  */
 function resolveControllerApprovalMessage(accountStatus) {
@@ -912,6 +924,113 @@ router.post('/phone-verification/verify', requireAuth, requireRole('admin'), asy
 });
 
 /**
+ * 로그인한 운영자가 자신의 휴대폰 번호 변경용 인증번호를 발송합니다.
+ * POST /api/controllers/me/phone-verification/request
+ */
+router.post('/me/phone-verification/request', requireAuth, async (req, res) => {
+  try {
+    const requesterRole = String(req.user?.role || '').trim();
+    if (!['medical', 'controller'].includes(requesterRole)) {
+      return res.status(403).json({
+        success: false,
+        message: '운영자 계정만 요청할 수 있습니다.',
+      });
+    }
+
+    const normalizedPhone = normalizePhoneNumber(req.body?.phone);
+    if (normalizedPhone.length < 10) {
+      return res.status(400).json({
+        success: false,
+        message: '휴대폰 번호를 정확히 입력해주세요.',
+      });
+    }
+
+    const code = generatePhoneVerificationCode();
+    staffPhoneVerificationStore.set(normalizedPhone, {
+      code,
+      expiresAt: Date.now() + 3 * 60 * 1000,
+      verifiedToken: '',
+      verifiedUntil: 0,
+    });
+
+    const result = await sendVerificationSms(normalizedPhone, code);
+    if (!result.delivered) {
+      return res.status(500).json({
+        success: false,
+        message: '문자 발송에 실패했습니다.',
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: '인증번호를 발송했습니다.',
+    });
+  } catch (error) {
+    console.error('운영자 본인 휴대폰 인증번호 발송 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '인증번호 발송 중 오류가 발생했습니다.',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+});
+
+/**
+ * 로그인한 운영자가 자신의 휴대폰 번호 변경용 인증번호를 확인합니다.
+ * POST /api/controllers/me/phone-verification/verify
+ */
+router.post('/me/phone-verification/verify', requireAuth, async (req, res) => {
+  try {
+    const requesterRole = String(req.user?.role || '').trim();
+    if (!['medical', 'controller'].includes(requesterRole)) {
+      return res.status(403).json({
+        success: false,
+        message: '운영자 계정만 요청할 수 있습니다.',
+      });
+    }
+
+    const normalizedPhone = normalizePhoneNumber(req.body?.phone);
+    const inputCode = String(req.body?.code || '').trim();
+    const verificationEntry = staffPhoneVerificationStore.get(normalizedPhone);
+
+    if (!verificationEntry || isExpiredAt(verificationEntry.expiresAt)) {
+      staffPhoneVerificationStore.delete(normalizedPhone);
+      return res.status(400).json({
+        success: false,
+        message: '인증번호가 만료되었습니다. 다시 요청해주세요.',
+      });
+    }
+
+    if (verificationEntry.code !== inputCode) {
+      return res.status(400).json({
+        success: false,
+        message: '인증번호가 일치하지 않습니다.',
+      });
+    }
+
+    const verificationToken = generatePhoneVerificationToken();
+    staffPhoneVerificationStore.set(normalizedPhone, {
+      ...verificationEntry,
+      verifiedToken: verificationToken,
+      verifiedUntil: Date.now() + 10 * 60 * 1000,
+    });
+
+    return res.json({
+      success: true,
+      message: '휴대폰 인증이 완료되었습니다.',
+      verificationToken,
+    });
+  } catch (error) {
+    console.error('운영자 본인 휴대폰 인증 확인 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '휴대폰 인증 확인 중 오류가 발생했습니다.',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+});
+
+/**
  * 관제사 가입
  * POST /api/controllers/signup
  */
@@ -1239,7 +1358,7 @@ router.post('/admin-create', requireAuth, requireRole('admin'), async (req, res)
 router.patch('/:id', requireAuth, requireAdminOrSameController, async (req, res) => {
   try {
     const { id } = req.params;
-    const { email, phone, role, affiliation, city, district, dong, menuPermissions } = req.body || {};
+    const { email, phone, role, affiliation, city, district, dong, menuPermissions, phoneVerificationToken } = req.body || {};
     const requesterRole = String(req.user?.role || '').trim();
 
     const controller = await Controller.findById(id);
@@ -1298,6 +1417,8 @@ router.patch('/:id', requireAuth, requireAdminOrSameController, async (req, res)
     }
 
     const normalizedEmail = String(email || controller.email || '').trim().toLowerCase();
+    const normalizedPhone = normalizePhoneNumber(phone || controller.phone || '');
+    const currentPhone = normalizePhoneNumber(controller.phone || '');
     if (!normalizedEmail) {
       return res.status(400).json({
         success: false,
@@ -1317,12 +1438,28 @@ router.patch('/:id', requireAuth, requireAdminOrSameController, async (req, res)
       });
     }
 
+    if (
+      requesterRole !== 'admin' &&
+      normalizedPhone &&
+      normalizedPhone !== currentPhone &&
+      !hasVerifiedStaffPhoneToken(normalizedPhone, phoneVerificationToken)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: '휴대폰 인증을 완료한 뒤 저장해주세요.',
+      });
+    }
+
     controller.email = normalizedEmail;
     controller.phone = String(phone || '').trim();
     controller.role = nextRole;
     controller.affiliation = nextAffiliation;
     controller.menuPermissions = normalizedMenuPermissions;
     await controller.save();
+
+    if (requesterRole !== 'admin' && normalizedPhone && normalizedPhone !== currentPhone) {
+      staffPhoneVerificationStore.delete(normalizedPhone);
+    }
 
     res.json({
       success: true,

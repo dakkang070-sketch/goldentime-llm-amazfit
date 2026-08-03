@@ -1470,6 +1470,10 @@ export default function App() {
   const [guardianForm, setGuardianForm] = useState<GuardianEditableContact>(createDefaultGuardianContact);
   const [isGuardianEditing, setIsGuardianEditing] = useState(false);
   const [guardianEditMessage, setGuardianEditMessage] = useState('');
+  const [guardianPhoneCode, setGuardianPhoneCode] = useState('');
+  const [guardianPhoneVerificationToken, setGuardianPhoneVerificationToken] = useState('');
+  const [guardianPhoneSending, setGuardianPhoneSending] = useState(false);
+  const [guardianPhoneVerifying, setGuardianPhoneVerifying] = useState(false);
   const inviteParamsRef = useRef<GuardianInviteParams | null>(null);
   const realtimeSocketRef = useRef<Socket | null>(null);
   const authTitleClass = 'text-[24px] font-semibold tracking-[-0.02em] text-slate-900';
@@ -1574,6 +1578,9 @@ export default function App() {
       relationship: profile.guardian.relationship || '',
       phone: formatPhoneNumber(profile.guardian.phone || ''),
     });
+    setGuardianPhoneCode('');
+    setGuardianPhoneVerificationToken('');
+    setGuardianEditMessage('');
   }, [profile?.guardian?.name, profile?.guardian?.phone, profile?.guardian?.relationship]);
 
   /**
@@ -2195,30 +2202,84 @@ export default function App() {
       ...current,
       [field]: field === 'phone' ? formatPhoneNumber(value) : value,
     }));
+    if (field === 'phone') {
+      setGuardianPhoneCode('');
+      setGuardianPhoneVerificationToken('');
+      setGuardianEditMessage('');
+    }
   };
 
   /**
-   * 보호자 정보 수정값을 로컬에 저장하고 화면 프로필에도 즉시 반영합니다.
+   * 보호자 정보 수정값을 서버에 저장하고 화면 프로필에도 즉시 반영합니다.
    */
-  const handleGuardianProfileSave = () => {
+  const handleGuardianProfileSave = async () => {
     const nextGuardian = {
       name: guardianForm.name.trim() || createDefaultGuardianContact().name,
       relationship: guardianForm.relationship.trim() || createDefaultGuardianContact().relationship,
-      phone: formatPhoneNumber(profile?.guardian?.phone || guardianForm.phone || createDefaultGuardianContact().phone),
+      phone: formatPhoneNumber(guardianForm.phone || createDefaultGuardianContact().phone),
     };
+    const currentPhone = formatPhoneNumber(profile?.guardian?.phone || createDefaultGuardianContact().phone);
 
-    localStorage.setItem(GUARDIAN_PROFILE_STORAGE_KEY, JSON.stringify(nextGuardian));
-    setGuardianForm(nextGuardian);
-    setProfile((current) => mergeGuardianContactIntoProfile(current, nextGuardian));
-    setGuardianEditMessage('');
-    setIsGuardianEditing(false);
+    try {
+      const response = await backendService.updateGuardianProfile({
+        name: nextGuardian.name,
+        relationship: nextGuardian.relationship,
+        phone: nextGuardian.phone,
+        phoneVerificationToken: nextGuardian.phone !== currentPhone ? guardianPhoneVerificationToken : '',
+      });
+      const savedGuardian = response.data?.guardian || nextGuardian;
+      const mergedGuardian = {
+        name: savedGuardian.name || nextGuardian.name,
+        relationship: savedGuardian.relationship || nextGuardian.relationship,
+        phone: formatPhoneNumber(savedGuardian.phone || nextGuardian.phone),
+      };
+
+      localStorage.setItem(GUARDIAN_PROFILE_STORAGE_KEY, JSON.stringify(mergedGuardian));
+      setGuardianForm(mergedGuardian);
+      setProfile((current) => mergeGuardianContactIntoProfile(current, mergedGuardian));
+      setGuardianPhoneCode('');
+      setGuardianPhoneVerificationToken('');
+      setGuardianEditMessage(response.message || '보호자 정보가 수정되었습니다.');
+      setIsGuardianEditing(false);
+    } catch (error) {
+      setGuardianEditMessage(error instanceof Error ? error.message : '보호자 정보 수정 중 오류가 발생했습니다.');
+    }
   };
 
   /**
-   * 보호자 전화번호 변경은 직접 입력 대신 휴대폰 본인인증 경유로 안내합니다.
+   * 보호자 새 전화번호로 인증번호 발송을 요청합니다.
    */
-  const handleGuardianPhoneVerificationNotice = () => {
-    setGuardianEditMessage('전화번호 변경은 휴대폰 본인인증 기능 연동 후 지원됩니다.');
+  const handleGuardianPhoneVerificationRequest = async () => {
+    try {
+      setGuardianPhoneSending(true);
+      setGuardianPhoneVerificationToken('');
+      const response = await backendService.requestGuardianProfilePhoneVerification(guardianForm.phone);
+      setGuardianEditMessage(response.message || '인증번호를 발송했습니다.');
+    } catch (error) {
+      setGuardianEditMessage(error instanceof Error ? error.message : '인증번호 발송 중 오류가 발생했습니다.');
+    } finally {
+      setGuardianPhoneSending(false);
+    }
+  };
+
+  /**
+   * 보호자 새 전화번호의 인증번호를 확인하고 검증 토큰을 저장합니다.
+   */
+  const handleGuardianPhoneVerificationConfirm = async () => {
+    try {
+      setGuardianPhoneVerifying(true);
+      const response = await backendService.verifyGuardianProfilePhoneVerification(
+        guardianForm.phone,
+        guardianPhoneCode,
+      );
+      setGuardianPhoneVerificationToken(String(response.verificationToken || ''));
+      setGuardianEditMessage(response.message || '휴대폰 인증이 완료되었습니다.');
+    } catch (error) {
+      setGuardianPhoneVerificationToken('');
+      setGuardianEditMessage(error instanceof Error ? error.message : '휴대폰 인증 확인 중 오류가 발생했습니다.');
+    } finally {
+      setGuardianPhoneVerifying(false);
+    }
   };
 
   /**
@@ -2232,6 +2293,8 @@ export default function App() {
     };
 
     setGuardianForm(nextGuardian);
+    setGuardianPhoneCode('');
+    setGuardianPhoneVerificationToken('');
     setGuardianEditMessage('');
     setIsGuardianEditing(false);
   };
@@ -2556,26 +2619,49 @@ export default function App() {
                 className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
               />
               <div className="space-y-2">
-                <div className="flex flex-col gap-2 min-[480px]:flex-row">
+                <div className="flex flex-col gap-2">
                   <input
                     value={guardianForm.phone}
-                    readOnly
+                    onChange={(e) => handleGuardianFormChange('phone', e.target.value)}
                     placeholder="연락처"
-                    className="w-full rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-500 outline-none"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                   />
-                  <button
-                    type="button"
-                    onClick={handleGuardianPhoneVerificationNotice}
-                    className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-4 text-sm font-semibold text-indigo-700 shadow-sm"
-                  >
-                    <ShieldCheck size={16} />
-                    휴대폰 본인인증
-                  </button>
+                  <div className="flex flex-col gap-2 min-[480px]:flex-row">
+                    <button
+                      type="button"
+                      onClick={handleGuardianPhoneVerificationRequest}
+                      disabled={guardianPhoneSending}
+                      className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-4 text-sm font-semibold text-indigo-700 shadow-sm disabled:opacity-60"
+                    >
+                      <ShieldCheck size={16} />
+                      {guardianPhoneSending ? '발송중...' : '인증번호 발송'}
+                    </button>
+                    <input
+                      value={guardianPhoneCode}
+                      onChange={(e) => setGuardianPhoneCode(e.target.value)}
+                      placeholder="인증번호 6자리"
+                      className="h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleGuardianPhoneVerificationConfirm}
+                      disabled={guardianPhoneVerifying}
+                      className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-700 shadow-sm disabled:opacity-60"
+                    >
+                      {guardianPhoneVerifying ? '확인중...' : '인증 확인'}
+                    </button>
+                  </div>
                 </div>
-                <p className="text-[12px] text-slate-400">전화번호 변경은 본인인증 완료 후 지원합니다.</p>
+                <p className="text-[12px] text-slate-400">전화번호가 바뀌면 인증번호 발송 후 인증 확인까지 완료해야 저장됩니다.</p>
               </div>
               {guardianEditMessage ? (
-                <div className="rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2 text-[13px] text-indigo-700">
+                <div
+                  className={`rounded-lg border px-3 py-2 text-[13px] ${
+                    guardianPhoneVerificationToken
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                      : 'border-indigo-100 bg-indigo-50 text-indigo-700'
+                  }`}
+                >
                   {guardianEditMessage}
                 </div>
               ) : null}

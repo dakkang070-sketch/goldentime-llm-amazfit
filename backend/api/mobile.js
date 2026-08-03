@@ -25,6 +25,7 @@ const IP_LOCATION_CACHE_TTL_MS = 2 * 60 * 1000;
 const IP_LOCATION_LOOKUP_TIMEOUT_MS = 2500;
 const IP_LOCATION_CLUSTER_RADIUS_M = 15000;
 const ipLocationCache = new Map();
+const guardianProfilePhoneVerificationStore = new Map();
 
 /**
  * 폰 위치 provider/정확도를 기준으로 GPS·Wi-Fi·기지국 출처를 분류합니다.
@@ -202,6 +203,32 @@ function rejectGuardianWriteAccess(req, res) {
 function isExpiredAt(value) {
   const timestamp = new Date(value || 0).getTime();
   return !timestamp || timestamp <= Date.now();
+}
+
+/**
+ * 보호자 정보 수정용 6자리 휴대폰 인증번호를 생성합니다.
+ */
+function generateGuardianProfilePhoneVerificationCode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+/**
+ * 보호자 정보 수정용 휴대폰 인증 완료 토큰을 생성합니다.
+ */
+function generateGuardianProfilePhoneVerificationToken() {
+  return crypto.randomBytes(24).toString('hex');
+}
+
+/**
+ * 보호자 정보 수정에서 전달된 인증 토큰이 해당 번호에 대해 유효한지 확인합니다.
+ */
+function hasVerifiedGuardianProfilePhoneToken(normalizedPhone, phoneVerificationToken) {
+  const verificationEntry = guardianProfilePhoneVerificationStore.get(normalizedPhone);
+  return Boolean(
+    verificationEntry &&
+      verificationEntry.verifiedToken === String(phoneVerificationToken || '') &&
+      !isExpiredAt(verificationEntry.verifiedUntil),
+  );
 }
 
 /**
@@ -1496,6 +1523,218 @@ router.post('/device-profile/guardian-access-code', async (req, res) => {
     return res.status(500).json({
       success: false,
       message: '인증코드 발급 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+/**
+ * 보호자 정보 수정에서 새 휴대폰 번호로 인증코드를 발송합니다.
+ */
+router.post('/guardian/profile/phone-verification/request', authenticateToken, async (req, res) => {
+  try {
+    if (req.user?.role !== 'guardian') {
+      return res.status(403).json({
+        success: false,
+        message: '보호자 계정만 요청할 수 있습니다.',
+      });
+    }
+
+    const normalizedPhone = normalizeMemberPhone(req.body?.phone);
+    const phoneError = validateMemberPhone(normalizedPhone);
+    if (phoneError) {
+      return res.status(400).json({
+        success: false,
+        message: phoneError,
+      });
+    }
+
+    const ownerCandidates = await User.find({
+      _id: { $ne: req.user.sub },
+      isEmergencyAppUser: true,
+      $or: [
+        { 'emergencySettings.guardianAccess.verifiedGuardianPhone': normalizedPhone },
+        { 'emergencyContact.phone': { $exists: true, $ne: null } },
+      ],
+    }).select('emergencyContact emergencySettings.guardianAccess.verifiedGuardianPhone');
+    const duplicatedOwner = ownerCandidates.find(
+      (entry) => resolveGuardianVerifiedPhone(entry) === normalizedPhone,
+    );
+    if (duplicatedOwner) {
+      return res.status(409).json({
+        success: false,
+        message: '이미 사용 중인 전화번호입니다.',
+      });
+    }
+
+    const code = generateGuardianProfilePhoneVerificationCode();
+    guardianProfilePhoneVerificationStore.set(normalizedPhone, {
+      code,
+      expiresAt: Date.now() + 3 * 60 * 1000,
+      verifiedToken: '',
+      verifiedUntil: 0,
+      userId: String(req.user.sub || ''),
+    });
+
+    await sendSMS(normalizedPhone, `[골든타임] 보호자 정보 수정 인증번호는 [${code}] 입니다.`);
+
+    return res.json({
+      success: true,
+      message: '인증번호를 발송했습니다.',
+    });
+  } catch (error) {
+    logger.error('보호자 정보수정 휴대폰 인증번호 발송 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '인증번호 발송 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+/**
+ * 보호자 정보 수정에서 새 휴대폰 번호의 인증코드를 확인합니다.
+ */
+router.post('/guardian/profile/phone-verification/verify', authenticateToken, async (req, res) => {
+  try {
+    if (req.user?.role !== 'guardian') {
+      return res.status(403).json({
+        success: false,
+        message: '보호자 계정만 요청할 수 있습니다.',
+      });
+    }
+
+    const normalizedPhone = normalizeMemberPhone(req.body?.phone);
+    const inputCode = String(req.body?.code || '').trim();
+    const verificationEntry = guardianProfilePhoneVerificationStore.get(normalizedPhone);
+
+    if (
+      !verificationEntry ||
+      verificationEntry.userId !== String(req.user.sub || '') ||
+      isExpiredAt(verificationEntry.expiresAt)
+    ) {
+      guardianProfilePhoneVerificationStore.delete(normalizedPhone);
+      return res.status(400).json({
+        success: false,
+        message: '인증번호가 만료되었습니다. 다시 요청해주세요.',
+      });
+    }
+
+    if (verificationEntry.code !== inputCode) {
+      return res.status(400).json({
+        success: false,
+        message: '인증번호가 일치하지 않습니다.',
+      });
+    }
+
+    const verificationToken = generateGuardianProfilePhoneVerificationToken();
+    guardianProfilePhoneVerificationStore.set(normalizedPhone, {
+      ...verificationEntry,
+      verifiedToken: verificationToken,
+      verifiedUntil: Date.now() + 10 * 60 * 1000,
+    });
+
+    return res.json({
+      success: true,
+      message: '휴대폰 인증이 완료되었습니다.',
+      verificationToken,
+    });
+  } catch (error) {
+    logger.error('보호자 정보수정 휴대폰 인증 확인 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '휴대폰 인증 확인 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+/**
+ * 보호자 계정이 자신의 보호자 연락처를 수정합니다.
+ */
+router.put('/guardian/profile', authenticateToken, async (req, res) => {
+  try {
+    if (req.user?.role !== 'guardian') {
+      return res.status(403).json({
+        success: false,
+        message: '보호자 계정만 수정할 수 있습니다.',
+      });
+    }
+
+    const user = await User.findById(req.user.sub);
+    if (!user || !user.isEmergencyAppUser) {
+      return res.status(404).json({
+        success: false,
+        message: '사용자를 찾을 수 없습니다.',
+      });
+    }
+
+    const nextName = String(req.body?.name || '').trim();
+    const nextRelationship = String(req.body?.relationship || '').trim();
+    const nextPhone = normalizeMemberPhone(req.body?.phone);
+    const currentPhone = normalizeMemberPhone(user?.emergencyContact?.phone);
+    const phoneVerificationToken = String(req.body?.phoneVerificationToken || '');
+
+    if (!nextName) {
+      return res.status(400).json({
+        success: false,
+        message: '보호자 이름을 입력해주세요.',
+      });
+    }
+    if (!nextRelationship) {
+      return res.status(400).json({
+        success: false,
+        message: '관계를 입력해주세요.',
+      });
+    }
+
+    const phoneError = validateMemberPhone(nextPhone);
+    if (phoneError) {
+      return res.status(400).json({
+        success: false,
+        message: phoneError,
+      });
+    }
+
+    if (
+      nextPhone &&
+      nextPhone !== currentPhone &&
+      !hasVerifiedGuardianProfilePhoneToken(nextPhone, phoneVerificationToken)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: '휴대폰 인증을 완료한 뒤 저장해주세요.',
+      });
+    }
+
+    user.emergencyContact = {
+      ...(user.emergencyContact || {}),
+      name: nextName,
+      relationship: nextRelationship,
+      phone: nextPhone,
+    };
+    user.emergencySettings = {
+      ...(user.emergencySettings || {}),
+      guardianAccess: {
+        ...(user?.emergencySettings?.guardianAccess || {}),
+        verifiedGuardianPhone: nextPhone,
+      },
+    };
+    await user.save();
+
+    if (nextPhone && nextPhone !== currentPhone) {
+      guardianProfilePhoneVerificationStore.delete(nextPhone);
+    }
+
+    return res.json({
+      success: true,
+      message: '보호자 정보가 수정되었습니다.',
+      data: {
+        guardian: user.emergencyContact,
+      },
+    });
+  } catch (error) {
+    logger.error('보호자 정보 수정 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '보호자 정보 수정 중 오류가 발생했습니다.',
     });
   }
 });
