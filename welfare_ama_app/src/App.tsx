@@ -3682,80 +3682,95 @@ export default function App() {
                       <div className="mt-1.5 text-[14px] font-medium text-slate-500">이메일, 전화번호, 소속 정보를 수정할 수 있습니다.</div>
                     </div>
 
-                    <div className="card space-y-3.5 border border-white/80 bg-white/92 px-4 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
-                      <div className="space-y-1.5">
-                        <div className="text-[14px] font-semibold text-slate-400">이메일</div>
-                        <input
-                          type="text"
-                          value={profileForm.email}
-                          onChange={(event) => setProfileForm((prev) => ({ ...prev, email: event.target.value }))}
-                          className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <div className="text-[14px] font-semibold text-slate-400">전화번호</div>
-                        <input
-                          type="text"
-                          value={profileForm.phone}
-                          onChange={(event) => setProfileForm((prev) => ({ ...prev, phone: event.target.value }))}
-                          className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100"
-                        />
-                      </div>
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                        <div className="space-y-1.5">
-                          <div className="text-[14px] font-semibold text-slate-400">시</div>
-                          <input
-                            type="text"
-                            value={profileForm.city}
-                            onChange={(event) => setProfileForm((prev) => ({ ...prev, city: event.target.value }))}
-                            className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100"
-                          />
+                    <div className="grid grid-cols-1 gap-3 min-[768px]:grid-cols-[minmax(0,1.45fr)_minmax(260px,0.9fr)] min-[1024px]:gap-4">
+                      <div className="card space-y-3.5 border border-white/80 bg-white/92 px-4 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+                        <div className="text-[16px] font-extrabold tracking-[-0.02em] text-slate-900">입력 정보</div>
+                        <div className="grid grid-cols-1 gap-3 min-[640px]:grid-cols-2">
+                          <div className="space-y-1.5">
+                            <div className="text-[14px] font-semibold text-slate-400">이메일</div>
+                            <input
+                              type="text"
+                              value={profileForm.email}
+                              onChange={(event) => setProfileForm((prev) => ({ ...prev, email: event.target.value }))}
+                              className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <div className="text-[14px] font-semibold text-slate-400">전화번호</div>
+                            <input
+                              type="text"
+                              value={profileForm.phone}
+                              onChange={(event) => setProfileForm((prev) => ({ ...prev, phone: event.target.value }))}
+                              className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100"
+                            />
+                          </div>
                         </div>
-                        <div className="space-y-1.5">
-                          <div className="text-[14px] font-semibold text-slate-400">구</div>
-                          <input
-                            type="text"
-                            value={profileForm.district}
-                            onChange={(event) => setProfileForm((prev) => ({ ...prev, district: event.target.value }))}
-                            className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100"
-                          />
+                        <div className="grid grid-cols-1 gap-3 min-[640px]:grid-cols-3">
+                          <div className="space-y-1.5">
+                            <div className="text-[14px] font-semibold text-slate-400">시</div>
+                            <input
+                              type="text"
+                              value={profileForm.city}
+                              onChange={(event) => setProfileForm((prev) => ({ ...prev, city: event.target.value }))}
+                              className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <div className="text-[14px] font-semibold text-slate-400">구</div>
+                            <input
+                              type="text"
+                              value={profileForm.district}
+                              onChange={(event) => setProfileForm((prev) => ({ ...prev, district: event.target.value }))}
+                              className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <div className="text-[14px] font-semibold text-slate-400">동</div>
+                            <input
+                              type="text"
+                              value={profileForm.dong}
+                              onChange={(event) => setProfileForm((prev) => ({ ...prev, dong: event.target.value }))}
+                              className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100"
+                            />
+                          </div>
                         </div>
-                        <div className="space-y-1.5">
-                          <div className="text-[14px] font-semibold text-slate-400">동</div>
-                          <input
-                            type="text"
-                            value={profileForm.dong}
-                            onChange={(event) => setProfileForm((prev) => ({ ...prev, dong: event.target.value }))}
-                            className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100"
-                          />
-                        </div>
+
+                        {profileMessage ? (
+                          <div className="rounded-[18px] border border-slate-200 bg-[linear-gradient(180deg,#f8fafc_0%,#f1f5f9_100%)] px-4 py-3.5 text-[14px] font-medium text-slate-600">
+                            {profileMessage}
+                          </div>
+                        ) : null}
                       </div>
 
-                      {profileMessage ? (
-                        <div className="rounded-[18px] border border-slate-200 bg-[linear-gradient(180deg,#f8fafc_0%,#f1f5f9_100%)] px-4 py-3.5 text-[14px] font-medium text-slate-600">
-                          {profileMessage}
+                      <div className="space-y-3">
+                        <div className="card border border-white/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-4 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+                          <div className="text-[16px] font-extrabold tracking-[-0.02em] text-slate-900">수정 안내</div>
+                          <div className="mt-2 space-y-2 text-[14px] leading-6 text-slate-500">
+                            <p>이메일과 전화번호는 실제 운영 중 사용하는 정보로 유지해주세요.</p>
+                            <p>소속 정보는 담당 회원 표시와 연동되므로 정확한 지역 기준으로 입력하는 것이 좋습니다.</p>
+                          </div>
                         </div>
-                      ) : null}
 
-                      <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setProfileMessage('');
-                            setMyPageView('main');
-                          }}
-                          className="inline-flex h-11 w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.04)]"
-                        >
-                          취소
-                        </button>
-                        <button
-                          type="button"
-                          disabled={profileSaving}
-                          onClick={handleProfileSave}
-                          className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-[linear-gradient(135deg,#0f766e_0%,#0f172a_100%)] px-4 text-sm font-semibold text-white shadow-[0_18px_32px_rgba(15,23,42,0.18)] disabled:opacity-60"
-                        >
-                          {profileSaving ? '저장중...' : '저장하기'}
-                        </button>
+                        <div className="card space-y-3 border border-white/80 bg-white/92 px-4 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setProfileMessage('');
+                              setMyPageView('main');
+                            }}
+                            className="inline-flex h-11 w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.04)]"
+                          >
+                            취소
+                          </button>
+                          <button
+                            type="button"
+                            disabled={profileSaving}
+                            onClick={handleProfileSave}
+                            className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-[linear-gradient(135deg,#0f766e_0%,#0f172a_100%)] px-4 text-sm font-semibold text-white shadow-[0_18px_32px_rgba(15,23,42,0.18)] disabled:opacity-60"
+                          >
+                            {profileSaving ? '저장중...' : '저장하기'}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </>
@@ -3774,42 +3789,62 @@ export default function App() {
                       <div className="text-[19px] font-extrabold tracking-[-0.03em] text-slate-900">비밀번호변경</div>
                     </div>
 
-                    <div className="card space-y-3.5 border border-white/80 bg-white/92 px-4 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
-                      <button
-                        type="button"
-                        onClick={() => setShowPasswordText((prev) => !prev)}
-                        className="ml-auto inline-flex h-11 items-center gap-1.5 rounded-lg bg-slate-50 px-4 text-sm font-semibold text-slate-500"
-                      >
-                        {showPasswordText ? <EyeOff size={15} /> : <Eye size={15} />}
-                        {showPasswordText ? '숨기기' : '보기'}
-                      </button>
-                      <input
-                        type={passwordInputType}
-                        value={passwordForm.currentPassword}
-                        onChange={(event) => setPasswordForm((prev) => ({ ...prev, currentPassword: event.target.value }))}
-                        placeholder="현재 비밀번호를 입력해주세요"
-                        className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100"
-                      />
-                      <input
-                        type={passwordInputType}
-                        value={passwordForm.nextPassword}
-                        onChange={(event) => setPasswordForm((prev) => ({ ...prev, nextPassword: event.target.value }))}
-                        placeholder="변경할 비밀번호를 입력해주세요"
-                        className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100"
-                      />
-                      <input
-                        type={passwordInputType}
-                        value={passwordForm.confirmPassword}
-                        onChange={(event) => setPasswordForm((prev) => ({ ...prev, confirmPassword: event.target.value }))}
-                        placeholder="변경할 비밀번호를 다시 입력해주세요"
-                        className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100"
-                      />
-                      <button
-                        type="button"
-                        className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-[linear-gradient(135deg,#0f766e_0%,#0f172a_100%)] px-4 text-sm font-semibold text-white shadow-[0_18px_32px_rgba(15,23,42,0.18)]"
-                      >
-                        비밀번호 변경
-                      </button>
+                    <div className="grid grid-cols-1 gap-3 min-[768px]:grid-cols-[minmax(0,1.35fr)_minmax(260px,0.95fr)] min-[1024px]:gap-4">
+                      <div className="card space-y-3.5 border border-white/80 bg-white/92 px-4 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-[16px] font-extrabold tracking-[-0.02em] text-slate-900">비밀번호 입력</div>
+                          <button
+                            type="button"
+                            onClick={() => setShowPasswordText((prev) => !prev)}
+                            className="inline-flex h-11 items-center gap-1.5 rounded-lg bg-slate-50 px-4 text-sm font-semibold text-slate-500"
+                          >
+                            {showPasswordText ? <EyeOff size={15} /> : <Eye size={15} />}
+                            {showPasswordText ? '숨기기' : '보기'}
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-1 gap-3">
+                          <input
+                            type={passwordInputType}
+                            value={passwordForm.currentPassword}
+                            onChange={(event) => setPasswordForm((prev) => ({ ...prev, currentPassword: event.target.value }))}
+                            placeholder="현재 비밀번호를 입력해주세요"
+                            className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100"
+                          />
+                          <input
+                            type={passwordInputType}
+                            value={passwordForm.nextPassword}
+                            onChange={(event) => setPasswordForm((prev) => ({ ...prev, nextPassword: event.target.value }))}
+                            placeholder="변경할 비밀번호를 입력해주세요"
+                            className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100"
+                          />
+                          <input
+                            type={passwordInputType}
+                            value={passwordForm.confirmPassword}
+                            onChange={(event) => setPasswordForm((prev) => ({ ...prev, confirmPassword: event.target.value }))}
+                            placeholder="변경할 비밀번호를 다시 입력해주세요"
+                            className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-4 focus:ring-teal-100"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="card border border-white/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-4 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+                          <div className="text-[16px] font-extrabold tracking-[-0.02em] text-slate-900">변경 안내</div>
+                          <div className="mt-2 space-y-2 text-[14px] leading-6 text-slate-500">
+                            <p>현재 비밀번호를 먼저 입력한 뒤 새 비밀번호를 두 번 동일하게 입력해주세요.</p>
+                            <p>태블릿 화면에서는 입력 영역과 안내 영역을 분리해 가독성을 높였습니다.</p>
+                          </div>
+                        </div>
+
+                        <div className="card border border-white/80 bg-white/92 px-4 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+                          <button
+                            type="button"
+                            className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-[linear-gradient(135deg,#0f766e_0%,#0f172a_100%)] px-4 text-sm font-semibold text-white shadow-[0_18px_32px_rgba(15,23,42,0.18)]"
+                          >
+                            비밀번호 변경
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </>
                 )}
