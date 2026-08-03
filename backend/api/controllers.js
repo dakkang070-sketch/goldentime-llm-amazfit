@@ -12,6 +12,7 @@ const Hospital = require('../models/Hospital');
 const { authRequired: requireAuth } = require('../middleware/auth');
 const { requireRole } = require('../middleware/requireRole');
 const { cacheMiddleware } = require('../middleware/cache');
+const { authLimiter } = require('../middleware/rateLimiter');
 const { autoMatchParamedicForCase } = require('../services/matchingService');
 const { autoMatchHospitalForCase } = require('../services/hospitalService');
 const { emitParamedicMatched, emitHospitalMatched } = require('../services/socketService');
@@ -407,6 +408,18 @@ function resolveControllerApprovalMessage(accountStatus) {
   if (accountStatus === 'suspended') return '이용이 정지된 계정입니다.';
   if (accountStatus === 'withdrawn') return '해지된 계정입니다.';
   return '로그인할 수 없는 계정 상태입니다.';
+}
+
+/**
+ * 복지사 이메일을 앞 2자리만 남기고 마스킹합니다.
+ */
+function maskControllerEmail(email) {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  const [localPart = '', domain = ''] = normalizedEmail.split('@');
+  if (!localPart || !domain) {
+    return '';
+  }
+  return `${localPart.slice(0, 2)}***@${domain}`;
 }
 
 /**
@@ -963,6 +976,159 @@ router.post('/signup', async (req, res) => {
       message: '관제사 가입 중 오류가 발생했습니다.',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
+  }
+});
+
+/**
+ * 복지사 회원가입 시 이메일 중복 여부를 medical 계정 기준으로 확인합니다.
+ */
+router.post('/check-email', authLimiter, async (req, res) => {
+  try {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    const role = String(req.body?.role || 'medical').trim();
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({
+        success: false,
+        available: false,
+        message: '올바른 이메일 형식이 아닙니다.',
+      });
+    }
+
+    const duplicated = await Controller.findOne({
+      email,
+      role: role === 'medical' ? 'medical' : role,
+    })
+      .select('_id')
+      .lean();
+
+    return res.json({
+      success: true,
+      available: !duplicated,
+      message: duplicated ? '이미 사용 중인 이메일입니다.' : '사용 가능한 이메일입니다.',
+    });
+  } catch (error) {
+    console.error('복지사 이메일 중복 확인 오류:', error);
+    return res.status(500).json({
+      success: false,
+      available: false,
+      message: '이메일 확인 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+/**
+ * 복지사 이름과 전화번호로 가입된 이메일을 찾아 마스킹해 반환합니다.
+ */
+router.post('/find-email', authLimiter, async (req, res) => {
+  try {
+    const name = String(req.body?.name || '').trim();
+    const phone = normalizePhoneNumber(req.body?.phone);
+
+    if (!name || !phone) {
+      return res.status(400).json({ success: false, message: '이름과 전화번호를 입력해주세요.' });
+    }
+
+    const controller = await Controller.findOne({
+      role: 'medical',
+      name,
+      phone: { $regex: phone },
+    }).lean();
+
+    if (!controller?.email) {
+      return res.status(404).json({ success: false, message: '입력하신 정보와 일치하는 복지사 계정을 찾을 수 없습니다.' });
+    }
+
+    return res.json({ success: true, email: maskControllerEmail(controller.email) });
+  } catch (error) {
+    console.error('복지사 이메일 찾기 오류:', error);
+    return res.status(500).json({ success: false, message: '복지사 이메일 찾기 중 오류가 발생했습니다.' });
+  }
+});
+
+/**
+ * 복지사 비밀번호 재설정을 위한 SMS 인증코드를 발송합니다.
+ */
+router.post('/reset-password/send-code', authLimiter, async (req, res) => {
+  try {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    const phone = normalizePhoneNumber(req.body?.phone);
+
+    if (!email || !phone) {
+      return res.status(400).json({ success: false, message: '이메일과 전화번호를 모두 입력해주세요.' });
+    }
+
+    const controller = await Controller.findOne({
+      role: 'medical',
+      email,
+      phone: { $regex: phone },
+    });
+
+    if (!controller) {
+      return res.status(404).json({ success: false, message: '입력하신 정보와 일치하는 복지사 계정을 찾을 수 없습니다.' });
+    }
+
+    const resetCode = generatePhoneVerificationCode();
+    controller.passwordResetCode = resetCode;
+    controller.passwordResetCodeExpiresAt = new Date(Date.now() + 3 * 60 * 1000);
+    await controller.save();
+
+    await sendVerificationSms(phone, resetCode);
+    const maskedPhone = phone.replace(/(\d{3})(\d{4})(\d{4})/, '$1-****-$3');
+    return res.json({
+      success: true,
+      message: `인증코드가 ${maskedPhone}로 발송되었습니다.`,
+      maskedPhone,
+    });
+  } catch (error) {
+    console.error('복지사 비밀번호 재설정 SMS 발송 오류:', error);
+    return res.status(500).json({ success: false, message: '인증코드 발송 중 오류가 발생했습니다.' });
+  }
+});
+
+/**
+ * 복지사 SMS 인증코드를 확인한 뒤 새 비밀번호로 재설정합니다.
+ */
+router.post('/reset-password', authLimiter, async (req, res) => {
+  try {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    const phone = normalizePhoneNumber(req.body?.phone);
+    const code = String(req.body?.code || '').replace(/[^\d]/g, '');
+    const newPassword = String(req.body?.newPassword || '');
+
+    if (!email || !phone || !code || !newPassword) {
+      return res.status(400).json({ success: false, message: '필수 정보를 모두 입력해주세요.' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: '비밀번호는 6자 이상이어야 합니다.' });
+    }
+
+    const controller = await Controller.findOne({
+      role: 'medical',
+      email,
+      phone: { $regex: phone },
+    });
+
+    if (!controller) {
+      return res.status(404).json({ success: false, message: '입력하신 정보와 일치하는 복지사 계정을 찾을 수 없습니다.' });
+    }
+    if (!controller.passwordResetCode || controller.passwordResetCode !== code) {
+      return res.status(400).json({ success: false, message: '인증코드가 일치하지 않습니다.' });
+    }
+    if (!controller.passwordResetCodeExpiresAt || controller.passwordResetCodeExpiresAt < new Date()) {
+      return res.status(400).json({ success: false, message: '인증코드가 만료되었습니다. 다시 요청해주세요.' });
+    }
+
+    controller.password = newPassword;
+    controller.passwordResetCode = null;
+    controller.passwordResetCodeExpiresAt = null;
+    controller.lastActivity = new Date();
+    await controller.save();
+
+    return res.json({ success: true, message: '비밀번호가 재설정되었습니다. 새 비밀번호로 로그인해주세요.' });
+  } catch (error) {
+    console.error('복지사 비밀번호 재설정 오류:', error);
+    return res.status(500).json({ success: false, message: '복지사 비밀번호 재설정 중 오류가 발생했습니다.' });
   }
 });
 

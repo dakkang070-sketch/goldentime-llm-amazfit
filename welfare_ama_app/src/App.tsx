@@ -556,15 +556,56 @@ function resolveRiskLabel(score: number): RiskLabel {
 /**
  * 회원 카드에 표시할 대표 위치를 최신 생체값과 기기 위치에서 고릅니다.
  */
+function pickReadableLocationAddress(
+  ...candidates: Array<{ address?: string } | null | undefined>
+): string {
+  for (const candidate of candidates) {
+    const address = typeof candidate?.address === 'string' ? candidate.address.trim() : '';
+    if (address) {
+      return address;
+    }
+  }
+  return '';
+}
+
+/**
+ * 회원 소속 정보를 주소 대체 문구로 정리합니다.
+ */
+function buildAffiliationAddressFallback(affiliation?: Affiliation): string {
+  const normalized = normalizeAffiliation(affiliation);
+  return [normalized.city, normalized.district, normalized.dong].filter(Boolean).join(' ');
+}
+
+/**
+ * 좌표만 남아 있을 때 복지사앱에 표시할 좌표 문구를 만듭니다.
+ */
+function buildCoordinateAddressFallback(lat?: number, lng?: number): string {
+  if (!hasValidCoordinates(lat, lng)) {
+    return '';
+  }
+  return `좌표 ${lat!.toFixed(5)}, ${lng!.toFixed(5)}`;
+}
+
+/**
+ * 회원 카드에 표시할 대표 위치를 최신 생체값과 기기 위치에서 고릅니다.
+ */
 function resolveLocation(user: ApiUser, monitored?: MonitoredUser) {
   const healthLocation = user.latestHealth?.location;
   const monitoredLocation = monitored?.latestBiometric?.location;
   const deviceLocation = user.wearableDevice?.lastKnownLocation;
-  const chosen = monitoredLocation || healthLocation || deviceLocation || {};
+  const coordinateSource =
+    [monitoredLocation, healthLocation, deviceLocation].find((candidate) =>
+      hasValidCoordinates(candidate?.lat, candidate?.lng),
+    ) || {};
+  const address =
+    pickReadableLocationAddress(monitoredLocation, healthLocation, deviceLocation) ||
+    buildAffiliationAddressFallback(user.affiliation) ||
+    buildCoordinateAddressFallback(coordinateSource.lat, coordinateSource.lng) ||
+    '위치 정보 없음';
   return {
-    address: chosen.address || '위치 정보 없음',
-    lat: chosen.lat,
-    lng: chosen.lng,
+    address,
+    lat: coordinateSource.lat,
+    lng: coordinateSource.lng,
   };
 }
 
@@ -1977,10 +2018,10 @@ export default function App() {
     setSignupEmailVerified(false);
 
     try {
-      const res = await fetch('/api/mobile/check-email', {
+      const res = await fetch('/api/controllers/check-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: emailValue }),
+        body: JSON.stringify({ email: emailValue, role: 'medical' }),
       });
       const data = await res.json();
 
@@ -2220,7 +2261,7 @@ export default function App() {
     setWelfareFindEmailLoading(true);
     setWelfareFindEmailResult('');
     try {
-      const res = await fetch('/api/mobile/find-email', {
+      const res = await fetch('/api/controllers/find-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: welfareFindEmailName.trim(), phone: welfareFindEmailPhone.trim() }),
@@ -2247,7 +2288,7 @@ export default function App() {
     setWelfareFindPwLoading(true);
     setWelfareFindPwResult('');
     try {
-      const res = await fetch('/api/mobile/reset-password/send-code', {
+      const res = await fetch('/api/controllers/reset-password/send-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2287,7 +2328,7 @@ export default function App() {
     setWelfareFindPwLoading(true);
     setWelfareFindPwResult('');
     try {
-      const res = await fetch('/api/mobile/reset-password', {
+      const res = await fetch('/api/controllers/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2929,10 +2970,11 @@ export default function App() {
                       }))
                     }
                     className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-teal-600"
+                    style={{ color: '#0f172a', backgroundColor: '#ffffff' }}
                   >
-                    <option value="">시/도 선택</option>
+                    <option value="" style={{ color: '#0f172a', backgroundColor: '#ffffff' }}>시/도 선택</option>
                     {MEMBER_REGION_CATALOG.map((city) => (
-                      <option key={city.name} value={city.name}>
+                      <option key={city.name} value={city.name} style={{ color: '#0f172a', backgroundColor: '#ffffff' }}>
                         {city.name}
                       </option>
                     ))}
@@ -2951,10 +2993,11 @@ export default function App() {
                     }
                     disabled={!signupForm.city}
                     className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-teal-600 disabled:bg-slate-100 disabled:text-slate-400"
+                    style={{ color: '#0f172a', backgroundColor: '#ffffff' }}
                   >
-                    <option value="">시/군/구 선택</option>
+                    <option value="" style={{ color: '#0f172a', backgroundColor: '#ffffff' }}>시/군/구 선택</option>
                     {signupDistrictOptions.map((district) => (
-                      <option key={district.name} value={district.name}>
+                      <option key={district.name} value={district.name} style={{ color: '#0f172a', backgroundColor: '#ffffff' }}>
                         {district.name}
                       </option>
                     ))}
@@ -2967,10 +3010,11 @@ export default function App() {
                     onChange={(event) => setSignupForm((prev) => ({ ...prev, dong: event.target.value }))}
                     disabled={!signupForm.district}
                     className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-teal-600 disabled:bg-slate-100 disabled:text-slate-400"
+                    style={{ color: '#0f172a', backgroundColor: '#ffffff' }}
                   >
-                    <option value="">읍/면/동 선택</option>
+                    <option value="" style={{ color: '#0f172a', backgroundColor: '#ffffff' }}>읍/면/동 선택</option>
                     {signupAreaOptions.map((area) => (
-                      <option key={area} value={area}>
+                      <option key={area} value={area} style={{ color: '#0f172a', backgroundColor: '#ffffff' }}>
                         {area}
                       </option>
                     ))}
