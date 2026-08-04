@@ -13,6 +13,8 @@ const { cacheMiddleware } = require('../middleware/cache');
 const { authRequired: requireAuth } = require('../middleware/auth');
 const { requireRole } = require('../middleware/requireRole');
 const { getShadowState, listShadowStates } = require('../services/shadowStateCacheService');
+const realtimeBiosignalEngine = require('../services/realtimeBiosignalEngine');
+const emergencyWorkflowService = require('../services/emergencyWorkflowService');
 
 /**
  * @swagger
@@ -452,6 +454,68 @@ router.get(
       return res.status(500).json({
         success: false,
         message: 'shadow 상태 조회 실패',
+        error: error.message,
+      });
+    }
+  },
+);
+
+/**
+ * 내부 운영자가 메모리 상태와 shadow 상태의 일치 여부를 비교합니다.
+ */
+router.get(
+  '/shadow-consistency',
+  requireAuth,
+  requireRole(['admin', 'controller', 'medical']),
+  cacheMiddleware(10),
+  async (req, res) => {
+    try {
+      const realtimeShadowItems = await listShadowStates('realtime-biosignal', 500);
+      const workflowShadowItems = await listShadowStates('emergency-workflow', 500);
+
+      const memoryRealtimeIds = Array.from(realtimeBiosignalEngine.activeStreams.keys()).map(String).sort();
+      const shadowRealtimeIds = realtimeShadowItems
+        .filter((item) => item?.value?.active !== false)
+        .map((item) => String(item.entityId))
+        .sort();
+
+      const memoryWorkflowIds = Array.from(emergencyWorkflowService.activeWorkflows.keys()).map(String).sort();
+      const shadowWorkflowIds = workflowShadowItems
+        .map((item) => String(item.entityId))
+        .sort();
+
+      const onlyInMemoryRealtime = memoryRealtimeIds.filter((id) => !shadowRealtimeIds.includes(id));
+      const onlyInShadowRealtime = shadowRealtimeIds.filter((id) => !memoryRealtimeIds.includes(id));
+      const onlyInMemoryWorkflow = memoryWorkflowIds.filter((id) => !shadowWorkflowIds.includes(id));
+      const onlyInShadowWorkflow = shadowWorkflowIds.filter((id) => !memoryWorkflowIds.includes(id));
+
+      return res.json({
+        success: true,
+        data: {
+          realtimeBiosignal: {
+            memoryCount: memoryRealtimeIds.length,
+            shadowCount: shadowRealtimeIds.length,
+            consistent: onlyInMemoryRealtime.length === 0 && onlyInShadowRealtime.length === 0,
+            onlyInMemory: onlyInMemoryRealtime,
+            onlyInShadow: onlyInShadowRealtime,
+            performance: realtimeBiosignalEngine.getPerformanceMetrics(),
+          },
+          emergencyWorkflow: {
+            memoryCount: memoryWorkflowIds.length,
+            shadowCount: shadowWorkflowIds.length,
+            consistent: onlyInMemoryWorkflow.length === 0 && onlyInShadowWorkflow.length === 0,
+            onlyInMemory: onlyInMemoryWorkflow,
+            onlyInShadow: onlyInShadowWorkflow,
+            pendingSlaCount: emergencyWorkflowService.slaTimeouts.size,
+          },
+        },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      logger.error('shadow 일치성 조회 실패', { error: error.message });
+      return res.status(500).json({
+        success: false,
+        message: 'shadow 일치성 조회 실패',
         error: error.message,
       });
     }
