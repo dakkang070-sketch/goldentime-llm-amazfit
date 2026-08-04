@@ -27,7 +27,12 @@ import { StatusCard } from './components/StatusCard';
 import { ChartsPanel } from './components/ChartsPanel';
 import { DetailModal } from './components/DetailModal';
 import { StatusCardProps, SystemStatus } from './types';
-import { useRealtimeMonitoring, SystemEngine } from './services/systemMonitoringService';
+import {
+  useRealtimeMonitoring,
+  SystemEngine,
+  ShadowConsistencyResponse,
+  systemMonitoringService,
+} from './services/systemMonitoringService';
 
 /**
  * App 관련 처리를 수행합니다.
@@ -35,6 +40,7 @@ import { useRealtimeMonitoring, SystemEngine } from './services/systemMonitoring
 const App: React.FC = () => {
   const [time, setTime] = useState(new Date().toLocaleTimeString('ko-KR'));
   const [selectedCard, setSelectedCard] = useState<StatusCardProps | null>(null);
+  const [shadowConsistency, setShadowConsistency] = useState<ShadowConsistencyResponse | null>(null);
   
   // 실시간 데이터 모니터링
   const { 
@@ -231,6 +237,32 @@ const App: React.FC = () => {
       : shadowMonitoring?.actionPriority === 'medium'
         ? '우선 점검'
         : '관찰 유지';
+  const shadowConsistencySummary = shadowConsistency?.summary;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadShadowConsistency = async () => {
+      try {
+        const consistency = await systemMonitoringService.getShadowConsistency();
+        if (isMounted) {
+          setShadowConsistency(consistency);
+        }
+      } catch {
+        if (isMounted) {
+          setShadowConsistency(null);
+        }
+      }
+    };
+
+    loadShadowConsistency();
+    const intervalId = window.setInterval(loadShadowConsistency, 10000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#0a0f1c] text-white overflow-hidden">
@@ -328,6 +360,53 @@ const App: React.FC = () => {
                 </span>
               </div>
             </div>
+            {shadowConsistencySummary && (
+              <div className="mt-4 grid gap-3 xl:grid-cols-2">
+                <div className="rounded-2xl border border-current/10 bg-black/15 px-4 py-3">
+                  <div className="text-[11px] font-black uppercase tracking-[0.16em] opacity-70">
+                    Shadow Consistency
+                  </div>
+                  <p className="mt-2 text-[14px] font-semibold leading-5">
+                    {shadowConsistencySummary.summaryMessage}
+                  </p>
+                  <p className="mt-1 text-[12px] leading-5 opacity-85">
+                    {shadowConsistencySummary.recommendedAction}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2 text-[12px] font-semibold">
+                    <span className="rounded-full border border-current/15 px-2.5 py-1">
+                      scope {shadowConsistencySummary.selectedScopes.join(', ')}
+                    </span>
+                    <span className="rounded-full border border-current/15 px-2.5 py-1">
+                      불일치 {shadowConsistencySummary.inconsistentScopes.length}개
+                    </span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl border border-current/10 bg-black/15 px-4 py-3">
+                    <div className="text-[11px] font-black uppercase tracking-[0.16em] opacity-70">
+                      Realtime
+                    </div>
+                    <div className="mt-2 text-[18px] font-semibold">
+                      연속 {shadowConsistencySummary.realtimeTrend.consecutiveMismatchCount}
+                    </div>
+                    <div className="mt-1 text-[12px] opacity-80">
+                      누적 {shadowConsistencySummary.realtimeTrend.totalMismatchCount}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-current/10 bg-black/15 px-4 py-3">
+                    <div className="text-[11px] font-black uppercase tracking-[0.16em] opacity-70">
+                      Workflow
+                    </div>
+                    <div className="mt-2 text-[18px] font-semibold">
+                      연속 {shadowConsistencySummary.workflowTrend.consecutiveMismatchCount}
+                    </div>
+                    <div className="mt-1 text-[12px] opacity-80">
+                      누적 {shadowConsistencySummary.workflowTrend.totalMismatchCount}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
