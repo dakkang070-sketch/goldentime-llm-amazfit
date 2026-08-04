@@ -15,6 +15,7 @@ const { requireRole } = require('../middleware/requireRole');
 const { getShadowState, listShadowStates } = require('../services/shadowStateCacheService');
 const realtimeBiosignalEngine = require('../services/realtimeBiosignalEngine');
 const emergencyWorkflowService = require('../services/emergencyWorkflowService');
+const cacheService = require('../services/cacheService');
 
 /**
  * @swagger
@@ -32,6 +33,7 @@ const emergencyWorkflowService = require('../services/emergencyWorkflowService')
 router.get('/overview', cacheMiddleware(30), async (req, res) => {
   try {
     const shadowConsistency = await getShadowConsistencySnapshot();
+    const shadowTrend = await updateShadowMismatchTrend(shadowConsistency);
     const realtimeShadowGap = shadowConsistency.realtimeBiosignal.onlyInMemory.length + shadowConsistency.realtimeBiosignal.onlyInShadow.length;
     const workflowShadowGap = shadowConsistency.emergencyWorkflow.onlyInMemory.length + shadowConsistency.emergencyWorkflow.onlyInShadow.length;
     const totalShadowGap = realtimeShadowGap + workflowShadowGap;
@@ -72,6 +74,7 @@ router.get('/overview', cacheMiddleware(30), async (req, res) => {
         totalGap: totalShadowGap,
         realtimeGap: realtimeShadowGap,
         workflowGap: workflowShadowGap,
+        trends: shadowTrend,
         inconsistentScopes: [
           !shadowConsistency.realtimeBiosignal.consistent ? 'realtime-biosignal' : null,
           !shadowConsistency.emergencyWorkflow.consistent ? 'emergency-workflow' : null,
@@ -629,6 +632,7 @@ function getLastNEDCUpdate() {
 async function getSystemAlerts() {
   const alerts = [];
   const shadowConsistency = await getShadowConsistencySnapshot();
+  const shadowTrend = await updateShadowMismatchTrend(shadowConsistency);
   
   // 현재는 핵심 장애 신호만 간단 규칙으로 만들고, 나머지 알림은 이후 확장 지점으로 둡니다.
   // 예시 알림들
@@ -659,7 +663,7 @@ async function getSystemAlerts() {
       id: 'realtime_shadow_mismatch',
       level: realtimeGap >= 5 ? 'CRITICAL' : 'WARNING',
       title: '실시간 엔진 shadow 불일치',
-      message: `메모리 ${shadowConsistency.realtimeBiosignal.memoryCount}건, shadow ${shadowConsistency.realtimeBiosignal.shadowCount}건으로 차이가 있습니다. gap=${realtimeGap}`,
+      message: `메모리 ${shadowConsistency.realtimeBiosignal.memoryCount}건, shadow ${shadowConsistency.realtimeBiosignal.shadowCount}건으로 차이가 있습니다. gap=${realtimeGap}, 연속=${shadowTrend.realtimeBiosignal.consecutiveMismatchCount}`,
       timestamp: new Date().toISOString(),
     });
   }
@@ -670,7 +674,7 @@ async function getSystemAlerts() {
       id: 'workflow_shadow_mismatch',
       level: workflowGap >= 3 ? 'CRITICAL' : 'WARNING',
       title: '워크플로우 shadow 불일치',
-      message: `메모리 ${shadowConsistency.emergencyWorkflow.memoryCount}건, shadow ${shadowConsistency.emergencyWorkflow.shadowCount}건으로 차이가 있습니다. gap=${workflowGap}`,
+      message: `메모리 ${shadowConsistency.emergencyWorkflow.memoryCount}건, shadow ${shadowConsistency.emergencyWorkflow.shadowCount}건으로 차이가 있습니다. gap=${workflowGap}, 연속=${shadowTrend.emergencyWorkflow.consecutiveMismatchCount}`,
       timestamp: new Date().toISOString(),
     });
   }
@@ -719,6 +723,59 @@ async function getShadowConsistencySnapshot() {
       pendingSlaCount: emergencyWorkflowService.slaTimeouts.size,
     },
   };
+}
+
+/**
+ * shadow 불일치의 누적 추세를 scope별로 공용 캐시에 기록합니다.
+ */
+async function updateShadowMismatchTrend(snapshot) {
+  const nowIso = new Date().toISOString();
+  const observationBucket = new Date().toISOString().slice(0, 16);
+  const realtimeGap = snapshot.realtimeBiosignal.onlyInMemory.length + snapshot.realtimeBiosignal.onlyInShadow.length;
+  const workflowGap = snapshot.emergencyWorkflow.onlyInMemory.length + snapshot.emergencyWorkflow.onlyInShadow.length;
+
+  return {
+    realtimeBiosignal: await updateShadowScopeTrend('realtime-biosignal', realtimeGap, nowIso, observationBucket),
+    emergencyWorkflow: await updateShadowScopeTrend('emergency-workflow', workflowGap, nowIso, observationBucket),
+  };
+}
+
+/**
+ * scope별 mismatch 추세를 분 단위로 한 번만 누적합니다.
+ */
+async function updateShadowScopeTrend(scope, gap, nowIso, observationBucket) {
+  const key = `shadow:trend:${scope}`;
+  const current =
+    (await cacheService.get(key)) || {
+      totalMismatchCount: 0,
+      consecutiveMismatchCount: 0,
+      lastMismatchAt: null,
+      lastResolvedAt: null,
+      lastObservedBucket: null,
+      currentGap: 0,
+      status: 'OK',
+    };
+
+  const next = { ...current, currentGap: gap, status: gap > 0 ? 'MISMATCH' : 'OK' };
+
+  if (gap > 0) {
+    const shouldCount = current.lastObservedBucket !== observationBucket;
+    if (shouldCount) {
+      next.totalMismatchCount = Number(current.totalMismatchCount || 0) + 1;
+      next.consecutiveMismatchCount = Number(current.consecutiveMismatchCount || 0) + 1;
+      next.lastObservedBucket = observationBucket;
+    }
+    next.lastMismatchAt = nowIso;
+  } else {
+    if ((current.currentGap || 0) > 0 || current.status === 'MISMATCH') {
+      next.lastResolvedAt = nowIso;
+    }
+    next.consecutiveMismatchCount = 0;
+    next.lastObservedBucket = observationBucket;
+  }
+
+  await cacheService.set(key, next, 60 * 60 * 24 * 7);
+  return next;
 }
 
 /**
