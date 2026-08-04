@@ -2199,7 +2199,16 @@ router.get('/emergency-cases', requireAuth, requireRole('controller'), cacheMidd
 /**
  * 최근 수집 여부를 기준으로 관제 대상 사용자와 최신 생체 데이터를 반환합니다.
  */
-router.get('/monitored-users', requireAuth, requireRole('controller'), async (req, res) => {
+router.get(
+  '/monitored-users',
+  requireAuth,
+  requireRole('controller'),
+  cacheMiddleware({
+    ttlSeconds: 3,
+    keyBuilder: async (req) =>
+      `cache:/api/controllers/monitored-users:${req.user?.role || 'controller'}:${req.user?.sub || 'anonymous'}:${String(req.query?.windowMinutes || '')}`,
+  }),
+  async (req, res) => {
   try {
     const controller = await getCurrentController(req);
 
@@ -2259,7 +2268,16 @@ router.get('/medical/emergency-cases', requireAuth, requireRole('medical'), cach
 /**
  * 복지사 전용 대시보드에서 소속 기준 최신 모니터링 회원 목록을 조회합니다.
  */
-router.get('/medical/monitored-users', requireAuth, requireRole('medical'), async (req, res) => {
+router.get(
+  '/medical/monitored-users',
+  requireAuth,
+  requireRole('medical'),
+  cacheMiddleware({
+    ttlSeconds: 3,
+    keyBuilder: async (req) =>
+      `cache:/api/controllers/medical/monitored-users:${req.user?.role || 'medical'}:${req.user?.sub || 'anonymous'}:${String(req.query?.windowMinutes || '')}`,
+  }),
+  async (req, res) => {
   try {
     const medicalStaff = await getCurrentController(req);
 
@@ -2650,7 +2668,16 @@ function sanitizeCurrentWatchBiometric(latestBiometric, user) {
 /**
  * 관제에서 현재 가장 최근에 잡힌 워치 1건을 다른 앱에서도 공유할 수 있게 반환합니다.
  */
-router.get('/current-watch', requireAuth, requireRole('controller'), async (req, res) => {
+router.get(
+  '/current-watch',
+  requireAuth,
+  requireRole('controller'),
+  cacheMiddleware({
+    ttlSeconds: 3,
+    keyBuilder: async (req) =>
+      `cache:/api/controllers/current-watch:${req.user?.role || 'controller'}:${req.user?.sub || 'anonymous'}:${String(req.query?.windowMinutes || '')}`,
+  }),
+  async (req, res) => {
   try {
     const windowMinutesRaw = req.query?.windowMinutes;
     const windowMinutes = Math.min(

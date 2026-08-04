@@ -4,6 +4,7 @@ const { ingestMockPayload, ingestAmazfitPayload } = require('../services/ingestS
 const logger = require('../utils/logger');
 const BiometricData = require('../models/BiometricData');
 const cacheService = require('../services/cacheService');
+const { cacheMiddleware, invalidateCache } = require('../middleware/cache');
 
 /**
  * mock/Amazfit 생체 업로드와 최근 데이터 조회 엔드포인트를 묶는 Express 라우터입니다.
@@ -54,6 +55,23 @@ function buildAmazfitIdempotencyKey(body = {}) {
 }
 
 /**
+ * 사용자별 최신 Amazfit 조회 캐시 키를 생성합니다.
+ */
+function buildLatestAmazfitCacheKey(req) {
+  const userId = String(req.query?.userId || '').trim();
+  const minutesRaw = Number(req.query?.minutes);
+  const minutes = Number.isFinite(minutesRaw) ? Math.min(24 * 60, Math.max(1, Math.floor(minutesRaw))) : 60;
+  return `cache:/api/ingest/amazfit/latest:${userId}:${minutes}`;
+}
+
+/**
+ * 사용자별 최신 Amazfit 조회 캐시 패턴을 생성합니다.
+ */
+function buildLatestAmazfitCachePattern(userId) {
+  return `cache:/api/ingest/amazfit/latest:${String(userId || '').trim()}:*`;
+}
+
+/**
  * @swagger
  * /api/ingest/mock:
  *   post:
@@ -86,6 +104,7 @@ router.post('/mock', async (req, res, next) => {
       userAgent: req.get('user-agent'),
       receivedAt: new Date(),
     });
+    invalidateCache(buildLatestAmazfitCachePattern(req.body?.userId));
     res.json({ success: true, ...result });
   } catch (err) {
     next(err);
@@ -169,6 +188,7 @@ router.post('/amazfit', async (req, res, next) => {
     });
     const responsePayload = { success: true, ...result };
     await cacheService.set(idempotencyKey, responsePayload, 30);
+    invalidateCache(buildLatestAmazfitCachePattern(req.body?.userId));
     res.json(responsePayload);
   } catch (err) {
     next(err);
@@ -178,7 +198,13 @@ router.post('/amazfit', async (req, res, next) => {
 /**
  * 최근 지정 시간 범위 안의 최신 Amazfit 생체 데이터를 조회합니다.
  */
-router.get('/amazfit/latest', async (req, res, next) => {
+router.get(
+  '/amazfit/latest',
+  cacheMiddleware({
+    ttlSeconds: 5,
+    keyBuilder: async (req) => buildLatestAmazfitCacheKey(req),
+  }),
+  async (req, res, next) => {
   try {
     const userId = String(req.query?.userId || '').trim();
     if (!userId) {
