@@ -303,12 +303,12 @@ router.get('/', requireAuth, requireRole(['admin', 'medical']), async (req, res,
     const users = await User.find()
       .select('-password')
       .populate('assignedController', 'name phone')
-      .sort({ createdAt: -1 })
-      .lean();
+      .sort({ createdAt: -1 });
 
     // 목록 API 한 번으로 관제 화면 카드가 뜨도록 최신 생체 상태를 사용자별로 덧붙입니다.
     // 2. 각 사용자의 최신 생체 데이터 조회
-    const usersWithStatus = await Promise.all(users.map(async (user) => {
+    const usersWithStatus = await Promise.all(users.map(async (userDoc) => {
+      const user = typeof userDoc?.toObject === 'function' ? userDoc.toObject() : userDoc;
       const latestData = await BiometricData.findOne({ userId: user._id })
         .sort({ collectedAt: -1 })
         .lean();
@@ -368,10 +368,12 @@ router.get('/pending-approvals', requireAuth, requireRole('admin'), async (req, 
   try {
     const pendingUsers = await User.find({ accountStatus: 'pending' })
       .select('-password')
-      .sort({ createdAt: -1 })
-      .lean();
+      .sort({ createdAt: -1 });
 
-    res.json({ success: true, data: pendingUsers });
+    res.json({
+      success: true,
+      data: pendingUsers.map((user) => (typeof user?.toObject === 'function' ? user.toObject() : user)),
+    });
   } catch (err) {
     next(err);
   }
@@ -386,8 +388,7 @@ router.get('/pending-profile-approvals', requireAuth, requireRole('admin'), asyn
       'pendingProfileChange.requestedAt': { $ne: null },
     })
       .select('-password')
-      .sort({ 'pendingProfileChange.requestedAt': -1 })
-      .lean();
+      .sort({ 'pendingProfileChange.requestedAt': -1 });
 
     res.json({
       success: true,

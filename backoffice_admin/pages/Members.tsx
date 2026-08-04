@@ -1218,7 +1218,7 @@ export const Members: React.FC = () => {
              </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
+          <div className="flex-1 overflow-y-auto bg-slate-50/50 px-6 pb-10 pt-6">
             {/* 우측 패널은 실시간 상세를 기본 탭으로 열고, 통계가 있을 때만 AI 요약 차트 뷰로 전환합니다. */}
             {activeTab === 'realtime' ? (
               <div className="space-y-6">
@@ -1375,7 +1375,7 @@ export const Members: React.FC = () => {
                 </div>
 
                 {/* 3. Basic Info & App Settings */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 2xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
                   <div className="space-y-4">
                     {/* Editable Personal Info */}
                     <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm relative">

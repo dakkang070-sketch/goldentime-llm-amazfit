@@ -779,7 +779,7 @@ export const AdminManagement: React.FC = () => {
 
       {selectedAdmin && (
         <div className="flex w-[440px] min-w-[440px] min-h-0 flex-col border-l border-slate-300 bg-white shadow-[-8px_0_24px_rgba(15,23,42,0.08)] xl:w-[460px] xl:min-w-[460px]">
-          <div className="flex-1 min-h-0 overflow-y-auto p-5">
+          <div className="flex-1 min-h-0 overflow-y-auto p-5 pb-8">
             <div className="mb-5 rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-5 shadow-sm">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex min-w-0 items-start gap-3">
