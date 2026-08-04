@@ -1375,7 +1375,7 @@ export const Members: React.FC = () => {
                 </div>
 
                 {/* 3. Basic Info & App Settings */}
-                <div className="grid grid-cols-1 gap-4 2xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+                <div className="grid grid-cols-1 gap-4 2xl:grid-cols-2">
                   <div className="space-y-4">
                     {/* Editable Personal Info */}
                     <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm relative">
