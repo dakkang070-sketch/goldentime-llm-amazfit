@@ -19,6 +19,7 @@ const { buildEmergencyCaseBiometricSnapshot } = require('../services/emergencyCa
 const { generateNonDiagnosticSummary } = require('../services/ollamaService');
 const { emitEmergencyCaseCreated, emitCaseStatusUpdated, emitBiometricDataUpdated } = require('../services/socketService');
 const { cacheMiddleware, invalidateCache } = require('../middleware/cache');
+const cacheService = require('../services/cacheService');
 const logger = require('../utils/logger');
 const { sendSMS } = require('../services/notificationService');
 const crypto = require('crypto');
@@ -3107,8 +3108,32 @@ function serializeEmergencyDeviceProfile(user) {
 /**
  * 디바이스 이벤트 경로로 들어온 생체 데이터를 사용자 계정에 저장합니다.
  */
+function buildBiometricEventIdempotencyKey(payload = {}) {
+  const fingerprint = {
+    mac: String(payload?.mac || '').trim().toUpperCase(),
+    timestamp: String(payload?.timestamp || ''),
+    heartRate: payload?.biometric?.heartRate ?? null,
+    spO2: payload?.biometric?.spO2 ?? null,
+    temperature: payload?.biometric?.temperature ?? null,
+    steps: payload?.biometric?.steps ?? null,
+    stressLevel: payload?.biometric?.stressLevel ?? null,
+    isWear: payload?.biometric?.isWear ?? null,
+  };
+  const digest = crypto.createHash('sha1').update(JSON.stringify(fingerprint)).digest('hex');
+  return `idempotency:/api/mobile/biometric-event:${digest}`;
+}
+
+/**
+ * 디바이스 이벤트 경로로 들어온 생체 데이터를 사용자 계정에 저장합니다.
+ */
 router.post('/biometric-event', async (req, res) => {
   try {
+    const idempotencyKey = buildBiometricEventIdempotencyKey(req.body);
+    const cachedResponse = await cacheService.get(idempotencyKey);
+    if (cachedResponse) {
+      return res.status(201).json(cachedResponse);
+    }
+
     const { mac, timestamp, biometric, location } = req.body || {};
 
     const user = await findOrCreateEmergencyAppUserByMac(mac);
@@ -3260,7 +3285,7 @@ router.post('/biometric-event', async (req, res) => {
     await analyzeBiometricAndMaybeOpenCase({ user, biometricDoc: doc });
     invalidateCache(`^cache:/api/mobile/emergency/history:[^:]+:${user._id}:`);
 
-    res.status(201).json({
+    const responsePayload = {
       success: true,
       message: '생체 데이터가 저장되었습니다.',
       data: {
@@ -3273,7 +3298,9 @@ router.post('/biometric-event', async (req, res) => {
           analysis: doc.analysis,
         },
       },
-    });
+    };
+    await cacheService.set(idempotencyKey, responsePayload, 30);
+    res.status(201).json(responsePayload);
   } catch (error) {
     logger.error('생체 이벤트 저장 오류:', error);
     res.status(500).json({
