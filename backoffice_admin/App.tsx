@@ -83,11 +83,11 @@ const App: React.FC = () => {
             <label className="block">
               <span className="mb-2 block text-sm font-medium text-slate-700">이메일</span>
               <input
-                type="email"
+                type="text"
                 value={loginEmail}
                 onChange={(event) => setLoginEmail(event.target.value)}
                 className="h-11 w-full rounded-lg border border-slate-300 px-4 text-sm text-slate-900 outline-none focus:border-blue-600"
-                placeholder="admin@example.com"
+                placeholder="admin 또는 관리자 이메일"
                 autoComplete="username"
               />
             </label>

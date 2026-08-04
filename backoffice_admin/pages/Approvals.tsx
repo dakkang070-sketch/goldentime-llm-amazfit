@@ -8,6 +8,12 @@ import {
 } from '../types';
 import { adminService } from '../services/adminService';
 
+type ApprovalSectionKey =
+  | 'member-signup'
+  | 'member-profile'
+  | 'staff-signup'
+  | 'staff-affiliation';
+
 /**
  * ISO 날짜 문자열을 관리자 화면에 읽기 쉬운 형식으로 변환합니다.
  */
@@ -21,21 +27,38 @@ const formatSubmittedAt = (value: string) => {
 /**
  * 승인 관리 페이지에서 사용하는 상단 요약 카드를 렌더링합니다.
  */
-const SummaryCard: React.FC<{ title: string; value: number; icon: React.ElementType; tone: string }> = ({
+const SummaryCard: React.FC<{
+  title: string;
+  value: number;
+  icon: React.ElementType;
+  tone: string;
+  active: boolean;
+  onClick: () => void;
+}> = ({
   title,
   value,
   icon: Icon,
   tone,
+  active,
+  onClick,
 }) => (
-  <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-    <div className="flex items-center justify-between mb-3">
+  <button
+    type="button"
+    onClick={onClick}
+    className={`w-full rounded-xl border p-5 text-left shadow-sm transition ${
+      active
+        ? 'border-slate-900 bg-slate-900 text-white shadow-md'
+        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+    }`}
+  >
+    <div className="mb-3 flex items-center justify-between">
       <p className="text-[14px] text-slate-500">{title}</p>
       <div className={`p-2 rounded-lg ${tone}`}>
         <Icon size={18} />
       </div>
     </div>
     <p className="text-[26px] text-black">{value}</p>
-  </div>
+  </button>
 );
 
 /**
@@ -48,6 +71,7 @@ export const Approvals: React.FC = () => {
   const [pendingStaffAffiliations, setPendingStaffAffiliations] = useState<PendingStaffAffiliationApproval[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingKey, setProcessingKey] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<ApprovalSectionKey>('member-signup');
 
   /**
    * 회원과 운영자 승인 대기 목록을 함께 불러옵니다.
@@ -143,7 +167,7 @@ export const Approvals: React.FC = () => {
   };
 
   return (
-    <div className="h-screen overflow-y-auto bg-slate-50 p-6">
+    <div className="h-full min-h-0 overflow-y-auto bg-slate-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -164,12 +188,41 @@ export const Approvals: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-          <SummaryCard title="승인 대기 회원" value={pendingMembers.length} icon={UserCheck} tone="bg-blue-50 text-blue-600" />
-          <SummaryCard title="회원 수정 요청" value={pendingMemberProfiles.length} icon={RefreshCw} tone="bg-amber-50 text-amber-600" />
-          <SummaryCard title="승인 대기 운영자" value={pendingStaff.length} icon={ShieldCheck} tone="bg-purple-50 text-purple-600" />
-          <SummaryCard title="전체 승인 대기" value={pendingMembers.length + pendingMemberProfiles.length + pendingStaff.length + pendingStaffAffiliations.length} icon={CheckCircle2} tone="bg-emerald-50 text-emerald-600" />
+          <SummaryCard
+            title="승인 대기 회원"
+            value={pendingMembers.length}
+            icon={UserCheck}
+            tone="bg-blue-50 text-blue-600"
+            active={activeSection === 'member-signup'}
+            onClick={() => setActiveSection('member-signup')}
+          />
+          <SummaryCard
+            title="회원 수정 요청"
+            value={pendingMemberProfiles.length}
+            icon={RefreshCw}
+            tone="bg-amber-50 text-amber-600"
+            active={activeSection === 'member-profile'}
+            onClick={() => setActiveSection('member-profile')}
+          />
+          <SummaryCard
+            title="승인 대기 운영자"
+            value={pendingStaff.length}
+            icon={ShieldCheck}
+            tone="bg-purple-50 text-purple-600"
+            active={activeSection === 'staff-signup'}
+            onClick={() => setActiveSection('staff-signup')}
+          />
+          <SummaryCard
+            title="복지사 소속 변경"
+            value={pendingStaffAffiliations.length}
+            icon={CheckCircle2}
+            tone="bg-emerald-50 text-emerald-600"
+            active={activeSection === 'staff-affiliation'}
+            onClick={() => setActiveSection('staff-affiliation')}
+          />
         </div>
 
+        {activeSection === 'member-signup' && (
         <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100">
             <h3 className="text-[20px] text-black">회원 가입 신청</h3>
@@ -231,7 +284,9 @@ export const Approvals: React.FC = () => {
             </div>
           )}
         </section>
+        )}
 
+        {activeSection === 'member-profile' && (
         <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100">
             <h3 className="text-[20px] text-black">회원 정보수정 요청</h3>
@@ -306,7 +361,9 @@ export const Approvals: React.FC = () => {
             </div>
           )}
         </section>
+        )}
 
+        {activeSection === 'staff-signup' && (
         <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100">
             <h3 className="text-[20px] text-black">관제요원 / 복지담당자 신청</h3>
@@ -367,7 +424,9 @@ export const Approvals: React.FC = () => {
             </div>
           )}
         </section>
+        )}
 
+        {activeSection === 'staff-affiliation' && (
         <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100">
             <h3 className="text-[20px] text-black">복지사 소속 변경 요청</h3>
@@ -430,6 +489,7 @@ export const Approvals: React.FC = () => {
             </div>
           )}
         </section>
+        )}
       </div>
     </div>
   );

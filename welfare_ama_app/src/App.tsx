@@ -1361,6 +1361,7 @@ function TopBar({
   onSearch,
   onAlerts,
   showSearchButton,
+  refreshControls,
 }: {
   locationLabel: string;
   nameLabel: string;
@@ -1369,10 +1370,11 @@ function TopBar({
   onSearch: () => void;
   onAlerts: () => void;
   showSearchButton: boolean;
+  refreshControls?: React.ReactNode;
 }) {
   return (
     <section className="rounded-[24px] border border-white/80 bg-white/88 px-3 py-2.5 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm min-[360px]:px-3.5 min-[360px]:py-3">
-      <div className="flex items-center justify-between gap-1.5 min-[360px]:gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 min-[360px]:gap-2.5">
         <button
           type="button"
           onClick={onMenu}
@@ -1382,7 +1384,8 @@ function TopBar({
         </button>
         <div className="min-w-0 flex-1 truncate text-[14px] font-semibold tracking-[-0.02em] text-slate-600 min-[360px]:text-[15px]">{locationLabel}</div>
         <div className="max-w-[72px] shrink-0 truncate text-[15px] font-extrabold tracking-[-0.03em] text-slate-900 min-[360px]:max-w-[84px] min-[360px]:text-[16px]">{nameLabel}</div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
+          {refreshControls}
           {showSearchButton ? (
             <button
               type="button"
@@ -3509,24 +3512,13 @@ export default function App() {
                 setActiveTab('alerts');
               }}
               showSearchButton={activeTab === 'members'}
-            />
-
-            <section className="mt-3">
-              <div className="card flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                <div>
-                  <div className="text-[13px] font-semibold tracking-[0.08em] text-slate-400">새로고침 모드</div>
-                  <div className="mt-1 text-[15px] font-semibold text-slate-900">
-                    {dashboardRefreshMode === 'auto' ? '자동 3초 갱신' : '수동 갱신'}
-                  </div>
-                  <div className="mt-1 text-[13px] text-slate-500">
-                    마지막 동기화 {lastDashboardSyncedAt || '-'}
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
+            refreshControls={
+              activeTab === 'members' ? (
+                <>
                   <button
                     type="button"
                     onClick={() => setDashboardRefreshMode('auto')}
-                    className={`inline-flex h-10 items-center justify-center rounded-lg px-4 text-[14px] font-semibold ${
+                    className={`inline-flex h-10 items-center justify-center rounded-lg px-3.5 text-[14px] font-semibold ${
                       dashboardRefreshMode === 'auto'
                         ? 'bg-teal-700 text-white shadow-sm'
                         : 'border border-slate-200 bg-white text-slate-700'
@@ -3537,7 +3529,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setDashboardRefreshMode('manual')}
-                    className={`inline-flex h-10 items-center justify-center rounded-lg px-4 text-[14px] font-semibold ${
+                    className={`inline-flex h-10 items-center justify-center rounded-lg px-3.5 text-[14px] font-semibold ${
                       dashboardRefreshMode === 'manual'
                         ? 'bg-slate-900 text-white shadow-sm'
                         : 'border border-slate-200 bg-white text-slate-700'
@@ -3548,14 +3540,15 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => void loadDashboard({ silent: true })}
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-4 text-[14px] font-semibold text-teal-700"
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-3.5 text-[14px] font-semibold text-teal-700"
                   >
                     <RefreshCw size={16} />
                     새로고침
                   </button>
-                </div>
-              </div>
-            </section>
+                </>
+              ) : null
+            }
+            />
 
             {activeTab === 'members' && (
               <div className="mt-4 space-y-3">
