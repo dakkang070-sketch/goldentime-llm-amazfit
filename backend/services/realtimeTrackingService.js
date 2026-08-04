@@ -8,13 +8,58 @@ const EmergencyCase = require('../models/EmergencyCase');
 const { emitLocationUpdate, emitStatusUpdate } = require('./socketService');
 const { calculateDistance, calculateETA } = require('./geoService');
 const logger = require('../utils/logger');
+const {
+  setTrackingStatusSnapshot,
+  setTrackingHistory,
+  deleteTrackingHistory,
+} = require('./realtimeTrackingCacheService');
 
+/**
+ * 구조사 위치 추적, ETA 재계산, 도착 감지를 담당하는 실시간 추적 서비스 클래스입니다.
+ */
 class RealtimeTrackingService {
   
+  /**
+   * 활성 추적 세션, 위치 이력, ETA 계산 캐시를 초기화합니다.
+   */
   constructor() {
     this.trackingIntervals = new Map();  // 활성 추적 세션
     this.locationHistory = new Map();    // 위치 기록
     this.etaCalculations = new Map();    // ETA 계산 캐시
+  }
+
+  /**
+   * 현재 인메모리 추적 상태 요약을 shared cache에도 병행 기록합니다.
+   */
+  syncTrackingStatusToCache() {
+    const snapshot = this.buildTrackingStatusSnapshot();
+    setTrackingStatusSnapshot(snapshot).catch((error) => {
+      logger.warn('실시간 추적 상태 cache 동기화 실패', { error: error.message });
+    });
+    return snapshot;
+  }
+
+  /**
+   * 현재 인메모리 추적 상태를 외부 조회용 스냅샷 구조로 만듭니다.
+   */
+  buildTrackingStatusSnapshot() {
+    const activeTrackings = [];
+
+    for (const [key, tracking] of this.trackingIntervals) {
+      activeTrackings.push({
+        trackingKey: key,
+        paramedicId: tracking.paramedicId,
+        startTime: tracking.startTime,
+        duration: new Date() - tracking.startTime,
+        lastUpdate: tracking.lastUpdate,
+      });
+    }
+
+    return {
+      totalActiveTrackings: activeTrackings.length,
+      trackings: activeTrackings,
+      locationHistorySize: this.locationHistory.size,
+    };
   }
 
   /**
@@ -24,7 +69,7 @@ class RealtimeTrackingService {
     try {
       logger.info(`응급구조사 실시간 추적 시작: ${paramedicId}`);
 
-      // 기존 추적이 있다면 중단
+      // 동일 케이스의 중복 interval을 막기 위해 기존 추적 세션은 먼저 정리합니다.
       this.stopTracking(emergencyCaseId);
 
       // 5초마다 위치 업데이트
@@ -38,6 +83,7 @@ class RealtimeTrackingService {
         startTime: new Date(),
         lastUpdate: new Date()
       });
+      this.syncTrackingStatusToCache();
 
       // 초기 위치 조회
       await this.updateParamedicLocation(emergencyCaseId, paramedicId);
@@ -98,7 +144,7 @@ class RealtimeTrackingService {
         lastUpdate: new Date()
       });
 
-      // 도착 감지 (50m 이내)
+      // 현장 도착은 GPS 오차를 감안해 50m 이내에서 자동 판정합니다.
       if (distance < 50 && paramedic.status !== 'arrived') {
         await this.handleArrivalDetection(emergencyCaseId, paramedicId);
       }
@@ -158,7 +204,7 @@ class RealtimeTrackingService {
         currentETA: Math.round(currentETA)
       });
 
-      // 지연 알림 발송
+      // 골든타임을 넘겼는데도 ETA가 남아 있으면 대체 구조사 검토 경고를 띄웁니다.
       emitStatusUpdate(emergencyCaseId, {
         type: 'eta_delay_warning',
         message: `예상 도착이 ${Math.round(currentETA)}분 지연되고 있습니다.`,
@@ -185,7 +231,7 @@ class RealtimeTrackingService {
 
     if (!hospitalLocation) return;
 
-    // 병원까지 추적
+    // 현장 추적과 별도로 병원 목적지 기준 transport 세션을 따로 유지합니다.
     const transportIntervalId = setInterval(async () => {
       await this.updateTransportProgress(emergencyCaseId, paramedicId, hospitalLocation);
     }, 10000); // 10초마다 업데이트
@@ -222,7 +268,7 @@ class RealtimeTrackingService {
         progress: Math.max(0, Math.min(100, (1 - (distance / 10000)) * 100)) // 10km 기준 진행률
       });
 
-      // 병원 도착 감지 (100m 이내)
+      // 병원 건물/진입로 오차를 고려해 병원 도착은 100m 임계값을 사용합니다.
       if (distance < 100) {
         await this.handleHospitalArrival(emergencyCaseId, paramedicId);
       }
@@ -272,6 +318,13 @@ class RealtimeTrackingService {
     if (history.length > 100) {
       history.splice(0, history.length - 100);
     }
+
+    setTrackingHistory(emergencyCaseId, history).catch((error) => {
+      logger.warn('실시간 추적 위치 기록 cache 저장 실패', {
+        emergencyCaseId,
+        error: error.message,
+      });
+    });
   }
 
   /**
@@ -282,6 +335,14 @@ class RealtimeTrackingService {
     if (tracking) {
       clearInterval(tracking.intervalId);
       this.trackingIntervals.delete(trackingKey);
+      this.locationHistory.delete(trackingKey);
+      deleteTrackingHistory(trackingKey).catch((error) => {
+        logger.warn('실시간 추적 위치 기록 cache 삭제 실패', {
+          trackingKey,
+          error: error.message,
+        });
+      });
+      this.syncTrackingStatusToCache();
       logger.info(`추적 중단: ${trackingKey}`);
     }
   }
@@ -290,23 +351,7 @@ class RealtimeTrackingService {
    * 전체 추적 상태 조회
    */
   getTrackingStatus() {
-    const activeTrackings = [];
-    
-    for (const [key, tracking] of this.trackingIntervals) {
-      activeTrackings.push({
-        trackingKey: key,
-        paramedicId: tracking.paramedicId,
-        startTime: tracking.startTime,
-        duration: new Date() - tracking.startTime,
-        lastUpdate: tracking.lastUpdate
-      });
-    }
-
-    return {
-      totalActiveTrackings: activeTrackings.length,
-      trackings: activeTrackings,
-      locationHistorySize: this.locationHistory.size
-    };
+    return this.buildTrackingStatusSnapshot();
   }
 
   /**
@@ -333,7 +378,7 @@ class RealtimeTrackingService {
         newInterval = 10000; // 10초
     }
 
-    // 기존 인터벌 중단 후 새 주기로 재시작
+    // 응급도 변경 시 같은 trackingKey를 유지한 채 interval만 교체합니다.
     clearInterval(tracking.intervalId);
     
     const newIntervalId = setInterval(async () => {
@@ -341,6 +386,7 @@ class RealtimeTrackingService {
     }, newInterval);
 
     tracking.intervalId = newIntervalId;
+    this.syncTrackingStatusToCache();
     
     logger.info(`추적 주기 조정: ${emergencyCaseId}`, {
       emergencyLevel,
@@ -349,7 +395,9 @@ class RealtimeTrackingService {
   }
 }
 
-// 싱글톤 인스턴스
+/**
+ * 서버 전역에서 재사용하는 실시간 추적 싱글톤 인스턴스입니다.
+ */
 const realtimeTrackingService = new RealtimeTrackingService();
 
 module.exports = realtimeTrackingService;
