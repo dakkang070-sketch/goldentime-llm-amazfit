@@ -529,10 +529,20 @@ router.get(
   async (req, res) => {
     try {
       const snapshot = await getShadowConsistencySnapshot();
+      const scope = String(req.query?.scope || '').trim();
+      const shadowTrend = await updateShadowMismatchTrend(snapshot);
+      const guidance = buildShadowOverviewGuidance(snapshot, shadowTrend);
+      const filteredSnapshot = filterShadowConsistencySnapshot(snapshot, scope);
+      const summary = buildShadowConsistencySummary(snapshot, shadowTrend, guidance, scope);
 
       return res.json({
         success: true,
-        data: snapshot,
+        data: {
+          scope: scope || 'all',
+          summary,
+          trend: shadowTrend,
+          snapshot: filteredSnapshot,
+        },
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
@@ -761,6 +771,29 @@ async function getShadowConsistencySnapshot() {
 }
 
 /**
+ * 요청한 scope가 있으면 해당 shadow 일치성 결과만 남겨 반환합니다.
+ */
+function filterShadowConsistencySnapshot(snapshot, scope) {
+  if (!scope) {
+    return snapshot;
+  }
+
+  if (scope === 'realtime-biosignal') {
+    return {
+      realtimeBiosignal: snapshot.realtimeBiosignal,
+    };
+  }
+
+  if (scope === 'emergency-workflow') {
+    return {
+      emergencyWorkflow: snapshot.emergencyWorkflow,
+    };
+  }
+
+  return snapshot;
+}
+
+/**
  * shadow 불일치의 누적 추세를 scope별로 공용 캐시에 기록합니다.
  */
 async function updateShadowMismatchTrend(snapshot) {
@@ -772,6 +805,58 @@ async function updateShadowMismatchTrend(snapshot) {
   return {
     realtimeBiosignal: await updateShadowScopeTrend('realtime-biosignal', realtimeGap, nowIso, observationBucket),
     emergencyWorkflow: await updateShadowScopeTrend('emergency-workflow', workflowGap, nowIso, observationBucket),
+  };
+}
+
+/**
+ * shadow 일치성 응답에서 바로 쓸 운영 요약 정보를 구성합니다.
+ */
+function buildShadowConsistencySummary(snapshot, trend, guidance, scope) {
+  const realtimeGap =
+    snapshot.realtimeBiosignal.onlyInMemory.length +
+    snapshot.realtimeBiosignal.onlyInShadow.length;
+  const workflowGap =
+    snapshot.emergencyWorkflow.onlyInMemory.length +
+    snapshot.emergencyWorkflow.onlyInShadow.length;
+  const selectedScopes =
+    scope === 'realtime-biosignal'
+      ? ['realtime-biosignal']
+      : scope === 'emergency-workflow'
+        ? ['emergency-workflow']
+        : ['realtime-biosignal', 'emergency-workflow'];
+
+  const inconsistentScopes = selectedScopes.filter((item) => {
+    if (item === 'realtime-biosignal') {
+      return !snapshot.realtimeBiosignal.consistent;
+    }
+    if (item === 'emergency-workflow') {
+      return !snapshot.emergencyWorkflow.consistent;
+    }
+    return false;
+  });
+
+  const totalGap = selectedScopes.reduce((sum, item) => {
+    if (item === 'realtime-biosignal') {
+      return sum + realtimeGap;
+    }
+    if (item === 'emergency-workflow') {
+      return sum + workflowGap;
+    }
+    return sum;
+  }, 0);
+
+  return {
+    status: totalGap > 0 ? 'MISMATCH' : 'OK',
+    totalGap,
+    selectedScopes,
+    inconsistentScopes,
+    summaryLevel: guidance.summaryLevel,
+    bannerTone: guidance.bannerTone,
+    actionPriority: guidance.actionPriority,
+    summaryMessage: guidance.summaryMessage,
+    recommendedAction: guidance.recommendedAction,
+    realtimeTrend: trend.realtimeBiosignal,
+    workflowTrend: trend.emergencyWorkflow,
   };
 }
 
