@@ -979,23 +979,23 @@ export const Members: React.FC = () => {
   };
 
   return (
-    <div className="flex h-full min-h-0 bg-slate-50 overflow-hidden">
+    <div className="flex h-full min-h-0 overflow-hidden bg-slate-100">
       {/* Left List Section */}
-      <div className={`flex min-h-0 flex-1 flex-col p-8 transition-all duration-300 ${selectedMember ? 'w-1/2' : 'w-full'}`}>
-        <div className="flex justify-between items-center mb-6">
+      <div className={`flex min-h-0 flex-1 flex-col p-5 transition-all duration-300 ${selectedMember ? 'w-1/2' : 'w-full'}`}>
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-2xl text-black">회원 관리</h2>
-            <p className="text-black">등록된 회원 및 기기 상태 모니터링</p>
+            <h2 className="text-[28px] leading-none text-black">회원 관리</h2>
+            <p className="mt-1 text-[14px] text-black">등록된 회원 및 기기 상태 모니터링</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
             <button
               onClick={() => setIsCreateOpen(true)}
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-[14px] text-white hover:bg-blue-700 shadow-sm"
+              className="inline-flex h-10 min-w-[88px] shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-blue-600 px-4 text-[14px] text-white hover:bg-blue-700 shadow-sm"
             >
               <Plus size={16} />
               등록
             </button>
-            <div className="relative">
+            <div className="relative w-60 min-w-[220px] flex-1 sm:flex-none xl:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-black" size={18} />
               <input 
                 type="text" 
@@ -1006,7 +1006,7 @@ export const Members: React.FC = () => {
                   // 검색 조건이 바뀌면 현재 페이지가 비는 경우가 많아 항상 첫 페이지부터 다시 보여줍니다.
                   setCurrentPage(1); // Reset to page 1 on search
                 }}
-                className="bg-white border border-slate-300 text-black pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 w-64 shadow-sm"
+                className="h-10 w-full rounded-lg border border-slate-300 bg-white py-2 pl-10 pr-4 text-[14px] text-black shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
           </div>
