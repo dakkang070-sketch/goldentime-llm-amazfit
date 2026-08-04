@@ -3,7 +3,7 @@
  * 실시간 대시보드를 위한 백엔드 API 호출
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3005';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3003';
 
 export interface SystemOverview {
   systemStatus: 'OPERATIONAL' | 'WARNING' | 'CRITICAL';
@@ -26,6 +26,18 @@ export interface SystemOverview {
     hospitalConnections: number;
     availableBeds: number;
     activeParamedics: number;
+  };
+  shadowMonitoring?: {
+    status: 'OK' | 'MISMATCH';
+    totalGap: number;
+    realtimeGap: number;
+    workflowGap: number;
+    summaryLevel: 'info' | 'warning' | 'critical';
+    bannerTone: 'neutral' | 'warning' | 'danger';
+    actionPriority: 'low' | 'medium' | 'high';
+    summaryMessage: string;
+    recommendedAction: string;
+    inconsistentScopes: string[];
   };
 }
 
@@ -194,18 +206,27 @@ class SystemMonitoringService {
    * 실시간 데이터 스트리밍을 위한 폴링 설정
    */
   startRealtimeMonitoring(
-    onUpdate: (data: {
+        /**
+     * onUpdate 관련 처리를 수행합니다.
+     */
+onUpdate: (data: {
       overview: SystemOverview;
       engines: EngineStatus;
       performance: PerformanceMetrics;
       alerts: AlertSummary;
     }) => void,
-    onError: (error: Error) => void,
+        /**
+     * onError 관련 처리를 수행합니다.
+     */
+onError: (error: Error) => void,
     interval: number = 5000 // 5초마다 업데이트
   ): () => void {
     let isActive = true;
 
-    const updateData = async () => {
+        /**
+     * updateData 관련 처리를 수행합니다.
+     */
+const updateData = async () => {
       if (!isActive) return;
 
       try {
@@ -278,11 +299,17 @@ class SystemMonitoringService {
   }
 }
 
+/**
+ * systemMonitoringService 관련 처리를 수행합니다.
+ */
 export const systemMonitoringService = new SystemMonitoringService();
 
 // React hooks for easy integration
 import { useState, useEffect } from 'react';
 
+/**
+ * useSystemOverview 관련 처리를 수행합니다.
+ */
 export function useSystemOverview(autoRefresh: boolean = true, interval: number = 5000) {
   const [data, setData] = useState<SystemOverview | null>(null);
   const [loading, setLoading] = useState(true);
@@ -305,7 +332,10 @@ export function useSystemOverview(autoRefresh: boolean = true, interval: number 
     fetchData();
 
     if (autoRefresh) {
-      const intervalId = setInterval(fetchData, interval);
+            /**
+       * intervalId 관련 처리를 수행합니다.
+       */
+const intervalId = setInterval(fetchData, interval);
       return () => clearInterval(intervalId);
     }
   }, [autoRefresh, interval]);
@@ -313,6 +343,9 @@ export function useSystemOverview(autoRefresh: boolean = true, interval: number 
   return { data, loading, error };
 }
 
+/**
+ * useEngineStatus 관련 처리를 수행합니다.
+ */
 export function useEngineStatus(autoRefresh: boolean = true, interval: number = 5000) {
   const [data, setData] = useState<EngineStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -343,6 +376,9 @@ export function useEngineStatus(autoRefresh: boolean = true, interval: number = 
   return { data, loading, error };
 }
 
+/**
+ * useRealtimeMonitoring 관련 처리를 수행합니다.
+ */
 export function useRealtimeMonitoring(interval: number = 5000) {
   const [overview, setOverview] = useState<SystemOverview | null>(null);
   const [engines, setEngines] = useState<EngineStatus | null>(null);
@@ -355,7 +391,10 @@ export function useRealtimeMonitoring(interval: number = 5000) {
   useEffect(() => {
     let cleanup: (() => void) | null = null;
 
-    const startMonitoring = async () => {
+        /**
+     * startMonitoring 관련 처리를 수행합니다.
+     */
+const startMonitoring = async () => {
       // 연결 테스트
       const isConnected = await systemMonitoringService.testConnection();
       setConnectionStatus(isConnected ? 'connected' : 'disconnected');

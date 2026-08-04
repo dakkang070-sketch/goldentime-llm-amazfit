@@ -29,6 +29,9 @@ import { DetailModal } from './components/DetailModal';
 import { StatusCardProps, SystemStatus } from './types';
 import { useRealtimeMonitoring, SystemEngine } from './services/systemMonitoringService';
 
+/**
+ * App 관련 처리를 수행합니다.
+ */
 const App: React.FC = () => {
   const [time, setTime] = useState(new Date().toLocaleTimeString('ko-KR'));
   const [selectedCard, setSelectedCard] = useState<StatusCardProps | null>(null);
@@ -215,6 +218,19 @@ const App: React.FC = () => {
   const systemUptime = overview ? 
     `${Math.floor(overview.uptime / 86400)}일 ${Math.floor((overview.uptime % 86400) / 3600)}시간 ${Math.floor((overview.uptime % 3600) / 60)}분` : 
     "연결 중...";
+  const shadowMonitoring = overview?.shadowMonitoring;
+  const shadowBannerToneClass =
+    shadowMonitoring?.bannerTone === 'danger'
+      ? 'border-red-500/40 bg-red-500/10 text-red-100'
+      : shadowMonitoring?.bannerTone === 'warning'
+        ? 'border-amber-400/40 bg-amber-400/10 text-amber-50'
+        : 'border-slate-600/40 bg-slate-800/70 text-slate-100';
+  const shadowPriorityLabel =
+    shadowMonitoring?.actionPriority === 'high'
+      ? '즉시 확인'
+      : shadowMonitoring?.actionPriority === 'medium'
+        ? '우선 점검'
+        : '관찰 유지';
 
   return (
     <div className="min-h-screen flex flex-col bg-[#0a0f1c] text-white overflow-hidden">
@@ -279,6 +295,42 @@ const App: React.FC = () => {
           </div>
         </div>
       </header>
+
+      {shadowMonitoring && (
+        <div className="px-8 pt-4">
+          <div className={`rounded-2xl border px-5 py-4 shadow-[0_12px_40px_rgba(15,23,42,0.22)] ${shadowBannerToneClass}`}>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-current/20 px-2.5 py-1 text-[11px] font-black tracking-[0.16em] uppercase">
+                    Shadow {shadowMonitoring.summaryLevel}
+                  </span>
+                  <span className="text-[11px] font-bold tracking-[0.16em] uppercase opacity-80">
+                    {shadowPriorityLabel}
+                  </span>
+                </div>
+                <p className="mt-2 text-[15px] font-semibold leading-6">
+                  {shadowMonitoring.summaryMessage}
+                </p>
+                <p className="mt-1 text-[13px] leading-5 opacity-90">
+                  {shadowMonitoring.recommendedAction}
+                </p>
+              </div>
+              <div className="flex shrink-0 gap-2 text-[12px] font-semibold">
+                <span className="rounded-full border border-current/20 px-3 py-1.5">
+                  전체 gap {shadowMonitoring.totalGap}
+                </span>
+                <span className="rounded-full border border-current/20 px-3 py-1.5">
+                  실시간 {shadowMonitoring.realtimeGap}
+                </span>
+                <span className="rounded-full border border-current/20 px-3 py-1.5">
+                  워크플로우 {shadowMonitoring.workflowGap}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="flex-1 p-8 grid grid-cols-12 gap-8 overflow-hidden bg-[radial-gradient(circle_at_50%_0%,rgba(37,99,235,0.05)_0%,transparent_50%)]">
