@@ -620,6 +620,136 @@ function buildControllerScopedUserQuery(controller = {}) {
 }
 
 /**
+ * 관제사/복지사의 관리 범위에 맞는 응급 케이스 목록을 공통 규격으로 조회합니다.
+ */
+async function loadScopedEmergencyCasesForStaff(staff, filters = {}) {
+  const { status, emergencyLevel } = filters;
+  const query = {};
+  const scopedUsers = await User.find(buildControllerScopedUserQuery(staff))
+    .select('_id affiliation')
+    .lean();
+  const allowedUserIds = scopedUsers
+    .filter((user) => matchesControllerAffiliation(staff.affiliation, user.affiliation))
+    .map((user) => user._id);
+
+  if (allowedUserIds.length === 0) {
+    return [];
+  }
+
+  if (status) {
+    query.status = status;
+  } else {
+    query.status = { $in: ['detected', 'matched', 'in_progress', 'transporting'] };
+  }
+
+  if (emergencyLevel) {
+    query.emergencyLevel = parseInt(emergencyLevel, 10);
+  }
+  query.userId = { $in: allowedUserIds };
+
+  const cases = await EmergencyCase.find(query)
+    .populate('userId', 'name phone age gender baselineBiometric')
+    .populate('paramedic.paramedicId', 'name phone currentLocation')
+    .populate('hospital.localHospitalId', 'name location emergencyRoom')
+    .select('+llmAnalysis +detectedAnomalies')
+    .sort({ createdAt: -1 })
+    .limit(100);
+
+  return cases.map((item) => sanitizeEmergencyCaseForResponse(item));
+}
+
+/**
+ * 관제사/복지사의 관리 범위에 맞는 최신 모니터링 회원과 생체 데이터를 함께 조회합니다.
+ */
+async function loadScopedMonitoredUsersForStaff(staff, windowMinutesRaw) {
+  const windowMinutes = Math.min(
+    60,
+    Math.max(1, Number.isFinite(Number(windowMinutesRaw)) ? Number(windowMinutesRaw) : 10),
+  );
+  const since = new Date(Date.now() - windowMinutes * 60 * 1000);
+  const users = await User.find({
+    ...buildControllerScopedUserQuery(staff),
+    'wearableDevice.deviceId': { $exists: true, $ne: null },
+    'wearableDevice.lastSyncAt': { $exists: true, $ne: null, $gte: since },
+  })
+    .select('name phone age birthDate bloodType gender wearableDevice emergencyContact accountStatus affiliation')
+    .sort({ 'wearableDevice.lastSyncAt': -1 })
+    .lean();
+  const scopedUsers = users.filter((user) => matchesControllerAffiliation(staff.affiliation, user.affiliation));
+
+  const userIds = scopedUsers.map((u) => u._id);
+  const BiometricData = require('../models/BiometricData');
+  const latestRows =
+    userIds.length === 0
+      ? []
+      : await BiometricData.aggregate([
+          { $match: { userId: { $in: userIds } } },
+          { $sort: { collectedAt: -1 } },
+          { $group: { _id: '$userId', doc: { $first: '$$ROOT' } } },
+        ]);
+  const recentPeakRows =
+    userIds.length === 0
+      ? []
+      : await BiometricData.aggregate([
+          { $match: { userId: { $in: userIds }, collectedAt: { $gte: since } } },
+          {
+            $group: {
+              _id: '$userId',
+              recentFallPeakScore: { $max: { $ifNull: ['$fallScore', 0] } },
+            },
+          },
+        ]);
+
+  const latestByUserId = new Map(latestRows.map((r) => [String(r._id), r.doc]));
+  const recentPeakByUserId = new Map(
+    recentPeakRows.map((r) => [String(r._id), r.recentFallPeakScore]),
+  );
+
+  const monitoredUsers = await Promise.all(scopedUsers.map(async (u) => {
+    const latestBiometricSeed = latestByUserId.get(String(u._id))
+      ? {
+          ...latestByUserId.get(String(u._id)),
+          recentFallPeakScore: recentPeakByUserId.get(String(u._id)) || 0,
+        }
+      : null;
+    const latestBiometricRecovered = await resolvePreferredLatestBiometric(
+      BiometricData,
+      u._id,
+      latestBiometricSeed,
+    );
+    const latestBiometricWithFallback = applyWearableLocationFallback(latestBiometricRecovered, u);
+    const latestBiometric = sanitizeBiometricForResponse(latestBiometricWithFallback);
+    const isOnline = Boolean(u?.wearableDevice?.lastSyncAt && new Date(u.wearableDevice.lastSyncAt) >= since);
+    // #region debug-point D:watch-map-missing-monitored-users
+    (()=>{const fs=require('fs');let _u='http://127.0.0.1:7777/event',_s='watch-map-missing';try{const e=fs.readFileSync('.dbg/watch-map-missing.env','utf8');_u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||_u;_s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||_s}catch{}fetch(_u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:_s,runId:'pre-fix',hypothesisId:'D',location:'backend/api/controllers.js:1508',msg:'[DEBUG] monitored-users location snapshot',data:{userId:String(u?._id||''),name:u?.name||null,biometricLat:typeof latestBiometric?.location?.lat==='number'?latestBiometric.location.lat:null,biometricLng:typeof latestBiometric?.location?.lng==='number'?latestBiometric.location.lng:null,biometricSource:latestBiometric?.rawData?.locationMeta?.source||null,biometricProvider:latestBiometric?.rawData?.locationMeta?.provider||null,lastKnownLat:typeof u?.wearableDevice?.lastKnownLocation?.lat==='number'?u.wearableDevice.lastKnownLocation.lat:null,lastKnownLng:typeof u?.wearableDevice?.lastKnownLocation?.lng==='number'?u.wearableDevice.lastKnownLocation.lng:null,lastKnownProvider:u?.wearableDevice?.lastKnownLocation?.provider||null,lastKnownSource:u?.wearableDevice?.lastKnownLocation?.source||null,isOnline},ts:Date.now()})}).catch(()=>{});})();
+    // #endregion
+    // #region debug-point B:monitored-users-location-choice
+    (()=>{const fs=require('fs');let _u='http://127.0.0.1:7777/event',_s='stale-watch-location';try{const e=fs.readFileSync('.dbg/stale-watch-location.env','utf8');_u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||_u;_s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||_s}catch{}fetch(_u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:_s,runId:'pre-fix',hypothesisId:'B',location:'backend/api/controllers.js:1150',msg:'[DEBUG] monitored-users location candidates',data:{userId:String(u?._id||''),name:u?.name||null,biometricLat:typeof latestBiometric?.location?.lat==='number'?latestBiometric.location.lat:null,biometricLng:typeof latestBiometric?.location?.lng==='number'?latestBiometric.location.lng:null,biometricCollectedAt:latestBiometric?.collectedAt instanceof Date?latestBiometric.collectedAt.toISOString():latestBiometric?.collectedAt||null,biometricLocationTimestamp:latestBiometric?.location?.timestamp instanceof Date?latestBiometric.location.timestamp.toISOString():latestBiometric?.location?.timestamp||null,lastKnownLat:typeof u?.wearableDevice?.lastKnownLocation?.lat==='number'?u.wearableDevice.lastKnownLocation.lat:null,lastKnownLng:typeof u?.wearableDevice?.lastKnownLocation?.lng==='number'?u.wearableDevice.lastKnownLocation.lng:null,lastKnownUpdatedAt:u?.wearableDevice?.lastKnownLocation?.updatedAt instanceof Date?u.wearableDevice.lastKnownLocation.updatedAt.toISOString():u?.wearableDevice?.lastKnownLocation?.updatedAt||null,lastKnownProvider:u?.wearableDevice?.lastKnownLocation?.provider||null,isOnline},ts:Date.now()})}).catch(()=>{});})();
+    // #endregion
+
+    // #region debug-point A:kim-taeyun-monitored-users
+    (()=>{if(u?.name!=='김태윤')return;const fs=require('fs');let _u='http://127.0.0.1:7777/event',_s='kim-taeyun-realtime';try{const e=fs.readFileSync('.dbg/kim-taeyun-realtime.env','utf8');_u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||_u;_s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||_s}catch{}fetch(_u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:_s,runId:'pre-fix',hypothesisId:'A',location:'backend/api/controllers.js:1158',msg:'[DEBUG] 김태윤 monitored-users snapshot',data:{userId:String(u._id),name:u?.name||null,deviceId:u?.wearableDevice?.deviceId||null,lastSyncAt:u?.wearableDevice?.lastSyncAt||null,isOnline,hasLatestBiometric:Boolean(latestBiometric),latestCollectedAt:latestBiometric?.collectedAt||null,heartRate:latestBiometric?.heartRate??null,spO2:latestBiometric?.spO2??null},ts:Date.now()})}).catch(()=>{});})();
+    // #endregion
+
+    // #region debug-point A:monitored-users-response
+    (()=>{const _doc=latestBiometric;const _wear=_doc?.rawData?.isWear;const _hr=_doc?.heartRate;const _spo2=_doc?.spO2;const _temp=_doc?.bodyTemperature;if(_doc&&(_wear===false||(typeof _hr==='number'&&_hr>0))){const fs=require('fs');let _u='http://127.0.0.1:7777/event',_s='watch-remove-detection';try{const e=fs.readFileSync('.dbg/watch-remove-detection.env','utf8');_u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||_u;_s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||_s}catch{}fetch(_u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:_s,runId:'pre-fix',hypothesisId:'A',location:'backend/api/controllers.js:255',msg:'[DEBUG] monitored-users latest biometric snapshot',data:{userId:String(u._id),name:u?.name||null,isOnline,rawIsWear:_wear,heartRate:_hr,spO2:_spo2,bodyTemperature:_temp,collectedAt:_doc?.collectedAt||null},ts:Date.now()})}).catch(()=>{});}})();
+    // #endregion
+
+    return {
+      ...u,
+      wearableDevice: sanitizeWearableDeviceForResponse(u),
+      isOnline,
+      latestBiometric,
+    };
+  }));
+
+  return {
+    windowMinutes,
+    users: monitoredUsers,
+  };
+}
+
+/**
  * 관제요원/복지사 관리구역 소속 입력값을 검증합니다.
  */
 function validateStaffAffiliation(role, affiliation) {
@@ -2040,8 +2170,6 @@ router.get('/me/users', requireAuth, requireRole('controller'), async (req, res)
  */
 router.get('/emergency-cases', requireAuth, requireRole('controller'), cacheMiddleware(10), async (req, res) => {
   try {
-    const { status, emergencyLevel } = req.query;
-    const query = {};
     const controller = await getCurrentController(req);
 
     if (!controller) {
@@ -2051,42 +2179,7 @@ router.get('/emergency-cases', requireAuth, requireRole('controller'), cacheMidd
       });
     }
 
-    const scopedUsers = await User.find(buildControllerScopedUserQuery(controller))
-      .select('_id affiliation')
-      .lean();
-    const allowedUserIds = scopedUsers
-      .filter((user) => matchesControllerAffiliation(controller.affiliation, user.affiliation))
-      .map((user) => user._id);
-
-    if (allowedUserIds.length === 0) {
-      return res.json({
-        success: true,
-        cases: [],
-      });
-    }
-
-    if (status) {
-      query.status = status;
-    } else {
-      // 기본: 진행 중인 케이스만
-      query.status = { $in: ['detected', 'matched', 'in_progress', 'transporting'] };
-    }
-
-    if (emergencyLevel) {
-      query.emergencyLevel = parseInt(emergencyLevel);
-    }
-    query.userId = { $in: allowedUserIds };
-
-    // 관제 목록은 사용자/구조사/병원 핵심 필드를 populate 한 번으로 같이 내려줍니다.
-    const cases = await EmergencyCase.find(query)
-      .populate('userId', 'name phone age gender baselineBiometric')
-      .populate('paramedic.paramedicId', 'name phone currentLocation')
-      .populate('hospital.localHospitalId', 'name location emergencyRoom')
-      .select('+llmAnalysis +detectedAnomalies') // LLM 분석 결과 포함
-      .sort({ createdAt: -1 })
-      .limit(100);
-
-    const sanitizedCases = cases.map((item) => sanitizeEmergencyCaseForResponse(item));
+    const sanitizedCases = await loadScopedEmergencyCasesForStaff(controller, req.query);
 
     res.json({
       success: true,
@@ -2107,12 +2200,6 @@ router.get('/emergency-cases', requireAuth, requireRole('controller'), cacheMidd
  */
 router.get('/monitored-users', requireAuth, requireRole('controller'), async (req, res) => {
   try {
-    const windowMinutesRaw = req.query?.windowMinutes;
-    const windowMinutes = Math.min(
-      60,
-      Math.max(1, Number.isFinite(Number(windowMinutesRaw)) ? Number(windowMinutesRaw) : 10),
-    );
-    const since = new Date(Date.now() - windowMinutes * 60 * 1000);
     const controller = await getCurrentController(req);
 
     if (!controller) {
@@ -2122,96 +2209,77 @@ router.get('/monitored-users', requireAuth, requireRole('controller'), async (re
       });
     }
 
-    const users = await User.find({
-      ...buildControllerScopedUserQuery(controller),
-      'wearableDevice.deviceId': { $exists: true, $ne: null },
-      'wearableDevice.lastSyncAt': { $exists: true, $ne: null, $gte: since },
-    })
-      .select('name phone age birthDate bloodType gender wearableDevice emergencyContact accountStatus affiliation')
-      .sort({ 'wearableDevice.lastSyncAt': -1 })
-      .lean();
-    const scopedUsers = users.filter((user) =>
-      matchesControllerAffiliation(controller.affiliation, user.affiliation),
-    );
-
-    const userIds = scopedUsers.map((u) => u._id);
-    const BiometricData = require('../models/BiometricData');
-    // 최근 window 안의 최신 1건과 최근 최대 낙상 점수를 각각 집계해 한 응답으로 합칩니다.
-    const latestRows =
-      userIds.length === 0
-        ? []
-        : await BiometricData.aggregate([
-            { $match: { userId: { $in: userIds } } },
-            { $sort: { collectedAt: -1 } },
-            { $group: { _id: '$userId', doc: { $first: '$$ROOT' } } },
-          ]);
-    const recentPeakRows =
-      userIds.length === 0
-        ? []
-        : await BiometricData.aggregate([
-            { $match: { userId: { $in: userIds }, collectedAt: { $gte: since } } },
-            {
-              $group: {
-                _id: '$userId',
-                recentFallPeakScore: { $max: { $ifNull: ['$fallScore', 0] } },
-              },
-            },
-          ]);
-
-    const latestByUserId = new Map(latestRows.map((r) => [String(r._id), r.doc]));
-    const recentPeakByUserId = new Map(
-      recentPeakRows.map((r) => [String(r._id), r.recentFallPeakScore]),
-    );
-
-    const monitoredUsers = await Promise.all(scopedUsers.map(async (u) => {
-      const latestBiometricSeed = latestByUserId.get(String(u._id))
-        ? {
-            ...latestByUserId.get(String(u._id)),
-            recentFallPeakScore: recentPeakByUserId.get(String(u._id)) || 0,
-          }
-        : null;
-      const latestBiometricRecovered = await resolvePreferredLatestBiometric(
-        BiometricData,
-        u._id,
-        latestBiometricSeed,
-      );
-      const latestBiometricWithFallback = applyWearableLocationFallback(latestBiometricRecovered, u);
-      const latestBiometric = sanitizeBiometricForResponse(latestBiometricWithFallback);
-      const isOnline = Boolean(u?.wearableDevice?.lastSyncAt && new Date(u.wearableDevice.lastSyncAt) >= since);
-      // #region debug-point D:watch-map-missing-monitored-users
-      (()=>{const fs=require('fs');let _u='http://127.0.0.1:7777/event',_s='watch-map-missing';try{const e=fs.readFileSync('.dbg/watch-map-missing.env','utf8');_u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||_u;_s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||_s}catch{}fetch(_u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:_s,runId:'pre-fix',hypothesisId:'D',location:'backend/api/controllers.js:1508',msg:'[DEBUG] monitored-users location snapshot',data:{userId:String(u?._id||''),name:u?.name||null,biometricLat:typeof latestBiometric?.location?.lat==='number'?latestBiometric.location.lat:null,biometricLng:typeof latestBiometric?.location?.lng==='number'?latestBiometric.location.lng:null,biometricSource:latestBiometric?.rawData?.locationMeta?.source||null,biometricProvider:latestBiometric?.rawData?.locationMeta?.provider||null,lastKnownLat:typeof u?.wearableDevice?.lastKnownLocation?.lat==='number'?u.wearableDevice.lastKnownLocation.lat:null,lastKnownLng:typeof u?.wearableDevice?.lastKnownLocation?.lng==='number'?u.wearableDevice.lastKnownLocation.lng:null,lastKnownProvider:u?.wearableDevice?.lastKnownLocation?.provider||null,lastKnownSource:u?.wearableDevice?.lastKnownLocation?.source||null,isOnline},ts:Date.now()})}).catch(()=>{});})();
-      // #endregion
-      // #region debug-point B:monitored-users-location-choice
-      (()=>{const fs=require('fs');let _u='http://127.0.0.1:7777/event',_s='stale-watch-location';try{const e=fs.readFileSync('.dbg/stale-watch-location.env','utf8');_u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||_u;_s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||_s}catch{}fetch(_u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:_s,runId:'pre-fix',hypothesisId:'B',location:'backend/api/controllers.js:1150',msg:'[DEBUG] monitored-users location candidates',data:{userId:String(u?._id||''),name:u?.name||null,biometricLat:typeof latestBiometric?.location?.lat==='number'?latestBiometric.location.lat:null,biometricLng:typeof latestBiometric?.location?.lng==='number'?latestBiometric.location.lng:null,biometricCollectedAt:latestBiometric?.collectedAt instanceof Date?latestBiometric.collectedAt.toISOString():latestBiometric?.collectedAt||null,biometricLocationTimestamp:latestBiometric?.location?.timestamp instanceof Date?latestBiometric.location.timestamp.toISOString():latestBiometric?.location?.timestamp||null,lastKnownLat:typeof u?.wearableDevice?.lastKnownLocation?.lat==='number'?u.wearableDevice.lastKnownLocation.lat:null,lastKnownLng:typeof u?.wearableDevice?.lastKnownLocation?.lng==='number'?u.wearableDevice.lastKnownLocation.lng:null,lastKnownUpdatedAt:u?.wearableDevice?.lastKnownLocation?.updatedAt instanceof Date?u.wearableDevice.lastKnownLocation.updatedAt.toISOString():u?.wearableDevice?.lastKnownLocation?.updatedAt||null,lastKnownProvider:u?.wearableDevice?.lastKnownLocation?.provider||null,isOnline},ts:Date.now()})}).catch(()=>{});})();
-      // #endregion
-
-      // #region debug-point A:kim-taeyun-monitored-users
-      (()=>{if(u?.name!=='김태윤')return;const fs=require('fs');let _u='http://127.0.0.1:7777/event',_s='kim-taeyun-realtime';try{const e=fs.readFileSync('.dbg/kim-taeyun-realtime.env','utf8');_u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||_u;_s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||_s}catch{}fetch(_u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:_s,runId:'pre-fix',hypothesisId:'A',location:'backend/api/controllers.js:1158',msg:'[DEBUG] 김태윤 monitored-users snapshot',data:{userId:String(u._id),name:u?.name||null,deviceId:u?.wearableDevice?.deviceId||null,lastSyncAt:u?.wearableDevice?.lastSyncAt||null,isOnline,hasLatestBiometric:Boolean(latestBiometric),latestCollectedAt:latestBiometric?.collectedAt||null,heartRate:latestBiometric?.heartRate??null,spO2:latestBiometric?.spO2??null},ts:Date.now()})}).catch(()=>{});})();
-      // #endregion
-
-      // #region debug-point A:monitored-users-response
-      (()=>{const _doc=latestBiometric;const _wear=_doc?.rawData?.isWear;const _hr=_doc?.heartRate;const _spo2=_doc?.spO2;const _temp=_doc?.bodyTemperature;if(_doc&&(_wear===false||(typeof _hr==='number'&&_hr>0))){const fs=require('fs');let _u='http://127.0.0.1:7777/event',_s='watch-remove-detection';try{const e=fs.readFileSync('.dbg/watch-remove-detection.env','utf8');_u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||_u;_s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||_s}catch{}fetch(_u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:_s,runId:'pre-fix',hypothesisId:'A',location:'backend/api/controllers.js:255',msg:'[DEBUG] monitored-users latest biometric snapshot',data:{userId:String(u._id),name:u?.name||null,isOnline,rawIsWear:_wear,heartRate:_hr,spO2:_spo2,bodyTemperature:_temp,collectedAt:_doc?.collectedAt||null},ts:Date.now()})}).catch(()=>{});}})();
-      // #endregion
-
-      return {
-        ...u,
-        wearableDevice: sanitizeWearableDeviceForResponse(u),
-        // 마지막 동기화 시각 기준 online 여부를 미리 계산해 프런트 판별 로직을 줄입니다.
-        isOnline,
-        latestBiometric,
-      };
-    }));
+    const monitoredPayload = await loadScopedMonitoredUsersForStaff(controller, req.query?.windowMinutes);
 
     res.json({
       success: true,
-      windowMinutes,
-      users: monitoredUsers,
+      windowMinutes: monitoredPayload.windowMinutes,
+      users: monitoredPayload.users,
     });
   } catch (error) {
     console.error('모니터링 사용자 조회 오류:', error);
     res.status(500).json({
       success: false,
       message: '모니터링 사용자 조회 중 오류가 발생했습니다.',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+});
+
+/**
+ * 복지사 전용 대시보드에서 소속 기준 활성 응급 케이스를 조회합니다.
+ */
+router.get('/medical/emergency-cases', requireAuth, requireRole('medical'), cacheMiddleware(10), async (req, res) => {
+  try {
+    const medicalStaff = await getCurrentController(req);
+
+    if (!medicalStaff) {
+      return res.status(404).json({
+        success: false,
+        message: '복지사를 찾을 수 없습니다.',
+      });
+    }
+
+    const cases = await loadScopedEmergencyCasesForStaff(medicalStaff, req.query);
+    return res.json({
+      success: true,
+      cases,
+    });
+  } catch (error) {
+    console.error('복지사 응급 상황 조회 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '복지사 응급 상황 조회 중 오류가 발생했습니다.',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+});
+
+/**
+ * 복지사 전용 대시보드에서 소속 기준 최신 모니터링 회원 목록을 조회합니다.
+ */
+router.get('/medical/monitored-users', requireAuth, requireRole('medical'), async (req, res) => {
+  try {
+    const medicalStaff = await getCurrentController(req);
+
+    if (!medicalStaff) {
+      return res.status(404).json({
+        success: false,
+        message: '복지사를 찾을 수 없습니다.',
+      });
+    }
+
+    const monitoredPayload = await loadScopedMonitoredUsersForStaff(medicalStaff, req.query?.windowMinutes);
+    return res.json({
+      success: true,
+      windowMinutes: monitoredPayload.windowMinutes,
+      users: monitoredPayload.users,
+    });
+  } catch (error) {
+    console.error('복지사 모니터링 사용자 조회 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '복지사 모니터링 사용자 조회 중 오류가 발생했습니다.',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
