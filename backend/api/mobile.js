@@ -25,13 +25,13 @@ const {
   getVerificationEntry,
   deleteVerificationEntry,
 } = require('../services/verificationCacheService');
+const { getIpLocationCache, setIpLocationCache } = require('../services/ipLocationCacheService');
 const logger = require('../utils/logger');
 const { sendSMS } = require('../services/notificationService');
 const crypto = require('crypto');
 const IP_LOCATION_CACHE_TTL_MS = 2 * 60 * 1000;
 const IP_LOCATION_LOOKUP_TIMEOUT_MS = 2500;
 const IP_LOCATION_CLUSTER_RADIUS_M = 15000;
-const ipLocationCache = new Map();
 
 /**
  * 폰 위치 provider/정확도를 기준으로 GPS·Wi-Fi·기지국 출처를 분류합니다.
@@ -588,9 +588,9 @@ async function resolveApproxLocationFromIp(ip) {
     return null;
   }
 
-  const cached = ipLocationCache.get(normalizedIp);
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.value;
+  const cached = await getIpLocationCache('mobile-ip', normalizedIp);
+  if (cached) {
+    return cached;
   }
 
   const candidates = (
@@ -655,10 +655,7 @@ async function resolveApproxLocationFromIp(ip) {
     source: 'ip_position',
     timeMs: Date.now(),
   };
-  ipLocationCache.set(normalizedIp, {
-    expiresAt: Date.now() + IP_LOCATION_CACHE_TTL_MS,
-    value,
-  });
+  await setIpLocationCache('mobile-ip', normalizedIp, value, IP_LOCATION_CACHE_TTL_MS);
   return value;
 }
 /**

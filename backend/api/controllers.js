@@ -22,6 +22,7 @@ const {
   getVerificationEntry,
   deleteVerificationEntry,
 } = require('../services/verificationCacheService');
+const { getIpLocationCache, setIpLocationCache } = require('../services/ipLocationCacheService');
 
 const ADMIN_MENU_PERMISSIONS = ['controllers', 'welfare', 'members', 'guardians', 'history', 'settings', 'admins'];
 const TOPIS_CCTV_LIST_URL = 'https://topis.seoul.go.kr/map/cctv/selectCctvList.do';
@@ -36,7 +37,6 @@ let topisCctvIndexCache = {
 const CONTROLLER_IP_LOCATION_CACHE_TTL_MS = 2 * 60 * 1000;
 const CONTROLLER_IP_LOCATION_LOOKUP_TIMEOUT_MS = 2500;
 const CONTROLLER_IP_LOCATION_CLUSTER_RADIUS_M = 15000;
-const controllerIpLocationCache = new Map();
 const BLOCKED_CONTROLLER_LOCATION_POINTS = [
   { lat: 37.5665, lng: 126.9780 },
   { lat: 37.5560719, lng: 126.9723599 },
@@ -301,9 +301,9 @@ async function resolveApproxLocationFromRequestIp(req) {
     return null;
   }
 
-  const cached = controllerIpLocationCache.get(ip);
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.value;
+  const cached = await getIpLocationCache('controller-ip', ip);
+  if (cached) {
+    return cached;
   }
 
   const candidates = (
@@ -368,10 +368,7 @@ async function resolveApproxLocationFromRequestIp(req) {
     source: 'ip_position',
     timestamp: new Date().toISOString(),
   };
-  controllerIpLocationCache.set(ip, {
-    expiresAt: Date.now() + CONTROLLER_IP_LOCATION_CACHE_TTL_MS,
-    value,
-  });
+  await setIpLocationCache('controller-ip', ip, value, CONTROLLER_IP_LOCATION_CACHE_TTL_MS);
   return value;
 }
 
