@@ -10,6 +10,9 @@ const express = require('express');
 const router = express.Router();
 const logger = require('../utils/logger');
 const { cacheMiddleware } = require('../middleware/cache');
+const { authRequired: requireAuth } = require('../middleware/auth');
+const { requireRole } = require('../middleware/requireRole');
+const { getShadowState, listShadowStates } = require('../services/shadowStateCacheService');
 
 /**
  * @swagger
@@ -400,6 +403,60 @@ router.get('/alerts', cacheMiddleware(15), async (req, res) => {
     });
   }
 });
+
+/**
+ * 내부 운영자가 shadow 상태 요약본을 조회합니다.
+ */
+router.get(
+  '/shadow-states',
+  requireAuth,
+  requireRole(['admin', 'controller', 'medical']),
+  async (req, res) => {
+    try {
+      const scope = String(req.query?.scope || '').trim();
+      const entityId = String(req.query?.entityId || '').trim();
+      const limit = Number(req.query?.limit || 20);
+
+      if (!scope) {
+        return res.status(400).json({
+          success: false,
+          message: 'scope가 필요합니다.',
+        });
+      }
+
+      if (entityId) {
+        const item = await getShadowState(scope, entityId);
+        return res.json({
+          success: true,
+          data: {
+            scope,
+            entityId,
+            item,
+          },
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      const items = await listShadowStates(scope, limit);
+      return res.json({
+        success: true,
+        data: {
+          scope,
+          count: items.length,
+          items,
+        },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      logger.error('shadow 상태 조회 실패', { error: error.message });
+      return res.status(500).json({
+        success: false,
+        message: 'shadow 상태 조회 실패',
+        error: error.message,
+      });
+    }
+  },
+);
 
 /**
  * 현재 진행 중인 응급 케이스 수를 조회합니다.
