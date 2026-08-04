@@ -161,7 +161,7 @@ const App: React.FC = () => {
       />
       {/* 메인 영역은 사이드바가 fixed여도 같은 폭만큼 margin을 줘 겹침 없이 한 화면 레이아웃을 유지합니다. */}
       <main 
-        className={`flex-1 overflow-hidden h-screen bg-slate-100 transition-all duration-300 ease-in-out ${
+        className={`flex h-screen flex-1 flex-col overflow-hidden bg-slate-100 transition-all duration-300 ease-in-out ${
           isSidebarOpen ? 'ml-64' : 'ml-20'
         }`}
       >
@@ -178,7 +178,9 @@ const App: React.FC = () => {
             로그아웃
           </button>
         </div>
-        {renderContent()}
+        <div className="min-h-0 flex-1 overflow-hidden">
+          {renderContent()}
+        </div>
       </main>
     </div>
   );
