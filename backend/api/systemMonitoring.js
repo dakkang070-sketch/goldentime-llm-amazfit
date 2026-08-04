@@ -40,6 +40,9 @@ router.get('/overview', cacheMiddleware(30), async (req, res) => {
     const shadowWarningCount =
       Number(!shadowConsistency.realtimeBiosignal.consistent) +
       Number(!shadowConsistency.emergencyWorkflow.consistent);
+    const shadowCriticalCount =
+      Number(realtimeShadowGap >= 5 || shadowTrend.realtimeBiosignal.consecutiveMismatchCount >= 3) +
+      Number(workflowShadowGap >= 3 || shadowTrend.emergencyWorkflow.consecutiveMismatchCount >= 3);
     const systemOverview = {
       systemStatus: totalShadowGap > 0 ? 'DEGRADED' : 'OPERATIONAL',
       timestamp: new Date().toISOString(),
@@ -49,7 +52,7 @@ router.get('/overview', cacheMiddleware(30), async (req, res) => {
       overallHealth: {
         status: totalShadowGap > 0 ? 'WARNING' : 'HEALTHY',
         score: Math.max(80, 96.2 - totalShadowGap),
-        criticalAlerts: 0,
+        criticalAlerts: shadowCriticalCount,
         warningAlerts: 2 + shadowWarningCount
       },
 
@@ -113,15 +116,29 @@ router.get('/overview', cacheMiddleware(30), async (req, res) => {
 router.get('/engines', cacheMiddleware(30), async (req, res) => {
   try {
     const shadowConsistency = await getShadowConsistencySnapshot();
+    const shadowTrend = await updateShadowMismatchTrend(shadowConsistency);
+    const realtimeShadowGap = shadowConsistency.realtimeBiosignal.onlyInMemory.length + shadowConsistency.realtimeBiosignal.onlyInShadow.length;
+    const workflowShadowGap = shadowConsistency.emergencyWorkflow.onlyInMemory.length + shadowConsistency.emergencyWorkflow.onlyInShadow.length;
+    const biosignalShadowStatus =
+      checkBiosignalEngine() !== 'ACTIVE'
+        ? checkBiosignalEngine()
+        : realtimeShadowGap >= 5 || shadowTrend.realtimeBiosignal.consecutiveMismatchCount >= 3
+          ? 'CRITICAL'
+          : !shadowConsistency.realtimeBiosignal.consistent
+            ? 'WARNING'
+            : 'ACTIVE';
+    const workflowShadowStatus =
+      workflowShadowGap >= 3 || shadowTrend.emergencyWorkflow.consecutiveMismatchCount >= 3
+        ? 'CRITICAL'
+        : shadowConsistency.emergencyWorkflow.consistent
+          ? 'ACTIVE'
+          : 'WARNING';
     // 대시보드 카드가 바로 렌더링할 수 있게 엔진별 메트릭을 동일 스키마로 맞춰 한 배열로 묶습니다.
     const engines = [
       {
         id: 'biosignal_engine',
         name: '실시간 생체신호 분석 엔진',
-        status:
-          checkBiosignalEngine() === 'ACTIVE' && !shadowConsistency.realtimeBiosignal.consistent
-            ? 'WARNING'
-            : checkBiosignalEngine(),
+        status: biosignalShadowStatus,
         icon: 'heartbeat',
         metrics: {
           activeStreams: await getActiveStreamsCount(),
@@ -129,7 +146,10 @@ router.get('/engines', cacheMiddleware(30), async (req, res) => {
           signalQuality: '94.8%',
           processingLatency: '45ms',
           shadowConsistency: shadowConsistency.realtimeBiosignal.consistent ? 'OK' : 'MISMATCH',
-          shadowGap: shadowConsistency.realtimeBiosignal.onlyInMemory.length + shadowConsistency.realtimeBiosignal.onlyInShadow.length,
+          shadowGap: realtimeShadowGap,
+          shadowConsecutiveMismatch: shadowTrend.realtimeBiosignal.consecutiveMismatchCount,
+          shadowTotalMismatch: shadowTrend.realtimeBiosignal.totalMismatchCount,
+          shadowLastMismatchAt: shadowTrend.realtimeBiosignal.lastMismatchAt,
         }
       },
       {
@@ -147,7 +167,7 @@ router.get('/engines', cacheMiddleware(30), async (req, res) => {
       {
         id: 'emergency_workflow',
         name: '응급 대응 워크플로우',
-        status: shadowConsistency.emergencyWorkflow.consistent ? 'ACTIVE' : 'WARNING',
+        status: workflowShadowStatus,
         icon: 'workflow',
         metrics: {
           activeWorkflows: await getActiveWorkflowsCount(),
@@ -155,7 +175,10 @@ router.get('/engines', cacheMiddleware(30), async (req, res) => {
           avgResponseTime: '4.2분',
           escalations: await getTodayEscalations(),
           shadowConsistency: shadowConsistency.emergencyWorkflow.consistent ? 'OK' : 'MISMATCH',
-          shadowGap: shadowConsistency.emergencyWorkflow.onlyInMemory.length + shadowConsistency.emergencyWorkflow.onlyInShadow.length,
+          shadowGap: workflowShadowGap,
+          shadowConsecutiveMismatch: shadowTrend.emergencyWorkflow.consecutiveMismatchCount,
+          shadowTotalMismatch: shadowTrend.emergencyWorkflow.totalMismatchCount,
+          shadowLastMismatchAt: shadowTrend.emergencyWorkflow.lastMismatchAt,
         }
       },
       {
@@ -661,7 +684,10 @@ async function getSystemAlerts() {
     const realtimeGap = shadowConsistency.realtimeBiosignal.onlyInMemory.length + shadowConsistency.realtimeBiosignal.onlyInShadow.length;
     alerts.push({
       id: 'realtime_shadow_mismatch',
-      level: realtimeGap >= 5 ? 'CRITICAL' : 'WARNING',
+      level:
+        realtimeGap >= 5 || shadowTrend.realtimeBiosignal.consecutiveMismatchCount >= 3
+          ? 'CRITICAL'
+          : 'WARNING',
       title: '실시간 엔진 shadow 불일치',
       message: `메모리 ${shadowConsistency.realtimeBiosignal.memoryCount}건, shadow ${shadowConsistency.realtimeBiosignal.shadowCount}건으로 차이가 있습니다. gap=${realtimeGap}, 연속=${shadowTrend.realtimeBiosignal.consecutiveMismatchCount}`,
       timestamp: new Date().toISOString(),
@@ -672,7 +698,10 @@ async function getSystemAlerts() {
     const workflowGap = shadowConsistency.emergencyWorkflow.onlyInMemory.length + shadowConsistency.emergencyWorkflow.onlyInShadow.length;
     alerts.push({
       id: 'workflow_shadow_mismatch',
-      level: workflowGap >= 3 ? 'CRITICAL' : 'WARNING',
+      level:
+        workflowGap >= 3 || shadowTrend.emergencyWorkflow.consecutiveMismatchCount >= 3
+          ? 'CRITICAL'
+          : 'WARNING',
       title: '워크플로우 shadow 불일치',
       message: `메모리 ${shadowConsistency.emergencyWorkflow.memoryCount}건, shadow ${shadowConsistency.emergencyWorkflow.shadowCount}건으로 차이가 있습니다. gap=${workflowGap}, 연속=${shadowTrend.emergencyWorkflow.consecutiveMismatchCount}`,
       timestamp: new Date().toISOString(),
