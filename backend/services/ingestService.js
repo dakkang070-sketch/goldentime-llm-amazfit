@@ -3,15 +3,12 @@ const User = require('../models/User');
 const { analyzeBiometricAndMaybeOpenCase } = require('./analyzerService');
 const { emitBiometricDataUpdated } = require('./socketService');
 const { getIpLocationCache, setIpLocationCache } = require('./ipLocationCacheService');
+const {
+  setAmazfitWearEntry,
+  getAmazfitWearEntry,
+  setAmazfitLocationEntry,
+} = require('./ingestRuntimeCacheService');
 
-/**
- * 사용자별 최신 착용 상태를 임시 메모리로 유지해 탈착 판정에 재사용합니다.
- */
-const amazfitWearRef = new Map();
-/**
- * 사용자별 최신 위치 스냅샷을 임시 메모리로 유지해 위치 fallback 계산에 재사용합니다.
- */
-const amazfitLocationRef = new Map();
 const PHONE_LOCATION_MAX_AGE_MS = 2 * 60 * 1000;
 const CACHE_LOCATION_MAX_AGE_MS = 90 * 1000;
 const LAST_BIOMETRIC_LOCATION_MAX_AGE_MS = 2 * 60 * 1000;
@@ -328,7 +325,7 @@ async function resolveAmazfitLocation({ normalized, user, meta }) {
       timestamp: normalized.location?.timestamp || normalized.collectedAt,
     };
     // 워치에서 직접 들어온 유효 좌표는 가장 신뢰도가 높으므로 바로 채택합니다.
-    amazfitLocationRef.set(userKey, { location: watchLocation, atMs: nowMs });
+    await setAmazfitLocationEntry(userKey, { location: watchLocation, atMs: nowMs });
     return {
       location: watchLocation,
       meta: buildLocationMeta({
@@ -360,7 +357,7 @@ async function resolveAmazfitLocation({ normalized, user, meta }) {
       accuracy: typeof phoneLoc.accuracyM === 'number' ? phoneLoc.accuracyM : undefined,
       timestamp: new Date(phoneAtMs),
     };
-    amazfitLocationRef.set(userKey, { location, atMs: nowMs });
+    await setAmazfitLocationEntry(userKey, { location, atMs: nowMs });
     return {
       location,
       meta: buildLocationMeta({
@@ -547,14 +544,17 @@ async function ingestCommon(payload, meta, sourceLabel) {
 
   if (sourceLabel === 'amazfit' && typeof normalized.isWear === 'boolean') {
     // 워치가 직접 보낸 착용 여부는 다음 샘플의 보정 기준으로 짧게 메모리에 남깁니다.
-    amazfitWearRef.set(String(normalized.userId || ''), { isWear: normalized.isWear, atMs: Date.now() });
+    await setAmazfitWearEntry(String(normalized.userId || ''), {
+      isWear: normalized.isWear,
+      atMs: Date.now(),
+    });
   }
 
   if (sourceLabel === 'amazfit' && typeof normalized.isWear !== 'boolean') {
     const userKey = String(normalized.userId || '');
     const nowMs = Date.now();
     const hr = normalized.heartRate;
-    const last = amazfitWearRef.get(userKey);
+    const last = await getAmazfitWearEntry(userKey);
     const lastWearTrue =
       last && last.isWear === true && typeof last.atMs === 'number' && nowMs - last.atMs <= 8000;
 
