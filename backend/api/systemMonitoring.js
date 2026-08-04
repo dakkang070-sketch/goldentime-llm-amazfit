@@ -31,17 +31,24 @@ const emergencyWorkflowService = require('../services/emergencyWorkflowService')
  */
 router.get('/overview', cacheMiddleware(30), async (req, res) => {
   try {
+    const shadowConsistency = await getShadowConsistencySnapshot();
+    const realtimeShadowGap = shadowConsistency.realtimeBiosignal.onlyInMemory.length + shadowConsistency.realtimeBiosignal.onlyInShadow.length;
+    const workflowShadowGap = shadowConsistency.emergencyWorkflow.onlyInMemory.length + shadowConsistency.emergencyWorkflow.onlyInShadow.length;
+    const totalShadowGap = realtimeShadowGap + workflowShadowGap;
+    const shadowWarningCount =
+      Number(!shadowConsistency.realtimeBiosignal.consistent) +
+      Number(!shadowConsistency.emergencyWorkflow.consistent);
     const systemOverview = {
-      systemStatus: 'OPERATIONAL',
+      systemStatus: totalShadowGap > 0 ? 'DEGRADED' : 'OPERATIONAL',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       
       // 전체 시스템 건강도
       overallHealth: {
-        status: 'HEALTHY',
-        score: 96.2,
+        status: totalShadowGap > 0 ? 'WARNING' : 'HEALTHY',
+        score: Math.max(80, 96.2 - totalShadowGap),
         criticalAlerts: 0,
-        warningAlerts: 2
+        warningAlerts: 2 + shadowWarningCount
       },
 
       // 활성 응급 케이스
@@ -58,6 +65,17 @@ router.get('/overview', cacheMiddleware(30), async (req, res) => {
         hospitalConnections: 414,
         availableBeds: await getAvailableBedsCount(),
         activeParamedics: await getActiveParamedicsCount()
+      },
+
+      shadowMonitoring: {
+        status: totalShadowGap > 0 ? 'MISMATCH' : 'OK',
+        totalGap: totalShadowGap,
+        realtimeGap: realtimeShadowGap,
+        workflowGap: workflowShadowGap,
+        inconsistentScopes: [
+          !shadowConsistency.realtimeBiosignal.consistent ? 'realtime-biosignal' : null,
+          !shadowConsistency.emergencyWorkflow.consistent ? 'emergency-workflow' : null,
+        ].filter(Boolean),
       }
     };
 
@@ -636,21 +654,23 @@ async function getSystemAlerts() {
   }
 
   if (!shadowConsistency.realtimeBiosignal.consistent) {
+    const realtimeGap = shadowConsistency.realtimeBiosignal.onlyInMemory.length + shadowConsistency.realtimeBiosignal.onlyInShadow.length;
     alerts.push({
       id: 'realtime_shadow_mismatch',
-      level: 'WARNING',
+      level: realtimeGap >= 5 ? 'CRITICAL' : 'WARNING',
       title: '실시간 엔진 shadow 불일치',
-      message: `메모리 ${shadowConsistency.realtimeBiosignal.memoryCount}건, shadow ${shadowConsistency.realtimeBiosignal.shadowCount}건으로 차이가 있습니다.`,
+      message: `메모리 ${shadowConsistency.realtimeBiosignal.memoryCount}건, shadow ${shadowConsistency.realtimeBiosignal.shadowCount}건으로 차이가 있습니다. gap=${realtimeGap}`,
       timestamp: new Date().toISOString(),
     });
   }
 
   if (!shadowConsistency.emergencyWorkflow.consistent) {
+    const workflowGap = shadowConsistency.emergencyWorkflow.onlyInMemory.length + shadowConsistency.emergencyWorkflow.onlyInShadow.length;
     alerts.push({
       id: 'workflow_shadow_mismatch',
-      level: 'WARNING',
+      level: workflowGap >= 3 ? 'CRITICAL' : 'WARNING',
       title: '워크플로우 shadow 불일치',
-      message: `메모리 ${shadowConsistency.emergencyWorkflow.memoryCount}건, shadow ${shadowConsistency.emergencyWorkflow.shadowCount}건으로 차이가 있습니다.`,
+      message: `메모리 ${shadowConsistency.emergencyWorkflow.memoryCount}건, shadow ${shadowConsistency.emergencyWorkflow.shadowCount}건으로 차이가 있습니다. gap=${workflowGap}`,
       timestamp: new Date().toISOString(),
     });
   }
