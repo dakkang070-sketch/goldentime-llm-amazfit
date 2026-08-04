@@ -579,6 +579,7 @@ export const Members: React.FC = () => {
   }, {
     fallbackToAll: false,
     requireFullRegion: true,
+    exactOnly: true,
   });
   const isCreateRegionSelected = Boolean(createForm.city && createForm.district && createForm.dong);
 
