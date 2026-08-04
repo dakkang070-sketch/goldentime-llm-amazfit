@@ -10,6 +10,7 @@ import { Settings } from './pages/Settings';
 import { WelfareManagement } from './pages/WelfareManagement';
 import { Page } from './types';
 import { AdminSession, adminService } from './services/adminService';
+import { SystemOverview, systemMonitoringService } from './services/systemMonitoringService';
 
 /**
  * 관리자 앱의 현재 페이지와 사이드바 상태를 관리하는 최상위 컴포넌트입니다.
@@ -23,6 +24,7 @@ const App: React.FC = () => {
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [systemOverview, setSystemOverview] = useState<SystemOverview | null>(null);
 
   /**
    * 저장된 관리자 로그인 세션이 있으면 앱 진입 시 복구합니다.
@@ -30,6 +32,31 @@ const App: React.FC = () => {
   useEffect(() => {
     setAdminSession(adminService.getStoredSession());
   }, []);
+
+  useEffect(() => {
+    if (!adminSession?.token) return undefined;
+
+    let isMounted = true;
+
+    const loadSystemOverview = async () => {
+      try {
+        const overview = await systemMonitoringService.getOverview();
+        if (isMounted) {
+          setSystemOverview(overview);
+        }
+      } catch {
+        // shadow 배너는 부가 정보라 실패해도 관리자 기능을 막지 않습니다.
+      }
+    };
+
+    loadSystemOverview();
+    const intervalId = window.setInterval(loadSystemOverview, 10000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+    };
+  }, [adminSession?.token]);
 
   /**
    * 관리자 로그인 요청을 처리하고 세션을 저장합니다.
@@ -150,6 +177,20 @@ const App: React.FC = () => {
     return renderLoginScreen();
   }
 
+  const shadowMonitoring = systemOverview?.shadowMonitoring;
+  const shadowBannerToneClass =
+    shadowMonitoring?.bannerTone === 'danger'
+      ? 'border-red-200 bg-red-50 text-red-800'
+      : shadowMonitoring?.bannerTone === 'warning'
+        ? 'border-amber-200 bg-amber-50 text-amber-800'
+        : 'border-slate-200 bg-slate-50 text-slate-700';
+  const shadowPriorityLabel =
+    shadowMonitoring?.actionPriority === 'high'
+      ? '즉시 확인'
+      : shadowMonitoring?.actionPriority === 'medium'
+        ? '우선 점검'
+        : '관찰 유지';
+
   return (
     <div className="flex min-h-screen bg-slate-100">
       <Sidebar 
@@ -178,6 +219,41 @@ const App: React.FC = () => {
             로그아웃
           </button>
         </div>
+        {shadowMonitoring && (
+          <div className="border-b border-slate-200 bg-white px-6 py-4">
+            <div className={`rounded-2xl border px-5 py-4 shadow-sm ${shadowBannerToneClass}`}>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full border border-current/15 px-2.5 py-1 text-[11px] font-semibold tracking-[0.16em] uppercase">
+                      Shadow {shadowMonitoring.summaryLevel}
+                    </span>
+                    <span className="text-[11px] font-semibold tracking-[0.16em] uppercase opacity-80">
+                      {shadowPriorityLabel}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-[15px] font-semibold leading-6">
+                    {shadowMonitoring.summaryMessage}
+                  </p>
+                  <p className="mt-1 text-[13px] leading-5 opacity-90">
+                    {shadowMonitoring.recommendedAction}
+                  </p>
+                </div>
+                <div className="flex shrink-0 gap-2 text-[12px] font-semibold">
+                  <span className="rounded-full border border-current/15 px-3 py-1.5">
+                    전체 gap {shadowMonitoring.totalGap}
+                  </span>
+                  <span className="rounded-full border border-current/15 px-3 py-1.5">
+                    실시간 {shadowMonitoring.realtimeGap}
+                  </span>
+                  <span className="rounded-full border border-current/15 px-3 py-1.5">
+                    워크플로우 {shadowMonitoring.workflowGap}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="min-h-0 flex-1 overflow-hidden">
           {renderContent()}
         </div>
