@@ -49,6 +49,65 @@ export interface SystemOverview {
 }
 
 /**
+ * shadow consistency 상세 응답에서 공통으로 쓰는 요약 구조입니다.
+ */
+export interface ShadowConsistencySummary {
+  status: "OK" | "MISMATCH";
+  totalGap: number;
+  selectedScopes: string[];
+  inconsistentScopes: string[];
+  summaryLevel: "info" | "warning" | "critical";
+  bannerTone: "neutral" | "warning" | "danger";
+  actionPriority: "low" | "medium" | "high";
+  summaryMessage: string;
+  recommendedAction: string;
+  realtimeTrend: {
+    totalMismatchCount: number;
+    consecutiveMismatchCount: number;
+    lastMismatchAt: string | null;
+    lastResolvedAt?: string | null;
+    currentGap: number;
+    status: "OK" | "MISMATCH";
+  };
+  workflowTrend: {
+    totalMismatchCount: number;
+    consecutiveMismatchCount: number;
+    lastMismatchAt: string | null;
+    lastResolvedAt?: string | null;
+    currentGap: number;
+    status: "OK" | "MISMATCH";
+  };
+}
+
+/**
+ * shadow consistency 보호 API 응답 전체 구조입니다.
+ */
+export interface ShadowConsistencyResponse {
+  scope: "all" | "realtime-biosignal" | "emergency-workflow" | string;
+  summary: ShadowConsistencySummary;
+  trend: {
+    realtimeBiosignal: ShadowConsistencySummary["realtimeTrend"];
+    emergencyWorkflow: ShadowConsistencySummary["workflowTrend"];
+  };
+  snapshot: {
+    realtimeBiosignal?: {
+      memoryCount: number;
+      shadowCount: number;
+      consistent: boolean;
+      onlyInMemory: string[];
+      onlyInShadow: string[];
+    };
+    emergencyWorkflow?: {
+      memoryCount: number;
+      shadowCount: number;
+      consistent: boolean;
+      onlyInMemory: string[];
+      onlyInShadow: string[];
+    };
+  };
+}
+
+/**
  * 개별 모니터링 엔진의 연결/활동 상태와 메트릭 구조입니다.
  */
 export interface SystemEngine {
@@ -142,6 +201,21 @@ export interface AlertSummary {
  */
 class SystemMonitoringService {
   /**
+   * 보호된 모니터링 API 호출에 사용할 인증 헤더를 구성합니다.
+   */
+  private buildAuthHeaders(): HeadersInit | undefined {
+    const token =
+      typeof window !== "undefined" ? window.localStorage.getItem("token") || "" : "";
+    if (!token) {
+      return undefined;
+    }
+
+    return {
+      Authorization: `Bearer ${token}`,
+    };
+  }
+
+  /**
    * 대시보드 상단에 표시할 시스템 전체 개요를 조회합니다.
    */
   async getSystemOverview(): Promise<SystemOverview> {
@@ -192,6 +266,26 @@ class SystemMonitoringService {
     );
     if (!response.ok) {
       throw new Error("Failed to fetch system alerts");
+    }
+    const data = await response.json();
+    return data.data;
+  }
+
+  /**
+   * 보호된 shadow consistency 상세 요약을 조회합니다.
+   */
+  async getShadowConsistency(
+    scope?: "realtime-biosignal" | "emergency-workflow",
+  ): Promise<ShadowConsistencyResponse> {
+    const search = scope ? `?scope=${encodeURIComponent(scope)}` : "";
+    const response = await fetch(
+      `${API_BASE_URL}/api/system-monitoring/shadow-consistency${search}`,
+      {
+        headers: this.buildAuthHeaders(),
+      },
+    );
+    if (!response.ok) {
+      throw new Error("Failed to fetch shadow consistency");
     }
     const data = await response.json();
     return data.data;
