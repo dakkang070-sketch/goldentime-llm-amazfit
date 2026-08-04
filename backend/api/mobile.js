@@ -2674,6 +2674,7 @@ router.post('/biometric', authenticateToken, requireActiveEmergencyUser, async (
     });
 
     await biometricData.save();
+    invalidateCache(`^cache:/api/mobile/biometric/recent:[^:]+:${req.user.sub}:`);
 
     // 워치 탈착(Watch Removed) 응급 케이스 자동 해제는 “착용 확인(isWear=true)”가 있을 때만 처리
     try {
@@ -2693,6 +2694,7 @@ router.post('/biometric', authenticateToken, requireActiveEmergencyUser, async (
           activeWatchRemoved.cancelledAt = new Date(timestamp);
           activeWatchRemoved.cancelledReason = 'watch_worn_again';
           await activeWatchRemoved.save();
+          invalidateCache(`^cache:/api/mobile/emergency/history:[^:]+:${req.user.sub}:`);
           emitCaseStatusUpdated(String(activeWatchRemoved._id), 'cancelled', { userId: String(req.user.sub) });
         }
       }
@@ -2802,6 +2804,7 @@ router.post('/biometric', authenticateToken, requireActiveEmergencyUser, async (
         });
 
         await emergencyCase.save();
+        invalidateCache(`^cache:/api/mobile/emergency/history:[^:]+:${req.user.sub}:`);
 
         // 자동 매칭 시작
         autoMatchParamedicForCase(emergencyCase._id);
@@ -2934,6 +2937,7 @@ router.post('/emergency', authenticateToken, requireActiveEmergencyUser, async (
     });
 
     await emergencyCase.save();
+    invalidateCache(`^cache:/api/mobile/emergency/history:[^:]+:${req.user.sub}:`);
 
     // 자동 매칭 시작
     autoMatchParamedicForCase(emergencyCase._id);
@@ -3191,6 +3195,7 @@ router.post('/biometric-event', async (req, res) => {
     // #endregion
 
     await doc.save();
+    invalidateCache(`^cache:/api/mobile/biometric/recent:[^:]+:${user._id}:`);
     // #region debug-point A:biometric-dummy-map-event-saved
     (()=>{const fs=require('fs');let _u='http://127.0.0.1:7777/event',_s='biometric-dummy-map';try{const e=fs.readFileSync('.dbg/biometric-dummy-map.env','utf8');_u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||_u;_s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||_s}catch{}fetch(_u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:_s,runId:'pre-fix',hypothesisId:'A',location:'backend/api/mobile.js:1907',msg:'[DEBUG] biometric-event saved for member/control',data:{userId:String(user?._id||''),name:user?.name||null,mac:String(mac||''),collectedAt:doc?.collectedAt instanceof Date?doc.collectedAt.toISOString():doc?.collectedAt||null,heartRate:typeof doc?.heartRate==='number'?doc.heartRate:null,spO2:typeof doc?.spO2==='number'?doc.spO2:null,bodyTemperature:typeof doc?.bodyTemperature==='number'?doc.bodyTemperature:null,steps:typeof doc?.steps==='number'?doc.steps:null,isWear:typeof rawData?.isWear==='boolean'?rawData.isWear:null},ts:Date.now()})}).catch(()=>{});})();
     // #endregion
@@ -3253,6 +3258,7 @@ router.post('/biometric-event', async (req, res) => {
     });
 
     await analyzeBiometricAndMaybeOpenCase({ user, biometricDoc: doc });
+    invalidateCache(`^cache:/api/mobile/emergency/history:[^:]+:${user._id}:`);
 
     res.status(201).json({
       success: true,
@@ -3882,6 +3888,7 @@ router.post('/emergency-event', async (req, res) => {
       model: 'rule-based',
     };
     await emergencyCase.save();
+    invalidateCache(`^cache:/api/mobile/emergency/history:[^:]+:${user._id}:`);
 
     emitEmergencyCaseCreated({
       caseId: emergencyCase._id,
@@ -3957,6 +3964,7 @@ router.post('/emergency-resolve', async (req, res) => {
     active.cancelledAt = timestamp ? new Date(timestamp) : new Date();
     active.cancelledReason = String(reason || 'resolved_by_user');
     await active.save();
+    invalidateCache(`^cache:/api/mobile/emergency/history:[^:]+:${user._id}:`);
 
     emitCaseStatusUpdated(String(active._id), 'cancelled', { userId: String(user._id) });
 
@@ -4006,7 +4014,16 @@ router.post('/emergency-resolve', async (req, res) => {
 /**
  * 사용자의 응급 상황 이력을 상태별로 조회합니다.
  */
-router.get('/emergency/history', authenticateToken, requireReadableEmergencyUserOrGuardian, async (req, res) => {
+router.get(
+  '/emergency/history',
+  authenticateToken,
+  requireReadableEmergencyUserOrGuardian,
+  cacheMiddleware({
+    ttlSeconds: 20,
+    keyBuilder: async (req) =>
+      `cache:/api/mobile/emergency/history:${req.user?.role || 'user'}:${req.user?.sub || 'anonymous'}:${JSON.stringify(req.query || {})}`,
+  }),
+  async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 20;
     const status = req.query.status;
@@ -4074,7 +4091,16 @@ router.get('/emergency/history', authenticateToken, requireReadableEmergencyUser
 /**
  * 최근 수집된 생체 데이터 목록을 시간 범위 기준으로 조회합니다.
  */
-router.get('/biometric/recent', authenticateToken, requireReadableEmergencyUserOrGuardian, async (req, res) => {
+router.get(
+  '/biometric/recent',
+  authenticateToken,
+  requireReadableEmergencyUserOrGuardian,
+  cacheMiddleware({
+    ttlSeconds: 15,
+    keyBuilder: async (req) =>
+      `cache:/api/mobile/biometric/recent:${req.user?.role || 'user'}:${req.user?.sub || 'anonymous'}:${JSON.stringify(req.query || {})}`,
+  }),
+  async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 50;
     const hours = parseInt(req.query.hours) || 24;
