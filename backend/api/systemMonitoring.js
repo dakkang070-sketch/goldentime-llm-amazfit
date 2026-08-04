@@ -4,8 +4,12 @@
  */
 
 const express = require('express');
+/**
+ * 시스템 개요, 엔진, 성능, 알림 엔드포인트를 묶는 Express 라우터입니다.
+ */
 const router = express.Router();
 const logger = require('../utils/logger');
+const { cacheMiddleware } = require('../middleware/cache');
 
 /**
  * @swagger
@@ -17,7 +21,10 @@ const logger = require('../utils/logger');
  *       200:
  *         description: 시스템 전체 상태 정보
  */
-router.get('/overview', async (req, res) => {
+/**
+ * 대시보드 상단에 필요한 전체 시스템 개요와 핵심 지표를 반환합니다.
+ */
+router.get('/overview', cacheMiddleware(30), async (req, res) => {
   try {
     const systemOverview = {
       systemStatus: 'OPERATIONAL',
@@ -74,8 +81,12 @@ router.get('/overview', async (req, res) => {
  *       200:
  *         description: 14개 핵심 시스템 상태
  */
-router.get('/engines', async (req, res) => {
+/**
+ * 주요 엔진별 현재 상태와 대표 메트릭을 한 번에 집계합니다.
+ */
+router.get('/engines', cacheMiddleware(30), async (req, res) => {
   try {
+    // 대시보드 카드가 바로 렌더링할 수 있게 엔진별 메트릭을 동일 스키마로 맞춰 한 배열로 묶습니다.
     const engines = [
       {
         id: 'biosignal_engine',
@@ -288,7 +299,10 @@ router.get('/engines', async (req, res) => {
  *       200:
  *         description: 시스템 성능 메트릭
  */
-router.get('/performance', async (req, res) => {
+/**
+ * API, 시스템 자원, DB, 외부 API 성능 지표를 묶어서 반환합니다.
+ */
+router.get('/performance', cacheMiddleware(15), async (req, res) => {
   try {
     const performance = {
       // API 성능
@@ -315,6 +329,7 @@ router.get('/performance', async (req, res) => {
         cacheHitRate: '89.3%'
       },
 
+      // 외부 연동은 실측 지표와 설정 기반 상태 값을 함께 보여 운영 판단 속도를 높입니다.
       // 외부 API 성능
       externalAPIs: {
         nedcAPI: {
@@ -357,7 +372,10 @@ router.get('/performance', async (req, res) => {
  *       200:
  *         description: 활성 알림 목록
  */
-router.get('/alerts', async (req, res) => {
+/**
+ * 현재 시스템 운영 상태에서 발생한 경고/장애 알림을 집계합니다.
+ */
+router.get('/alerts', cacheMiddleware(15), async (req, res) => {
   try {
     const alerts = await getSystemAlerts();
     
@@ -383,7 +401,9 @@ router.get('/alerts', async (req, res) => {
   }
 });
 
-// 헬퍼 함수들 (실제 구현은 각 서비스에서 가져오기)
+/**
+ * 현재 진행 중인 응급 케이스 수를 조회합니다.
+ */
 async function getActiveCasesCount() {
   try {
     const EmergencyCase = require('../models/EmergencyCase');
@@ -395,6 +415,9 @@ async function getActiveCasesCount() {
   }
 }
 
+/**
+ * 현재 처리 중인 고위험 응급 케이스 수를 조회합니다.
+ */
 async function getCriticalCasesCount() {
   try {
     const EmergencyCase = require('../models/EmergencyCase');
@@ -407,6 +430,9 @@ async function getCriticalCasesCount() {
   }
 }
 
+/**
+ * 오늘 생성된 응급 케이스 총수를 조회합니다.
+ */
 async function getTodayCasesCount() {
   try {
     const EmergencyCase = require('../models/EmergencyCase');
@@ -420,7 +446,11 @@ async function getTodayCasesCount() {
   }
 }
 
+/**
+ * 실시간 병상 데이터에서 현재 가용 병상 수를 합산합니다.
+ */
 async function getAvailableBedsCount() {
+  // 모니터링 대시보드는 실시간성보다 안정성이 중요해 캐시된 병상 합계를 우선 사용합니다.
   // NEDC API 캐시에서 가져오기
   try {
     const nedcApiService = require('../services/nedcApiService');
@@ -431,6 +461,9 @@ async function getAvailableBedsCount() {
   }
 }
 
+/**
+ * 현재 가용 상태인 응급구조사 수를 조회합니다.
+ */
 async function getActiveParamedicsCount() {
   try {
     const Paramedic = require('../models/Paramedic');
@@ -440,30 +473,50 @@ async function getActiveParamedicsCount() {
   }
 }
 
+/**
+ * 실시간 생체신호 엔진 활성화 여부를 환경변수로 판단합니다.
+ */
 function checkBiosignalEngine() {
   return process.env.ENABLE_REALTIME_BIOSIGNAL === 'true' ? 'ACTIVE' : 'DISABLED';
 }
 
+/**
+ * 자동 학습 시스템 활성화 여부를 환경변수로 판단합니다.
+ */
 function checkAutoLearningSystem() {
   return process.env.ENABLE_AUTO_LEARNING === 'true' ? 'ACTIVE' : 'DISABLED';
 }
 
+/**
+ * NEDC 서비스 키 유효성으로 연동 가능 여부를 판단합니다.
+ */
 function checkNEDCConnection() {
-  return !!process.env.NEDC_API_SERVICE_KEY;
+  const { hasUsableServiceKey } = require('../utils/serviceKeyUtils');
+  return hasUsableServiceKey(process.env.NEDC_API_SERVICE_KEY);
 }
 
+/**
+ * Ollama 연결 사용 설정 여부를 간단히 확인합니다.
+ */
 function checkOllamaConnection() {
   return process.env.OLLAMA_ENABLED === 'true';
 }
 
+/**
+ * NEDC 마지막 갱신 시각 표시용 값을 생성합니다.
+ */
 function getLastNEDCUpdate() {
   // 캐시에서 마지막 업데이트 시간 가져오기
   return new Date(Date.now() - 2 * 60 * 1000).toISOString(); // 2분 전
 }
 
+/**
+ * 현재 운영 상태를 기반으로 시스템 알림 목록을 구성합니다.
+ */
 async function getSystemAlerts() {
   const alerts = [];
   
+  // 현재는 핵심 장애 신호만 간단 규칙으로 만들고, 나머지 알림은 이후 확장 지점으로 둡니다.
   // 예시 알림들
   if (!checkNEDCConnection()) {
     alerts.push({
@@ -489,42 +542,142 @@ async function getSystemAlerts() {
   return alerts;
 }
 
-// 나머지 헬퍼 함수들 (간단한 mock 데이터로 구현)
+/**
+ * 나머지 모니터링 지표는 현재 mock 값으로 응답합니다.
+ */
 async function getActiveStreamsCount() { return 12; }
+/**
+ * `getTodayEmergencyDetections` 기능을 수행합니다.
+ */
 async function getTodayEmergencyDetections() { return 8; }
+/**
+ * `getTrainingStatus` 기능을 수행합니다.
+ */
 async function getTrainingStatus() { return 'COMPLETED'; }
+/**
+ * `getDatasetSize` 기능을 수행합니다.
+ */
 async function getDatasetSize() { return 15247; }
+/**
+ * `getLastTrainingTime` 기능을 수행합니다.
+ */
 async function getLastTrainingTime() { return new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(); }
+/**
+ * `getActiveWorkflowsCount` 기능을 수행합니다.
+ */
 async function getActiveWorkflowsCount() { return 3; }
+/**
+ * `getTodayEscalations` 기능을 수행합니다.
+ */
 async function getTodayEscalations() { return 1; }
+/**
+ * `getTodayProcessedCases` 기능을 수행합니다.
+ */
 async function getTodayProcessedCases() { return 89; }
+/**
+ * `getAvgRiskScore` 기능을 수행합니다.
+ */
 async function getAvgRiskScore() { return 3.2; }
+/**
+ * `getLabeledDataCount` 기능을 수행합니다.
+ */
 async function getLabeledDataCount() { return 12456; }
+/**
+ * `getPendingLabelsCount` 기능을 수행합니다.
+ */
 async function getPendingLabelsCount() { return 23; }
+/**
+ * `getActiveTasks` 기능을 수행합니다.
+ */
 async function getActiveTasks() { return 5; }
+/**
+ * `getTodayFeedbackCount` 기능을 수행합니다.
+ */
 async function getTodayFeedbackCount() { return 34; }
+/**
+ * `getAvgSentiment` 기능을 수행합니다.
+ */
 async function getAvgSentiment() { return 'POSITIVE'; }
+/**
+ * `getHighPriorityCount` 기능을 수행합니다.
+ */
 async function getHighPriorityCount() { return 3; }
+/**
+ * `getTrackedParamedicsCount` 기능을 수행합니다.
+ */
 async function getTrackedParamedicsCount() { return 18; }
+/**
+ * `getTodayLocationUpdates` 기능을 수행합니다.
+ */
 async function getTodayLocationUpdates() { return 2847; }
+/**
+ * `getAvailableParamedicsCount` 기능을 수행합니다.
+ */
 async function getAvailableParamedicsCount() { return 45; }
+/**
+ * `getResourceAlerts` 기능을 수행합니다.
+ */
 async function getResourceAlerts() { return 0; }
+/**
+ * `getRouteCalculationsRate` 기능을 수행합니다.
+ */
 async function getRouteCalculationsRate() { return 127; }
+/**
+ * `getAlternativeRoutesCount` 기능을 수행합니다.
+ */
 async function getAlternativeRoutesCount() { return 89; }
+/**
+ * `getTodayNotificationCount` 기능을 수행합니다.
+ */
 async function getTodayNotificationCount() { return 456; }
+/**
+ * `getTodayMessagesCount` 기능을 수행합니다.
+ */
 async function getTodayMessagesCount() { return 1247; }
+/**
+ * `getConnectedClientsCount` 기능을 수행합니다.
+ */
 async function getConnectedClientsCount() { return 23; }
+/**
+ * `getCacheItemsCount` 기능을 수행합니다.
+ */
 async function getCacheItemsCount() { return 1895; }
+/**
+ * `getExpiredCacheCount` 기능을 수행합니다.
+ */
 async function getExpiredCacheCount() { return 156; }
+/**
+ * `getAvgResponseTime` 기능을 수행합니다.
+ */
 async function getAvgResponseTime() { return '180ms'; }
+/**
+ * `getAPIThroughput` 기능을 수행합니다.
+ */
 async function getAPIThroughput() { return '450 req/min'; }
+/**
+ * `getAPIErrorRate` 기능을 수행합니다.
+ */
 async function getAPIErrorRate() { return '0.3%'; }
+/**
+ * `getActiveRequestsCount` 기능을 수행합니다.
+ */
 async function getActiveRequestsCount() { return 12; }
+/**
+ * `checkDBConnection` 기능을 수행합니다.
+ */
 async function checkDBConnection() { return 'CONNECTED'; }
+/**
+ * `getAvgQueryTime` 기능을 수행합니다.
+ */
 async function getAvgQueryTime() { return '45ms'; }
+/**
+ * `getActiveDBConnections` 기능을 수행합니다.
+ */
 async function getActiveDBConnections() { return 8; }
 
-// HIRA API 관련 헬퍼 함수들
+/**
+ * HIRA 캐시와 스케줄러 상태를 바탕으로 HIRA 연동 상태를 반환합니다.
+ */
 async function checkHiraApiStatus() {
   try {
     const hiraApiService = require('../services/hiraApiService');
@@ -535,6 +688,9 @@ async function checkHiraApiStatus() {
   }
 }
 
+/**
+ * HIRA 병원 캐시의 유효/전체 개수 요약 문자열을 반환합니다.
+ */
 async function getHiraCacheStatus() {
   try {
     const hiraApiService = require('../services/hiraApiService');
@@ -545,6 +701,9 @@ async function getHiraCacheStatus() {
   }
 }
 
+/**
+ * HIRA 캐시 기준 다음 갱신 예정 시점을 사람이 읽기 쉬운 문자열로 반환합니다.
+ */
 async function getHiraLastUpdate() {
   try {
     const hiraApiService = require('../services/hiraApiService');
@@ -559,6 +718,9 @@ async function getHiraLastUpdate() {
   }
 }
 
+/**
+ * 현재 유효한 HIRA 캐시 병원 수를 반환합니다.
+ */
 async function getHiraCachedHospitalsCount() {
   try {
     const hiraApiService = require('../services/hiraApiService');
@@ -569,4 +731,7 @@ async function getHiraCachedHospitalsCount() {
   }
 }
 
+/**
+ * 시스템 모니터링 API 라우터를 외부 앱 서버에 등록할 수 있도록 export 합니다.
+ */
 module.exports = router;
