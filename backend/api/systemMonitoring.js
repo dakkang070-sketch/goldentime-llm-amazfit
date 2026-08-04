@@ -91,18 +91,24 @@ router.get('/overview', cacheMiddleware(30), async (req, res) => {
  */
 router.get('/engines', cacheMiddleware(30), async (req, res) => {
   try {
+    const shadowConsistency = await getShadowConsistencySnapshot();
     // 대시보드 카드가 바로 렌더링할 수 있게 엔진별 메트릭을 동일 스키마로 맞춰 한 배열로 묶습니다.
     const engines = [
       {
         id: 'biosignal_engine',
         name: '실시간 생체신호 분석 엔진',
-        status: checkBiosignalEngine(),
+        status:
+          checkBiosignalEngine() === 'ACTIVE' && !shadowConsistency.realtimeBiosignal.consistent
+            ? 'WARNING'
+            : checkBiosignalEngine(),
         icon: 'heartbeat',
         metrics: {
           activeStreams: await getActiveStreamsCount(),
           emergencyDetections: await getTodayEmergencyDetections(),
           signalQuality: '94.8%',
-          processingLatency: '45ms'
+          processingLatency: '45ms',
+          shadowConsistency: shadowConsistency.realtimeBiosignal.consistent ? 'OK' : 'MISMATCH',
+          shadowGap: shadowConsistency.realtimeBiosignal.onlyInMemory.length + shadowConsistency.realtimeBiosignal.onlyInShadow.length,
         }
       },
       {
@@ -120,13 +126,15 @@ router.get('/engines', cacheMiddleware(30), async (req, res) => {
       {
         id: 'emergency_workflow',
         name: '응급 대응 워크플로우',
-        status: 'ACTIVE',
+        status: shadowConsistency.emergencyWorkflow.consistent ? 'ACTIVE' : 'WARNING',
         icon: 'workflow',
         metrics: {
           activeWorkflows: await getActiveWorkflowsCount(),
           slaCompliance: '98.5%',
           avgResponseTime: '4.2분',
-          escalations: await getTodayEscalations()
+          escalations: await getTodayEscalations(),
+          shadowConsistency: shadowConsistency.emergencyWorkflow.consistent ? 'OK' : 'MISMATCH',
+          shadowGap: shadowConsistency.emergencyWorkflow.onlyInMemory.length + shadowConsistency.emergencyWorkflow.onlyInShadow.length,
         }
       },
       {
@@ -470,45 +478,11 @@ router.get(
   cacheMiddleware(10),
   async (req, res) => {
     try {
-      const realtimeShadowItems = await listShadowStates('realtime-biosignal', 500);
-      const workflowShadowItems = await listShadowStates('emergency-workflow', 500);
-
-      const memoryRealtimeIds = Array.from(realtimeBiosignalEngine.activeStreams.keys()).map(String).sort();
-      const shadowRealtimeIds = realtimeShadowItems
-        .filter((item) => item?.value?.active !== false)
-        .map((item) => String(item.entityId))
-        .sort();
-
-      const memoryWorkflowIds = Array.from(emergencyWorkflowService.activeWorkflows.keys()).map(String).sort();
-      const shadowWorkflowIds = workflowShadowItems
-        .map((item) => String(item.entityId))
-        .sort();
-
-      const onlyInMemoryRealtime = memoryRealtimeIds.filter((id) => !shadowRealtimeIds.includes(id));
-      const onlyInShadowRealtime = shadowRealtimeIds.filter((id) => !memoryRealtimeIds.includes(id));
-      const onlyInMemoryWorkflow = memoryWorkflowIds.filter((id) => !shadowWorkflowIds.includes(id));
-      const onlyInShadowWorkflow = shadowWorkflowIds.filter((id) => !memoryWorkflowIds.includes(id));
+      const snapshot = await getShadowConsistencySnapshot();
 
       return res.json({
         success: true,
-        data: {
-          realtimeBiosignal: {
-            memoryCount: memoryRealtimeIds.length,
-            shadowCount: shadowRealtimeIds.length,
-            consistent: onlyInMemoryRealtime.length === 0 && onlyInShadowRealtime.length === 0,
-            onlyInMemory: onlyInMemoryRealtime,
-            onlyInShadow: onlyInShadowRealtime,
-            performance: realtimeBiosignalEngine.getPerformanceMetrics(),
-          },
-          emergencyWorkflow: {
-            memoryCount: memoryWorkflowIds.length,
-            shadowCount: shadowWorkflowIds.length,
-            consistent: onlyInMemoryWorkflow.length === 0 && onlyInShadowWorkflow.length === 0,
-            onlyInMemory: onlyInMemoryWorkflow,
-            onlyInShadow: onlyInShadowWorkflow,
-            pendingSlaCount: emergencyWorkflowService.slaTimeouts.size,
-          },
-        },
+        data: snapshot,
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
@@ -636,6 +610,7 @@ function getLastNEDCUpdate() {
  */
 async function getSystemAlerts() {
   const alerts = [];
+  const shadowConsistency = await getShadowConsistencySnapshot();
   
   // 현재는 핵심 장애 신호만 간단 규칙으로 만들고, 나머지 알림은 이후 확장 지점으로 둡니다.
   // 예시 알림들
@@ -659,8 +634,71 @@ async function getSystemAlerts() {
       timestamp: new Date().toISOString()
     });
   }
+
+  if (!shadowConsistency.realtimeBiosignal.consistent) {
+    alerts.push({
+      id: 'realtime_shadow_mismatch',
+      level: 'WARNING',
+      title: '실시간 엔진 shadow 불일치',
+      message: `메모리 ${shadowConsistency.realtimeBiosignal.memoryCount}건, shadow ${shadowConsistency.realtimeBiosignal.shadowCount}건으로 차이가 있습니다.`,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  if (!shadowConsistency.emergencyWorkflow.consistent) {
+    alerts.push({
+      id: 'workflow_shadow_mismatch',
+      level: 'WARNING',
+      title: '워크플로우 shadow 불일치',
+      message: `메모리 ${shadowConsistency.emergencyWorkflow.memoryCount}건, shadow ${shadowConsistency.emergencyWorkflow.shadowCount}건으로 차이가 있습니다.`,
+      timestamp: new Date().toISOString(),
+    });
+  }
   
   return alerts;
+}
+
+/**
+ * 메모리 상태와 shadow 상태의 일치 여부를 한 번에 계산합니다.
+ */
+async function getShadowConsistencySnapshot() {
+  const realtimeShadowItems = await listShadowStates('realtime-biosignal', 500);
+  const workflowShadowItems = await listShadowStates('emergency-workflow', 500);
+
+  const memoryRealtimeIds = Array.from(realtimeBiosignalEngine.activeStreams.keys()).map(String).sort();
+  const shadowRealtimeIds = realtimeShadowItems
+    .filter((item) => item?.value?.active !== false)
+    .map((item) => String(item.entityId))
+    .sort();
+
+  const memoryWorkflowIds = Array.from(emergencyWorkflowService.activeWorkflows.keys()).map(String).sort();
+  const shadowWorkflowIds = workflowShadowItems
+    .map((item) => String(item.entityId))
+    .sort();
+
+  const onlyInMemoryRealtime = memoryRealtimeIds.filter((id) => !shadowRealtimeIds.includes(id));
+  const onlyInShadowRealtime = shadowRealtimeIds.filter((id) => !memoryRealtimeIds.includes(id));
+  const onlyInMemoryWorkflow = memoryWorkflowIds.filter((id) => !shadowWorkflowIds.includes(id));
+  const onlyInShadowWorkflow = shadowWorkflowIds.filter((id) => !memoryWorkflowIds.includes(id));
+
+  return {
+    realtimeBiosignal: {
+      memoryCount: memoryRealtimeIds.length,
+      shadowCount: shadowRealtimeIds.length,
+      consistent: onlyInMemoryRealtime.length === 0 && onlyInShadowRealtime.length === 0,
+      onlyInMemory: onlyInMemoryRealtime,
+      onlyInShadow: onlyInShadowRealtime,
+      performance: realtimeBiosignalEngine.getPerformanceMetrics(),
+    },
+    emergencyWorkflow: {
+      memoryCount: memoryWorkflowIds.length,
+      shadowCount: shadowWorkflowIds.length,
+      consistent: onlyInMemoryWorkflow.length === 0 && onlyInShadowWorkflow.length === 0,
+      onlyInMemory: onlyInMemoryWorkflow,
+      onlyInShadow: onlyInShadowWorkflow,
+      pendingSlaCount: emergencyWorkflowService.slaTimeouts.size,
+    },
+  };
 }
 
 /**
