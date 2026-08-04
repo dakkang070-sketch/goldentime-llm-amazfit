@@ -20,8 +20,15 @@ const { calculateOptimalRoute } = require("./routeService");
 const medicalWeightingService = require("./medicalWeightingService");
 const cron = require("node-cron");
 const logger = require("../utils/logger");
+const { setShadowState } = require("./shadowStateCacheService");
 
+/**
+ * 응급 케이스별 대응 상태 전이를 자동으로 관리하는 워크플로우 서비스 클래스입니다.
+ */
 class EmergencyWorkflowService {
+  /**
+   * 인스턴스를 초기화합니다.
+   */
   constructor() {
     this.activeWorkflows = new Map(); // 진행 중인 워크플로우 추적
     this.slaTimeouts = new Map(); // SLA 타임아웃 관리
@@ -56,7 +63,38 @@ class EmergencyWorkflowService {
   }
 
   /**
-   * 응급 워크플로우 시작 (메인 엔트리 포인트)
+   * 워크플로우 메모리 상태를 공용 캐시에 남길 수 있는 직렬화 가능한 요약본으로 변환합니다.
+   */
+  async shadowWriteWorkflowState(emergencyCaseId, extra = {}) {
+    const workflow = this.activeWorkflows.get(emergencyCaseId);
+    if (!workflow) return;
+
+    const slaTimers = this.slaTimeouts.get(emergencyCaseId) || {};
+    await setShadowState("emergency-workflow", emergencyCaseId, {
+      caseId: emergencyCaseId,
+      state: workflow.state,
+      startTime: workflow.startTime instanceof Date ? workflow.startTime.toISOString() : workflow.startTime,
+      endTime: workflow.endTime instanceof Date ? workflow.endTime.toISOString() : workflow.endTime,
+      updatedAt: new Date().toISOString(),
+      escalationLevel: workflow.escalationLevel,
+      timelineLength: Array.isArray(workflow.timeline) ? workflow.timeline.length : 0,
+      lastTimelineEvent: Array.isArray(workflow.timeline) && workflow.timeline.length > 0
+        ? workflow.timeline[workflow.timeline.length - 1]
+        : null,
+      resources: {
+        paramedic: workflow.resources?.paramedic || null,
+        hospital: workflow.resources?.hospital || null,
+        ambulance: workflow.resources?.ambulance || null,
+        hasRoute: Boolean(workflow.resources?.route),
+      },
+      slaStatus: workflow.slaStatus,
+      activeSlaTypes: Object.keys(slaTimers),
+      ...extra,
+    }, 6 * 60 * 60);
+  }
+
+  /**
+   * 응급 대응 워크플로우를 초기화하고 첫 단계인 구조사 매칭으로 진입시킵니다.
    */
   async initiateEmergencyWorkflow(emergencyCaseId, options = {}) {
     try {
@@ -83,6 +121,7 @@ class EmergencyWorkflowService {
       };
 
       this.activeWorkflows.set(emergencyCaseId, workflow);
+      await this.shadowWriteWorkflowState(emergencyCaseId, { phase: "initiated" });
 
       // 타임라인 기록
       this.addTimelineEvent(
@@ -111,7 +150,7 @@ class EmergencyWorkflowService {
   }
 
   /**
-   * 1단계: 응급구조사 매칭 및 배정
+   * 응급구조사 자동 매칭을 실행하고 성공 시 출동 상태로 전환합니다.
    */
   async executeParamedicMatching(emergencyCaseId) {
     const workflow = this.activeWorkflows.get(emergencyCaseId);
@@ -153,10 +192,10 @@ class EmergencyWorkflowService {
           message: "응급구조사가 출동 중입니다.",
         });
 
-        // 2단계: 현장 도착 모니터링 시작
+        // 구조사 출동 감시는 바로 시작하고,
         await this.monitorParamedicResponse(emergencyCaseId);
 
-        // 3단계: 병원 매칭 병렬 시작
+        // 병원 매칭은 별도 비동기로 병렬 시작해 현장 이동과 동시에 진행합니다.
         setImmediate(() => this.executeHospitalMatching(emergencyCaseId));
       } else {
         // 매칭 실패 시 즉시 에스컬레이션
@@ -169,7 +208,7 @@ class EmergencyWorkflowService {
   }
 
   /**
-   * 2단계: 응급구조사 현장 대응 모니터링
+   * 출동한 응급구조사의 현장 도착까지 위치 추적과 SLA 감시를 수행합니다.
    */
   async monitorParamedicResponse(emergencyCaseId) {
     const workflow = this.activeWorkflows.get(emergencyCaseId);
@@ -199,7 +238,7 @@ class EmergencyWorkflowService {
   }
 
   /**
-   * 3단계: 병원 매칭 및 사전 통보
+   * 환자 상태를 기준으로 병원을 매칭하고 사전 통보 및 경로 계산을 시작합니다.
    */
   async executeHospitalMatching(emergencyCaseId) {
     const workflow = this.activeWorkflows.get(emergencyCaseId);
@@ -242,6 +281,7 @@ class EmergencyWorkflowService {
 
       const hospitalMatch = await autoMatchHospitalForCase(emergencyCaseId, {
         specialties: specialtyRequirements,
+        // 중증도나 의료 위험 점수가 높으면 거리보다 빠른 수용 가능성을 더 우선합니다.
         prioritizeDistance:
           emergencyCase.emergencyLevel >= 4 || riskScore.totalScore >= 70,
         requireICU:
@@ -281,7 +321,7 @@ class EmergencyWorkflowService {
   }
 
   /**
-   * 4단계: 최적 이송 경로 계산
+   * 현재 환자 위치에서 병원까지의 최적 이송 경로를 계산합니다.
    */
   async calculateTransportRoute(emergencyCaseId) {
     const workflow = this.activeWorkflows.get(emergencyCaseId);
@@ -292,6 +332,7 @@ class EmergencyWorkflowService {
       const route = await calculateOptimalRoute({
         origin: emergencyCase.locations.current,
         destination: workflow.resources.hospital,
+        // 중증 환자는 최단거리보다 가장 빠른 ETA를 목표로 경로 옵션을 선택합니다.
         priority: emergencyCase.emergencyLevel >= 4 ? "fastest" : "balanced",
         avoidTraffic: true,
         emergencyMode: true,
@@ -317,7 +358,7 @@ class EmergencyWorkflowService {
   }
 
   /**
-   * 응급구조사 현장 도착 처리
+   * 응급구조사 현장 도착 시 상태를 갱신하고 다음 SLA 단계를 시작합니다.
    */
   async handleParamedicArrival(emergencyCaseId, paramedicId) {
     const workflow = this.activeWorkflows.get(emergencyCaseId);
@@ -350,7 +391,7 @@ class EmergencyWorkflowService {
   }
 
   /**
-   * 환자 이송 시작 처리
+   * 환자 이송 시작 시 ETA 계산과 병원 통보를 함께 수행합니다.
    */
   async handleTransportStart(emergencyCaseId) {
     const workflow = this.activeWorkflows.get(emergencyCaseId);
@@ -384,7 +425,7 @@ class EmergencyWorkflowService {
   }
 
   /**
-   * 병원 도착 및 인수인계 처리
+   * 병원 도착 시 인수인계 단계로 전환하고 접수 SLA를 감시합니다.
    */
   async handleHospitalArrival(emergencyCaseId) {
     const workflow = this.activeWorkflows.get(emergencyCaseId);
@@ -405,7 +446,7 @@ class EmergencyWorkflowService {
   }
 
   /**
-   * 워크플로우 완료 처리
+   * 워크플로우를 종료 처리하고 완료 리포트를 생성합니다.
    */
   async completeWorkflow(emergencyCaseId) {
     const workflow = this.activeWorkflows.get(emergencyCaseId);
@@ -443,7 +484,7 @@ class EmergencyWorkflowService {
   }
 
   /**
-   * 에스컬레이션 처리
+   * 구조사 매칭 실패 시 단계별 에스컬레이션 전략을 실행합니다.
    */
   async escalateParamedicMatching(emergencyCaseId) {
     const workflow = this.activeWorkflows.get(emergencyCaseId);
@@ -460,7 +501,7 @@ class EmergencyWorkflowService {
     );
 
     if (workflow.escalationLevel === 1) {
-      // 1차 에스컬레이션: 범위 확장 재매칭
+      // 1차 에스컬레이션은 같은 매칭 로직으로 반경만 넓혀 재시도합니다.
       const matchResult = await autoMatchParamedicForCase(emergencyCaseId, {
         expandRadius: true,
         maxDistance: 20000, // 20km로 확장
@@ -487,7 +528,7 @@ class EmergencyWorkflowService {
   }
 
   /**
-   * 헬기 응급실 요청
+   * 최고 단계 에스컬레이션으로 헬기 응급 출동 가능 여부를 확인합니다.
    */
   async requestAirAmbulance(emergencyCaseId) {
     const workflow = this.activeWorkflows.get(emergencyCaseId);
@@ -520,7 +561,7 @@ class EmergencyWorkflowService {
   }
 
   /**
-   * SLA 타이머 관리
+   * SLA 종류별 타이머를 등록해 제한 시간을 감시합니다.
    */
   startSLATimer(emergencyCaseId, slaType, callback) {
     const timeoutMs = this.SLA_TIMES[slaType] * 60 * 1000; // 분을 밀리초로
@@ -532,26 +573,43 @@ class EmergencyWorkflowService {
     }
 
     this.slaTimeouts.get(emergencyCaseId)[slaType] = timeout;
+    this.shadowWriteWorkflowState(emergencyCaseId, {
+      phase: "sla_started",
+      slaType,
+    }).catch(() => {});
   }
 
+  /**
+   * 특정 SLA 타이머 하나를 해제합니다.
+   */
   clearSLATimer(emergencyCaseId, slaType) {
     const timers = this.slaTimeouts.get(emergencyCaseId);
     if (timers && timers[slaType]) {
       clearTimeout(timers[slaType]);
       delete timers[slaType];
+      this.shadowWriteWorkflowState(emergencyCaseId, {
+        phase: "sla_cleared",
+        slaType,
+      }).catch(() => {});
     }
   }
 
+  /**
+   * 케이스에 연결된 모든 SLA 타이머를 한 번에 정리합니다.
+   */
   clearAllSLATimers(emergencyCaseId) {
     const timers = this.slaTimeouts.get(emergencyCaseId);
     if (timers) {
       Object.values(timers).forEach((timer) => clearTimeout(timer));
       this.slaTimeouts.delete(emergencyCaseId);
     }
+    this.shadowWriteWorkflowState(emergencyCaseId, {
+      phase: "sla_cleared_all",
+    }).catch(() => {});
   }
 
   /**
-   * 타임라인 이벤트 추가
+   * 현재 워크플로우 타임라인에 상태 변경 이벤트를 기록합니다.
    */
   addTimelineEvent(emergencyCaseId, eventType, description) {
     const workflow = this.activeWorkflows.get(emergencyCaseId);
@@ -562,18 +620,23 @@ class EmergencyWorkflowService {
         description,
         state: workflow.state,
       });
+      this.shadowWriteWorkflowState(emergencyCaseId, {
+        phase: "timeline_event",
+        eventType,
+        description,
+      }).catch(() => {});
     }
   }
 
   /**
-   * 워크플로우 상태 조회
+   * 메모리에 보관 중인 워크플로우 상태를 조회합니다.
    */
   getWorkflowStatus(emergencyCaseId) {
     return this.activeWorkflows.get(emergencyCaseId);
   }
 
   /**
-   * 완료 리포트 생성
+   * 완료된 워크플로우의 요약 리포트 객체를 생성합니다.
    */
   async generateCompletionReport(emergencyCaseId) {
     const workflow = this.activeWorkflows.get(emergencyCaseId);
@@ -590,15 +653,15 @@ class EmergencyWorkflowService {
   }
 
   /**
-   * 전체 시스템 모니터링 시작
+   * 주기 감시 작업을 등록해 워크플로우 시스템 모니터링을 시작합니다.
    */
   startSystemMonitoring() {
-    // 5분마다 활성 워크플로우 상태 검사
+    // 활성 워크플로우 감시는 촘촘한 SLA 타이머와 별개로 5분 주기 점검을 추가합니다.
     cron.schedule("*/5 * * * *", async () => {
       await this.monitorActiveWorkflows();
     });
 
-    // 매시간 성능 리포트 생성
+    // 집계성 성능 리포트는 부담을 줄이기 위해 매시간만 생성합니다.
     cron.schedule("0 * * * *", async () => {
       await this.generatePerformanceReport();
     });
@@ -607,7 +670,7 @@ class EmergencyWorkflowService {
   }
 
   /**
-   * 활성 워크플로우 모니터링
+   * 활성 워크플로우를 순회하며 장시간 지연 케이스를 감시합니다.
    */
   async monitorActiveWorkflows() {
     const activeCount = this.activeWorkflows.size;
@@ -642,7 +705,9 @@ class EmergencyWorkflowService {
   }
 }
 
-// 싱글톤 인스턴스
+/**
+ * 서버 전역에서 재사용하는 응급 워크플로우 싱글톤 인스턴스입니다.
+ */
 const emergencyWorkflowService = new EmergencyWorkflowService();
 
 module.exports = emergencyWorkflowService;
