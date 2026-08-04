@@ -28,21 +28,21 @@ const DEMO_REGIONS = [
 const CONTROLLER_DEFINITIONS = [
   {
     email: SHARED_ADMIN.controllerEmail,
-    name: '공통관제사',
+    name: '김도윤',
     phone: '01030003000',
     role: 'controller',
     status: 'online',
   },
-  { email: 'demo.controller02@goldentime.local', name: '김민석', phone: '01030000002', role: 'controller', status: 'online' },
+  { email: 'demo.controller02@goldentime.local', name: '박민석', phone: '01030000002', role: 'controller', status: 'online' },
   { email: 'demo.controller03@goldentime.local', name: '이도현', phone: '01030000003', role: 'controller', status: 'online' },
-  { email: 'demo.controller04@goldentime.local', name: '박지훈', phone: '01030000004', role: 'controller', status: 'busy' },
+  { email: 'demo.controller04@goldentime.local', name: '정지훈', phone: '01030000004', role: 'controller', status: 'busy' },
   { email: 'demo.controller05@goldentime.local', name: '최은우', phone: '01030000005', role: 'controller', status: 'offline' },
 ];
 
 const WELFARE_DEFINITIONS = [
   {
     email: SHARED_ADMIN.welfareEmail,
-    name: '공통복지사',
+    name: '장미경',
     phone: '01040004000',
     role: 'medical',
     status: 'offline',
@@ -56,20 +56,20 @@ const WELFARE_DEFINITIONS = [
 const MEMBER_DEFINITIONS = [
   {
     email: SHARED_ADMIN.memberEmail,
-    name: '공통회원',
+    name: '박영자',
     phone: '01011112222',
-    guardianName: '공통보호자',
-    guardianPhone: '01011112222',
+    guardianName: '박민수',
+    guardianPhone: '01061112222',
     guardianEmail: SHARED_ADMIN.guardianEmail,
     birthDate: '1955-01-01',
-    gender: 'male',
-    height: 170,
-    weight: 65,
+    gender: 'female',
+    height: 159,
+    weight: 58,
     bloodType: 'A+',
     chronicDisease: '고혈압',
     medication: '혈압약',
     allergy: '해당 없음',
-    heartRate: 78,
+    heartRate: 76,
     spO2: 98,
     temperature: 36.5,
     stressLevel: 26,
@@ -440,7 +440,7 @@ async function resetAmazfitDemoData() {
     const sharedAdmin = await upsertStaffAccount(
       {
         email: SHARED_ADMIN.backofficeEmail,
-        name: '공통관리자',
+        name: '최관리',
         phone: '01020002000',
         role: 'admin',
         status: 'offline',
