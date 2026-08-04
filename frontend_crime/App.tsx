@@ -19,7 +19,7 @@ import {
   Ambulance,
   AmbulanceStatus,
 } from "./types";
-import { analyzePatientData } from "./services/geminiService";
+import { analyzePatientData } from "./services/aiAnalysisService";
 import { apiService } from "./services/apiService";
 import { socketService } from "./services/socketService";
 import {
@@ -71,32 +71,161 @@ import {
 } from "lucide-react";
 import MobileRecorder from "./components/MobileRecorder";
 import CrimeList from "./components/CrimeList";
+import {
+  systemMonitoringService,
+  type SystemOverview,
+} from "./services/systemMonitoringService";
 
+/**
+ * 도로 경로 계산 시 우선 시도할 외부 OSRM 라우팅 서버 목록입니다.
+ */
 const OSRM_SERVERS = [
   "https://routing.openstreetmap.de/routed-car/route/v1/driving",
   "https://router.project-osrm.org/route/v1/driving",
 ];
 
+const ROUTE_CACHE_TTL_MS = 30 * 1000;
+const ROUTE_FAILURE_COOLDOWN_MS = 5 * 60 * 1000;
+const roadRouteCache = new Map<
+  string,
+  { points: { lat: number; lng: number }[]; expiresAt: number }
+>();
+const osrmServerCooldownUntil = new Map<string, number>();
+let roadRouteFailureCooldownUntil = 0;
+
+/**
+ * 로컬 개발(`localhost`, `127.0.0.1`)에서는 외부 라우팅 서버 호출을 생략할지 판단합니다.
+ */
+const shouldSkipExternalRoadRoute = () => {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const host = window.location.hostname || "";
+  return host === "localhost" || host === "127.0.0.1";
+};
+
+/**
+ * 동일한 시작점/종점 조합을 경로 캐시 키로 정규화합니다.
+ */
+const buildRoadRouteCacheKey = (
+  start: { lat: number; lng: number },
+  end: { lat: number; lng: number },
+) =>
+  `${start.lat.toFixed(5)},${start.lng.toFixed(5)}->${end.lat.toFixed(5)},${end.lng.toFixed(5)}`;
+
+/**
+ * 아직 유효한 캐시 경로가 있으면 바로 반환합니다.
+ */
+const getCachedRoadRoute = (cacheKey: string) => {
+  const cached = roadRouteCache.get(cacheKey);
+  if (!cached) {
+    return null;
+  }
+
+  if (cached.expiresAt <= Date.now()) {
+    roadRouteCache.delete(cacheKey);
+    return null;
+  }
+
+  return cached.points;
+};
+
+/**
+ * 계산한 경로를 짧게 캐시해 같은 좌표 조합의 중복 외부 호출을 줄입니다.
+ */
+const setCachedRoadRoute = (
+  cacheKey: string,
+  points: { lat: number; lng: number }[],
+) => {
+  roadRouteCache.set(cacheKey, {
+    points,
+    expiresAt: Date.now() + ROUTE_CACHE_TTL_MS,
+  });
+};
+
+/**
+ * 도로 라우팅 실패 시 사용할 단순 직각 경로를 생성합니다.
+ */
 const generateManhattanRoute = (
   start: { lat: number; lng: number },
   end: { lat: number; lng: number },
 ) => {
-  const goHorizontalFirst = Math.random() > 0.5;
-  const mid = goHorizontalFirst
-    ? { lat: start.lat, lng: end.lng }
-    : { lat: end.lat, lng: start.lng };
+  const latDiff = end.lat - start.lat;
+  const lngDiff = end.lng - start.lng;
+  const absLatDiff = Math.abs(latDiff);
+  const absLngDiff = Math.abs(lngDiff);
+  const latOffset =
+    (latDiff >= 0 ? 1 : -1) *
+    Math.min(0.0012, Math.max(0.00035, absLngDiff * 0.18));
+  const lngOffset =
+    (lngDiff >= 0 ? 1 : -1) *
+    Math.min(0.0012, Math.max(0.00035, absLatDiff * 0.18));
+
+  if (absLngDiff >= absLatDiff) {
+    const firstLng = start.lng + lngDiff * 0.3;
+    const secondLng = start.lng + lngDiff * 0.72;
+    const bendLat = start.lat + latDiff * 0.45 + latOffset;
+    const startDetourLat = start.lat + latOffset;
+
+    return [
+      { lat: start.lat, lng: start.lng },
+      { lat: startDetourLat, lng: start.lng },
+      { lat: startDetourLat, lng: firstLng },
+      { lat: bendLat, lng: firstLng },
+      { lat: bendLat, lng: secondLng },
+      { lat: end.lat, lng: secondLng },
+      { lat: end.lat, lng: end.lng },
+    ];
+  }
+
+  const firstLat = start.lat + latDiff * 0.3;
+  const secondLat = start.lat + latDiff * 0.72;
+  const bendLng = start.lng + lngDiff * 0.45 + lngOffset;
+  const startDetourLng = start.lng + lngOffset;
+
   return [
     { lat: start.lat, lng: start.lng },
-    { lat: mid.lat, lng: mid.lng },
+    { lat: start.lat, lng: startDetourLng },
+    { lat: firstLat, lng: startDetourLng },
+    { lat: firstLat, lng: bendLng },
+    { lat: secondLat, lng: bendLng },
+    { lat: secondLat, lng: end.lng },
     { lat: end.lat, lng: end.lng },
   ];
 };
 
+/**
+ * OSRM 서버를 순차 시도해 실제 도로 경로를 받아오고, 실패하면 단순 경로로 대체합니다.
+ */
 const fetchRoadRoute = async (
   s: { lat: number; lng: number },
   e: { lat: number; lng: number },
 ) => {
+  const cacheKey = buildRoadRouteCacheKey(s, e);
+  const cachedPoints = getCachedRoadRoute(cacheKey);
+  if (cachedPoints) {
+    return cachedPoints;
+  }
+
+  if (shouldSkipExternalRoadRoute()) {
+    const fallbackRoute = generateManhattanRoute(s, e);
+    setCachedRoadRoute(cacheKey, fallbackRoute);
+    return fallbackRoute;
+  }
+
+  if (Date.now() < roadRouteFailureCooldownUntil) {
+    const fallbackRoute = generateManhattanRoute(s, e);
+    setCachedRoadRoute(cacheKey, fallbackRoute);
+    return fallbackRoute;
+  }
+
   for (const server of OSRM_SERVERS) {
+    const serverCooldownUntil = osrmServerCooldownUntil.get(server) || 0;
+    if (Date.now() < serverCooldownUntil) {
+      continue;
+    }
+
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
@@ -110,12 +239,30 @@ const fetchRoadRoute = async (
           lat: c[1],
           lng: c[0],
         })) || [];
-      if (pts.length > 0) return pts;
-    } catch {}
+      if (pts.length > 0) {
+        roadRouteFailureCooldownUntil = 0;
+        osrmServerCooldownUntil.delete(server);
+        setCachedRoadRoute(cacheKey, pts);
+        return pts;
+      }
+    } catch {
+      osrmServerCooldownUntil.set(
+        server,
+        Date.now() + ROUTE_FAILURE_COOLDOWN_MS,
+      );
+      break;
+    }
   }
-  return generateManhattanRoute(s, e);
+
+  roadRouteFailureCooldownUntil = Date.now() + ROUTE_FAILURE_COOLDOWN_MS;
+  const fallbackRoute = generateManhattanRoute(s, e);
+  setCachedRoadRoute(cacheKey, fallbackRoute);
+  return fallbackRoute;
 };
 
+/**
+ * 사이드바 로고에 사용하는 119 엠블럼 SVG를 렌더링합니다.
+ */
 const Emblem119 = ({ color = "#ef4444", className = "w-6 h-6" }) => (
   <svg
     viewBox="0 0 100 100"
@@ -150,6 +297,9 @@ const Emblem119 = ({ color = "#ef4444", className = "w-6 h-6" }) => (
   </svg>
 );
 
+/**
+ * 우측 패널의 개별 생체 카드 UI를 메모이즈해 렌더링합니다.
+ */
 const BioMetricCard = memo(
   ({
     label,
@@ -199,7 +349,9 @@ const BioMetricCard = memo(
   ),
 );
 
-// 하버사인 거리 계산 함수
+/**
+ * 두 좌표 사이의 구면 거리를 km 단위로 계산합니다.
+ */
 const getHaversineDistance = (
   lat1: number,
   lon1: number,
@@ -218,6 +370,27 @@ const getHaversineDistance = (
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
+/**
+ * 현재 URL과 포트를 보고 초기 범죄 탭을 결정합니다.
+ */
+const getInitialCrimeTab = (): "crime" | "crime-list" | "mobile" => {
+  if (typeof window !== "undefined") {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("mode") === "mobile") {
+      return "mobile";
+    }
+    const host = window.location.hostname || "";
+    const port = window.location.port || "";
+    if (host.startsWith("crimemobile.") || port === "6002") {
+      return "mobile";
+    }
+  }
+  return "crime";
+};
+
+/**
+ * 범죄 관제 메인 앱에서 대시보드, 목록, 모바일 녹음 화면 전환을 관리합니다.
+ */
 const App: React.FC = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [hospitals, setHospitals] = useState<Hospital[]>(INITIAL_HOSPITALS);
@@ -230,14 +403,9 @@ const App: React.FC = () => {
   const [systemLogs, setSystemLogs] = useState<
     { id: string; text: string; time: string }[]
   >([]);
-  const [activeTab, setActiveTab] = useState<
-    | "crime"
-    | "crime-list"
-    | "mobile"
-  >(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get("mode") === "mobile" ? "mobile" : "crime";
-  });
+  const [activeTab, setActiveTab] = useState<"crime" | "crime-list" | "mobile">(
+    () => getInitialCrimeTab(),
+  );
   const [selectedCrimeId, setSelectedCrimeId] = useState<string | undefined>(undefined);
   const [searchTerm, setSearchTerm] = useState("");
   const [isAiMatchingEnabled, setIsAiMatchingEnabled] = useState(true);
@@ -257,8 +425,80 @@ const App: React.FC = () => {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isAlertVoiceEnabled, setIsAlertVoiceEnabled] = useState(true);
+  const [systemOverview, setSystemOverview] = useState<SystemOverview | null>(null);
   const isAlertVoiceEnabledRef = useRef(true);
 
+  /**
+   * 로그인 토큰이 있으면 초기 목록을 mock 대신 실제 API 응답으로 덮어씁니다.
+   */
+  useEffect(() => {
+    if (!apiService.getToken()) {
+      return;
+    }
+
+    let cancelled = false;
+
+    /**
+     * 범죄 관제 초기 대시보드 데이터를 병렬 조회해 화면 상태로 변환합니다.
+     */
+    const loadInitialDashboardData = async () => {
+      const [casesResponse, hospitalsResponse, paramedicsResponse] =
+        await Promise.all([
+          apiService.getEmergencyCases(),
+          apiService.getHospitals(),
+          apiService.getParamedics(),
+        ]);
+
+      if (cancelled) {
+        return;
+      }
+
+      if (casesResponse.success && casesResponse.data) {
+        const rawCases = Array.isArray((casesResponse.data as any).cases)
+          ? (casesResponse.data as any).cases
+          : Array.isArray(casesResponse.data)
+            ? casesResponse.data
+            : [];
+        const nextPatients = rawCases.map(transformEmergencyCaseToPatient);
+        setPatients(nextPatients);
+        setSelectedPatient((prev) => {
+          if (!nextPatients.length) {
+            return null;
+          }
+
+          return nextPatients.find((patient) => patient.id === prev?.id) || nextPatients[0];
+        });
+      }
+
+      if (hospitalsResponse.success && hospitalsResponse.data) {
+        const rawHospitals = Array.isArray((hospitalsResponse.data as any).hospitals)
+          ? (hospitalsResponse.data as any).hospitals
+          : Array.isArray(hospitalsResponse.data)
+            ? hospitalsResponse.data
+            : [];
+        setHospitals(rawHospitals.map(transformHospitalToFrontend));
+      }
+
+      if (paramedicsResponse.success && paramedicsResponse.data) {
+        const rawParamedics = Array.isArray((paramedicsResponse.data as any).paramedics)
+          ? (paramedicsResponse.data as any).paramedics
+          : Array.isArray(paramedicsResponse.data)
+            ? paramedicsResponse.data
+            : [];
+        setAmbulances(rawParamedics.map(transformParamedicToAmbulance));
+      }
+    };
+
+    loadInitialDashboardData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /**
+   * 전체 학교폭력/범죄 회원 데이터를 일괄 삭제합니다.
+   */
   const handleDeleteAll = useCallback(async () => {
     if (!confirm("범죄 관제 회원을 모두 삭제하시겠습니까?\n이 작업은 되돌릴 수 없으며 모든 데이터가 영구적으로 삭제됩니다.")) return;
     
@@ -277,6 +517,10 @@ const App: React.FC = () => {
       console.error("Delete failed", error);
       alert("서버 통신 오류가 발생했습니다.");
     }
+
+    return () => {
+      socketService.disconnect();
+    };
   }, []);
   const spokenAlertsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
@@ -289,17 +533,57 @@ const App: React.FC = () => {
   const [selectedHospital, setSelectedHospital] = useState<Hospital | null>(
     null,
   );
+  const shadowMonitoring = systemOverview?.shadowMonitoring;
+  const shadowBannerToneClass =
+    shadowMonitoring?.bannerTone === "danger"
+      ? "border-red-500/40 bg-red-500/10 text-red-100"
+      : shadowMonitoring?.bannerTone === "warning"
+        ? "border-amber-400/40 bg-amber-400/10 text-amber-50"
+        : "border-zinc-700 bg-zinc-900/70 text-zinc-100";
+  const shadowPriorityLabel =
+    shadowMonitoring?.actionPriority === "high"
+      ? "즉시 확인"
+      : shadowMonitoring?.actionPriority === "medium"
+        ? "우선 점검"
+        : "관찰 유지";
 
-  // Initialize socket connection and listeners
   useEffect(() => {
-    // 개발용 프리패스 토큰 사용
-    const socket = socketService.connect("controller-token");
+    let isMounted = true;
+
+    const loadSystemOverview = async () => {
+      try {
+        const overview = await systemMonitoringService.getSystemOverview();
+        if (isMounted) {
+          setSystemOverview(overview);
+        }
+      } catch {
+        // shadow 배너는 부가 정보라 실패해도 기존 화면 동작을 유지합니다.
+      }
+    };
+
+    loadSystemOverview();
+    const intervalId = window.setInterval(loadSystemOverview, 10000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+    };
+  }, []);
+
+  /**
+   * 관제 소켓을 연결하고 실시간 케이스 생성 이벤트를 환자 목록에 반영합니다.
+   */
+  useEffect(() => {
+    const token = apiService.getToken();
+    if (!token) {
+      return;
+    }
+
+    const socket = socketService.connect(token);
     
     if (socket) {
       // 응급 상황 발생 이벤트 수신
       socket.on("emergency_case_created", (data: any) => {
-        console.log("🚨 실시간 응급 알림 수신:", data);
-        
         const newPatient: Patient = {
           id: data.id || `real-${Date.now()}`,
           name: "응급 환자", // 실제 이름은 개인정보 보호로 마스킹될 수 있음
@@ -310,8 +594,14 @@ const App: React.FC = () => {
           status: data.status === 'Critical' ? PatientStatus.CRITICAL : 
                   data.status === 'Warning' ? PatientStatus.WARNING : PatientStatus.NORMAL,
           location: typeof data.location === 'string' ? data.location : "위치 정보 수신 중...",
-          lat: data.location?.lat || 37.5665, // 기본값 서울시청
-          lng: data.location?.lng || 126.9780,
+          lat:
+            typeof data.location?.lat === 'number' && Number.isFinite(data.location.lat)
+              ? data.location.lat
+              : Number.NaN,
+          lng:
+            typeof data.location?.lng === 'number' && Number.isFinite(data.location.lng)
+              ? data.location.lng
+              : Number.NaN,
           imageUrl: `https://i.pravatar.cc/150?u=${Math.random()}`,
           vitals: {
             heartRate: data.vitals?.heartRate || 0,
@@ -349,7 +639,9 @@ const App: React.FC = () => {
     };
   }, []);
 
-  // 구급차 상태 통계 계산 (정확한 실시간 데이터 반영)
+  /**
+   * 환자와 구급차 상태를 함께 반영해 현재 차량 통계를 계산합니다.
+   */
   const ambulanceStats = useMemo(() => {
     // 현재 이송/출동 중인 구급차 ID 세트 (환자 데이터 기준)
     const dispatchedAmbulanceIds = new Set(
@@ -381,12 +673,17 @@ const App: React.FC = () => {
   const ambulancesRef = useRef(ambulances);
   const patientsRef = useRef(patients);
 
+  /**
+   * interval 내부에서 최신 상태를 읽을 수 있도록 ref를 동기화합니다.
+   */
   useEffect(() => {
     ambulancesRef.current = ambulances;
     patientsRef.current = patients;
   }, [ambulances, patients]);
 
-  // 환자 이송 완료 처리
+  /**
+   * 환자 이송 완료 시 환자/구급차 상태를 동시에 정리합니다.
+   */
   const handlePatientArrival = useCallback((patientId: string) => {
     setPatients((prev) => {
       const patient = prev.find((p) => p.id === patientId);
@@ -423,6 +720,9 @@ const App: React.FC = () => {
     handlePatientArrivalRef.current = handlePatientArrival;
   }, [handlePatientArrival]);
 
+  /**
+   * 대기 차량 순찰 경로와 이동 tick을 주기적으로 갱신합니다.
+   */
   useEffect(() => {
     // 6-1. 패트롤 경로 부여
     const patrolTimer = setInterval(async () => {
@@ -577,6 +877,9 @@ const App: React.FC = () => {
     };
   }, []);
 
+  /**
+   * 최근 시스템 로그를 앞쪽에 누적하고 최대 30개까지만 유지합니다.
+   */
   const addLog = (text: string) => {
     setSystemLogs((prev) =>
       [
@@ -590,6 +893,9 @@ const App: React.FC = () => {
     );
   };
 
+  /**
+   * 환자 위치, 가용 구급차, 병상 정보를 기준으로 병원과 구급차를 함께 매칭합니다.
+   */
   const matchHospitalForPatient = useCallback(
     async (patient: Patient) => {
       if (
@@ -614,9 +920,10 @@ const App: React.FC = () => {
 
         if (availableAmbs.length === 0) {
           addLog(`⚠️ 가용 구급차가 없습니다. 재시도 중...`);
-          throw new Error("No Available Ambulance");
+          return;
         }
 
+        // 환자와의 직선거리가 가장 짧은 가용 구급차를 먼저 선택합니다.
         const targetAmb = availableAmbs.reduce((prev, curr) => {
           const prevDist = getHaversineDistance(
             patient.lat,
@@ -652,6 +959,7 @@ const App: React.FC = () => {
         if (availableHospitals.length === 0)
           throw new Error("No Available Hospitals");
 
+        // 병상 가용 병원 중에서는 환자 기준 최단거리 순으로 우선 후보를 정합니다.
         const sortedHospitals = [...availableHospitals].sort((a, b) => {
           const distA = getHaversineDistance(
             patient.lat,
@@ -680,6 +988,7 @@ const App: React.FC = () => {
         let dispatchPathLen = 0;
 
         try {
+          // 구급차 -> 환자 -> 병원 경로를 이어 붙여 한 번의 순찰 경로처럼 재생합니다.
           const p1 = await fetchRoadRoute(
             { lat: targetAmb.lat, lng: targetAmb.lng },
             { lat: patient.lat, lng: patient.lng },
@@ -691,6 +1000,7 @@ const App: React.FC = () => {
           );
           fullJourneyPath = [...p1, ...p2];
         } catch {
+          // 외부 라우팅이 실패하면 지도 연출이 끊기지 않도록 직각 fallback 경로를 사용합니다.
           const p1 = generateManhattanRoute(
             { lat: targetAmb.lat, lng: targetAmb.lng },
             { lat: patient.lat, lng: patient.lng },
@@ -749,6 +1059,7 @@ const App: React.FC = () => {
         );
       } finally {
         setTimeout(() => {
+          // 연속 재시도 폭주를 막기 위해 processing 잠금은 짧은 지연 후 해제합니다.
           processingRef.current.delete(patient.id);
           setProcessingIds((prev) => {
             const next = new Set(prev);
@@ -761,12 +1072,18 @@ const App: React.FC = () => {
     [hospitals],
   );
 
+  /**
+   * 선택된 환자가 아직 미매칭이면 즉시 병원 매칭을 시작합니다.
+   */
   useEffect(() => {
     if (selectedPatient && !selectedPatient.matchedAmbulanceId) {
       matchHospitalForPatient(selectedPatient);
     }
   }, [selectedPatient?.id, matchHospitalForPatient]);
 
+  /**
+   * 주기적으로 미매칭 환자를 찾아 자동 매칭 루프를 돌립니다.
+   */
   useEffect(() => {
     const autoMatchInterval = setInterval(() => {
       const unmatchedPatient = patients.find(
@@ -782,10 +1099,17 @@ const App: React.FC = () => {
     return () => clearInterval(autoMatchInterval);
   }, [patients, matchHospitalForPatient]);
 
+  /**
+   * 선택 환자의 최신 상태를 전체 환자 배열 기준으로 다시 계산합니다.
+   */
   const currentSelectedPatient = useMemo(
     () => patients.find((p) => p.id === selectedPatient?.id) || selectedPatient,
     [patients, selectedPatient],
   );
+
+  /**
+   * 선택 환자에 배정된 현재 구급차 정보를 조회합니다.
+   */
   const currentAmbulance = useMemo(
     () =>
       ambulances.find(
@@ -793,6 +1117,10 @@ const App: React.FC = () => {
       ),
     [ambulances, currentSelectedPatient],
   );
+
+  /**
+   * 선택 환자에 추천된 병원 정보를 조회합니다.
+   */
   const matchedHospital = useMemo(
     () =>
       hospitals.find(
@@ -801,6 +1129,9 @@ const App: React.FC = () => {
     [hospitals, currentSelectedPatient],
   );
 
+  /**
+   * 환자 목록 탭과 필터를 반영한 좌측 패널 UI를 렌더링합니다.
+   */
   const renderPatients = () => {
     let filteredPatients = patients.filter(
       (p) => p.name.includes(searchTerm) || p.location.includes(searchTerm),
@@ -1032,7 +1363,7 @@ const App: React.FC = () => {
                         <button
                           onClick={() => {
                             setSelectedPatient(p);
-                            setActiveTab("dashboard");
+                            setActiveTab("crime");
                           }}
                           className="p-2 hover:bg-red-500/10 hover:text-red-500 text-zinc-500 rounded-lg transition-all"
                         >
@@ -1059,6 +1390,9 @@ const App: React.FC = () => {
     );
   };
 
+  /**
+   * 관제 성과 요약 모달을 렌더링합니다.
+   */
   const renderReportModal = () => {
     const stats = {
       total: patients.length,
@@ -1136,6 +1470,9 @@ const App: React.FC = () => {
     );
   };
 
+  /**
+   * 선택된 병원의 상세 정보 카드 뷰를 렌더링합니다.
+   */
   const renderHospitalDetail = (hospital: Hospital) => {
     return (
       <div className="h-full flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-500 overflow-hidden p-2">
@@ -1258,6 +1595,9 @@ const App: React.FC = () => {
     );
   };
 
+  /**
+   * 병원 필터와 상세 보기 상태를 반영한 병원 패널을 렌더링합니다.
+   */
   const renderHospitals = () => {
     if (selectedHospital) return renderHospitalDetail(selectedHospital);
     let filteredHospitals = [...hospitals];
@@ -1380,6 +1720,9 @@ const App: React.FC = () => {
     );
   };
 
+  /**
+   * 범죄 관제 대시보드의 지도, 환자 피드, 우측 상세 패널을 렌더링합니다.
+   */
   const renderDashboard = () => (
     <div className="h-full flex flex-col lg:flex-row gap-4 overflow-hidden">
       <div className="w-full lg:w-[13%] flex flex-col bg-zinc-950/40 rounded-2xl border border-zinc-900 overflow-hidden shadow-2xl shrink-0">
@@ -1788,8 +2131,11 @@ const App: React.FC = () => {
     </div>
   );
 
+  /**
+   * 모바일 신고/녹음 모드가 선택되면 전용 레코더 화면을 우선 렌더링합니다.
+   */
   if (activeTab === "mobile") {
-    return <MobileRecorder onBack={() => setActiveTab("dashboard")} />;
+    return <MobileRecorder onBack={() => setActiveTab("crime")} />;
   }
 
   return (
@@ -1808,6 +2154,7 @@ const App: React.FC = () => {
             {[
               { id: "crime", icon: ShieldAlert, label: "범죄 관제" },
               { id: "crime-list", icon: List, label: "유저 목록" },
+              { id: "mobile", icon: UserPlus, label: "모바일 신고" },
               { type: "divider" },
               { id: "delete-members", icon: UserMinus, label: "회원 삭제", action: handleDeleteAll, isDestructive: true },
             ].map((item, idx) =>
@@ -1940,6 +2287,41 @@ const App: React.FC = () => {
             </div>
           </div>
         </header>
+        {shadowMonitoring && (
+          <div className="px-4 pt-4">
+            <div className={`rounded-2xl border px-5 py-4 shadow-[0_12px_40px_rgba(15,23,42,0.22)] ${shadowBannerToneClass}`}>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full border border-current/20 px-2.5 py-1 text-[11px] font-semibold tracking-[0.16em] uppercase">
+                      Shadow {shadowMonitoring.summaryLevel}
+                    </span>
+                    <span className="text-[11px] font-semibold tracking-[0.16em] uppercase opacity-80">
+                      {shadowPriorityLabel}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-[15px] font-semibold leading-6">
+                    {shadowMonitoring.summaryMessage}
+                  </p>
+                  <p className="mt-1 text-[13px] leading-5 opacity-90">
+                    {shadowMonitoring.recommendedAction}
+                  </p>
+                </div>
+                <div className="flex shrink-0 gap-2 text-[12px] font-semibold">
+                  <span className="rounded-full border border-current/20 px-3 py-1.5">
+                    전체 gap {shadowMonitoring.totalGap}
+                  </span>
+                  <span className="rounded-full border border-current/20 px-3 py-1.5">
+                    실시간 {shadowMonitoring.realtimeGap}
+                  </span>
+                  <span className="rounded-full border border-current/20 px-3 py-1.5">
+                    워크플로우 {shadowMonitoring.workflowGap}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="flex-1 flex flex-col overflow-hidden p-4">
           {activeTab === "crime" && <CrimeDashboard initialSelectedCaseId={selectedCrimeId} />}
           {activeTab === "crime-list" && (
@@ -1957,4 +2339,7 @@ const App: React.FC = () => {
   );
 };
 
+/**
+ * 범죄 관제 프런트 메인 앱 컴포넌트를 기본 export로 제공합니다.
+ */
 export default App;

@@ -3,9 +3,15 @@
  * 실시간 대시보드를 위한 API 호출
  */
 
+/**
+ * 시스템 모니터링 API를 호출할 기본 백엔드 경로입니다.
+ */
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "/api";
 
+/**
+ * 운영 개요 카드에서 사용하는 시스템 전체 상태 요약 구조입니다.
+ */
 export interface SystemOverview {
   systemStatus: "OPERATIONAL" | "WARNING" | "CRITICAL";
   timestamp: string;
@@ -28,8 +34,23 @@ export interface SystemOverview {
     availableBeds: number;
     activeParamedics: number;
   };
+  shadowMonitoring?: {
+    status: "OK" | "MISMATCH";
+    totalGap: number;
+    realtimeGap: number;
+    workflowGap: number;
+    summaryLevel: "info" | "warning" | "critical";
+    bannerTone: "neutral" | "warning" | "danger";
+    actionPriority: "low" | "medium" | "high";
+    summaryMessage: string;
+    recommendedAction: string;
+    inconsistentScopes: string[];
+  };
 }
 
+/**
+ * 개별 모니터링 엔진의 연결/활동 상태와 메트릭 구조입니다.
+ */
 export interface SystemEngine {
   id: string;
   name: string;
@@ -45,6 +66,9 @@ export interface SystemEngine {
   metrics: Record<string, any>;
 }
 
+/**
+ * 전체 엔진 목록과 활성 개수 집계를 담는 구조입니다.
+ */
 export interface EngineStatus {
   engines: SystemEngine[];
   totalEngines: number;
@@ -52,6 +76,9 @@ export interface EngineStatus {
   timestamp: string;
 }
 
+/**
+ * API, 시스템 자원, DB, 외부 API 성능 지표를 묶은 구조입니다.
+ */
 export interface PerformanceMetrics {
   apiMetrics: {
     responseTime: string;
@@ -87,6 +114,9 @@ export interface PerformanceMetrics {
   };
 }
 
+/**
+ * 시스템 대시보드에 노출할 개별 경보 메시지 구조입니다.
+ */
 export interface SystemAlert {
   id: string;
   level: "CRITICAL" | "WARNING" | "INFO";
@@ -95,6 +125,9 @@ export interface SystemAlert {
   timestamp: string;
 }
 
+/**
+ * 경보 목록과 심각도별 개수 집계를 함께 담는 구조입니다.
+ */
 export interface AlertSummary {
   alerts: SystemAlert[];
   summary: {
@@ -104,9 +137,12 @@ export interface AlertSummary {
   };
 }
 
+/**
+ * 시스템 상태, 엔진, 성능 지표 조회를 담당하는 프론트 서비스 클래스입니다.
+ */
 class SystemMonitoringService {
   /**
-   * 시스템 전체 개요 조회
+   * 대시보드 상단에 표시할 시스템 전체 개요를 조회합니다.
    */
   async getSystemOverview(): Promise<SystemOverview> {
     const response = await fetch(
@@ -120,7 +156,7 @@ class SystemMonitoringService {
   }
 
   /**
-   * 모든 엔진 상태 조회
+   * 각 모니터링 엔진의 현재 상태 목록을 조회합니다.
    */
   async getEngineStatus(): Promise<EngineStatus> {
     const response = await fetch(
@@ -134,7 +170,7 @@ class SystemMonitoringService {
   }
 
   /**
-   * 성능 지표 조회
+   * API, 시스템 자원, 외부 연동 성능 지표를 조회합니다.
    */
   async getPerformanceMetrics(): Promise<PerformanceMetrics> {
     const response = await fetch(
@@ -148,7 +184,7 @@ class SystemMonitoringService {
   }
 
   /**
-   * 시스템 알림 조회
+   * 시스템 경고와 알림 요약 목록을 조회합니다.
    */
   async getSystemAlerts(): Promise<AlertSummary> {
     const response = await fetch(
@@ -162,7 +198,7 @@ class SystemMonitoringService {
   }
 
   /**
-   * 실시간 데이터 스트리밍을 위한 폴링 설정
+   * 주요 시스템 데이터를 묶어서 주기적으로 다시 조회하는 폴링을 시작합니다.
    */
   startRealtimeMonitoring(
     onUpdate: (data: {
@@ -173,8 +209,12 @@ class SystemMonitoringService {
     }) => void,
     interval: number = 5000, // 5초마다 업데이트
   ): () => void {
+    /**
+     * 개요, 엔진, 성능, 알림 데이터를 한 번에 다시 조회해 콜백으로 전달합니다.
+     */
     const updateData = async () => {
       try {
+        // 개별 카드 시점이 어긋나지 않도록 4개 리소스를 한 번에 병렬 조회해 같은 스냅샷처럼 맞춥니다.
         const [overview, engines, performance, alerts] = await Promise.all([
           this.getSystemOverview(),
           this.getEngineStatus(),
@@ -188,24 +228,30 @@ class SystemMonitoringService {
       }
     };
 
-    // 즉시 한 번 실행
+    // 첫 화면에서 interval 한 주기만큼 빈 상태로 기다리지 않도록 즉시 한 번 실행합니다.
     updateData();
 
-    // 정기적으로 업데이트
+    // 같은 조회 함수를 주기적으로 실행해 최신 모니터링 상태를 유지합니다.
     const intervalId = setInterval(updateData, interval);
 
-    // cleanup 함수 반환
+    // 훅/컴포넌트 해제 시 polling 타이머를 정리하는 cleanup 함수를 반환합니다.
     return () => {
       clearInterval(intervalId);
     };
   }
 }
 
+/**
+ * 화면 전역에서 재사용하는 시스템 모니터링 서비스 싱글톤 인스턴스입니다.
+ */
 export const systemMonitoringService = new SystemMonitoringService();
 
-// React hooks for easy integration
+// 시스템 모니터링 훅 구현에 필요한 React 기본 훅을 함께 가져옵니다.
 import { useState, useEffect } from "react";
 
+/**
+ * 시스템 개요를 주기적으로 조회하는 훅입니다.
+ */
 export function useSystemOverview(
   autoRefresh: boolean = true,
   interval: number = 5000,
@@ -215,6 +261,9 @@ export function useSystemOverview(
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    /**
+     * 시스템 개요 데이터를 다시 조회해 화면 상태를 갱신합니다.
+     */
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -222,6 +271,7 @@ export function useSystemOverview(
         setData(overview);
         setError(null);
       } catch (err) {
+        // 실패해도 직전 성공 데이터는 유지하고 오류 문구만 별도로 갱신합니다.
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
         setLoading(false);
@@ -231,6 +281,7 @@ export function useSystemOverview(
     fetchData();
 
     if (autoRefresh) {
+      // autoRefresh가 켜진 화면만 주기 polling을 유지하고, 아니면 1회 조회로 끝냅니다.
       const intervalId = setInterval(fetchData, interval);
       return () => clearInterval(intervalId);
     }
@@ -239,6 +290,9 @@ export function useSystemOverview(
   return { data, loading, error };
 }
 
+/**
+ * 엔진 상태 목록을 주기적으로 조회하는 훅입니다.
+ */
 export function useEngineStatus(
   autoRefresh: boolean = true,
   interval: number = 5000,
@@ -248,6 +302,9 @@ export function useEngineStatus(
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    /**
+     * 엔진 상태 데이터를 다시 조회해 화면 상태를 갱신합니다.
+     */
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -255,6 +312,7 @@ export function useEngineStatus(
         setData(engines);
         setError(null);
       } catch (err) {
+        // 엔진 표도 마지막 성공 목록을 남겨 운영자가 연결 현황 맥락을 잃지 않게 합니다.
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
         setLoading(false);
@@ -264,6 +322,7 @@ export function useEngineStatus(
     fetchData();
 
     if (autoRefresh) {
+      // 엔진 상태도 필요 화면에서만 interval을 유지해 불필요한 트래픽을 줄입니다.
       const intervalId = setInterval(fetchData, interval);
       return () => clearInterval(intervalId);
     }
@@ -272,6 +331,9 @@ export function useEngineStatus(
   return { data, loading, error };
 }
 
+/**
+ * 성능 지표를 주기적으로 조회하는 훅입니다.
+ */
 export function usePerformanceMetrics(
   autoRefresh: boolean = true,
   interval: number = 10000,
@@ -281,6 +343,9 @@ export function usePerformanceMetrics(
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    /**
+     * 성능 지표 데이터를 다시 조회해 화면 상태를 갱신합니다.
+     */
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -288,6 +353,7 @@ export function usePerformanceMetrics(
         setData(metrics);
         setError(null);
       } catch (err) {
+        // 성능 차트 역시 실패 때 null로 비우지 않고 이전 측정치를 유지합니다.
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
         setLoading(false);
@@ -297,6 +363,7 @@ export function usePerformanceMetrics(
     fetchData();
 
     if (autoRefresh) {
+      // 성능 지표는 상대적으로 비싸므로 autoRefresh일 때만 반복 조회합니다.
       const intervalId = setInterval(fetchData, interval);
       return () => clearInterval(intervalId);
     }
@@ -305,6 +372,9 @@ export function usePerformanceMetrics(
   return { data, loading, error };
 }
 
+/**
+ * 시스템 알림 목록을 주기적으로 조회하는 훅입니다.
+ */
 export function useSystemAlerts(
   autoRefresh: boolean = true,
   interval: number = 30000,
@@ -314,6 +384,9 @@ export function useSystemAlerts(
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    /**
+     * 시스템 알림 데이터를 다시 조회해 화면 상태를 갱신합니다.
+     */
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -321,6 +394,7 @@ export function useSystemAlerts(
         setData(alerts);
         setError(null);
       } catch (err) {
+        // 경보 목록은 최근 상태 맥락이 중요하므로 조회 실패 시에도 직전 목록을 보존합니다.
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
         setLoading(false);
@@ -330,6 +404,7 @@ export function useSystemAlerts(
     fetchData();
 
     if (autoRefresh) {
+      // 알림 훅은 필요 화면에서만 30초 polling을 유지합니다.
       const intervalId = setInterval(fetchData, interval);
       return () => clearInterval(intervalId);
     }
@@ -338,6 +413,9 @@ export function useSystemAlerts(
   return { data, loading, error };
 }
 
+/**
+ * 시스템 개요, 엔진, 성능, 알림을 한 번에 구독하듯 묶어 쓰는 훅입니다.
+ */
 export function useRealtimeMonitoring(interval: number = 5000) {
   const [overview, setOverview] = useState<SystemOverview | null>(null);
   const [engines, setEngines] = useState<EngineStatus | null>(null);
@@ -349,6 +427,7 @@ export function useRealtimeMonitoring(interval: number = 5000) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // 개별 훅 여러 개를 두지 않고 서비스의 묶음 polling 결과를 한 번에 받아 화면 상태를 맞춥니다.
     const cleanup = systemMonitoringService.startRealtimeMonitoring((data) => {
       setOverview(data.overview);
       setEngines(data.engines);
