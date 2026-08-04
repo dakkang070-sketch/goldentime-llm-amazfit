@@ -79,6 +79,9 @@ router.get('/overview', cacheMiddleware(30), async (req, res) => {
         realtimeGap: realtimeShadowGap,
         workflowGap: workflowShadowGap,
         trends: shadowTrend,
+        summaryLevel: shadowGuidance.summaryLevel,
+        bannerTone: shadowGuidance.bannerTone,
+        actionPriority: shadowGuidance.actionPriority,
         summaryMessage: shadowGuidance.summaryMessage,
         recommendedAction: shadowGuidance.recommendedAction,
         inconsistentScopes: [
@@ -821,6 +824,9 @@ function buildShadowOverviewGuidance(snapshot, trend) {
 
   if (realtimeGap === 0 && workflowGap === 0) {
     return {
+      summaryLevel: 'info',
+      bannerTone: 'neutral',
+      actionPriority: 'low',
       summaryMessage: 'shadow 상태가 메모리 상태와 일치합니다.',
       recommendedAction: '현재는 추가 조치 없이 추세만 계속 관찰하면 됩니다.',
     };
@@ -828,6 +834,9 @@ function buildShadowOverviewGuidance(snapshot, trend) {
 
   if (realtimeGap >= 5 || workflowGap >= 3 || realtimeConsecutive >= 3 || workflowConsecutive >= 3) {
     return {
+      summaryLevel: 'critical',
+      bannerTone: 'danger',
+      actionPriority: 'high',
       summaryMessage: `shadow 불일치가 누적되고 있습니다. 실시간 gap=${realtimeGap}, 워크플로우 gap=${workflowGap} 입니다.`,
       recommendedAction: '실시간 엔진 인스턴스 상태와 Redis shadow 기록 동기화 여부를 즉시 점검해 주세요.',
     };
@@ -835,6 +844,9 @@ function buildShadowOverviewGuidance(snapshot, trend) {
 
   if (realtimeGap > 0 && workflowGap > 0) {
     return {
+      summaryLevel: 'warning',
+      bannerTone: 'warning',
+      actionPriority: 'medium',
       summaryMessage: `실시간 엔진과 워크플로우 모두 shadow 불일치가 감지되었습니다. gap=${realtimeGap + workflowGap} 입니다.`,
       recommendedAction: '운영 영향 전파 전 shadow 일치성 API와 alerts를 함께 확인해 주세요.',
     };
@@ -842,12 +854,18 @@ function buildShadowOverviewGuidance(snapshot, trend) {
 
   if (realtimeGap > 0) {
     return {
+      summaryLevel: 'warning',
+      bannerTone: 'warning',
+      actionPriority: realtimeConsecutive >= 2 ? 'high' : 'medium',
       summaryMessage: `실시간 엔진 shadow 불일치가 감지되었습니다. gap=${realtimeGap} 입니다.`,
       recommendedAction: '실시간 스트림 activeStreams와 shadow 상태를 우선 비교해 주세요.',
     };
   }
 
   return {
+    summaryLevel: 'warning',
+    bannerTone: 'warning',
+    actionPriority: workflowConsecutive >= 2 ? 'high' : 'medium',
     summaryMessage: `응급 워크플로우 shadow 불일치가 감지되었습니다. gap=${workflowGap} 입니다.`,
     recommendedAction: '활성 workflow와 SLA 타이머 상태를 우선 점검해 주세요.',
   };
