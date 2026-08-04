@@ -9,7 +9,13 @@ const cacheService = require('../services/cacheService');
  * mock/Amazfit 생체 업로드와 최근 데이터 조회 엔드포인트를 묶는 Express 라우터입니다.
  */
 const router = express.Router();
-const lastAmazfitLogAtByUserId = new Map();
+
+/**
+ * 사용자별 Amazfit 요약 로그 스로틀 키를 생성합니다.
+ */
+function buildAmazfitLogThrottleKey(userId) {
+  return `throttle:/api/ingest/amazfit/log:${String(userId || '').trim()}`;
+}
 
 /**
  * 프록시/클라우드플레어 환경을 포함해 실제 클라이언트 IP를 우선 추출합니다.
@@ -142,10 +148,10 @@ router.post('/amazfit', async (req, res, next) => {
     if (req.body?.isWear === true) {
       const userId = String(req.body?.userId || '');
       const now = Date.now();
-      const last = lastAmazfitLogAtByUserId.get(userId) || 0;
+      const last = Number((await cacheService.get(buildAmazfitLogThrottleKey(userId))) || 0);
       // 워치 생체 업로드는 빈도가 높아 사용자별 5초 간격으로만 요약 로그를 남깁니다.
       if (now - last >= 5000) {
-        lastAmazfitLogAtByUserId.set(userId, now);
+        await cacheService.set(buildAmazfitLogThrottleKey(userId), now, 10);
         logger.info('ingest:amazfit', {
           userId: req.body?.userId,
           collectedAt: req.body?.collectedAt,

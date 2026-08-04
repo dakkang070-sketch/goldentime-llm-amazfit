@@ -6,16 +6,62 @@
 const axios = require('axios');
 const cron = require('node-cron');
 const logger = require('../utils/logger');
+const cacheService = require('./cacheService');
+const { normalizeServiceKey, hasUsableServiceKey } = require('../utils/serviceKeyUtils');
 
+/**
+ * HIRA 병원 정보 API와 캐시/스케줄러를 함께 관리하는 서비스 클래스입니다.
+ */
 class HiraApiService {
+  /**
+   * HIRA 기본 URL, 인증키, 병원 캐시, 자동 갱신 상태를 초기화합니다.
+   */
   constructor() {
     this.baseURL = 'https://apis.data.go.kr/B551182/hospInfoServicev2';
-    this.serviceKey = process.env.HIRA_API_SERVICE_KEY || 'f77c4cc08ca51e363f167702969f0f94f2b8c27cfe9eeeea365caea7dfd37670';
+    this.serviceKey = normalizeServiceKey(process.env.HIRA_API_SERVICE_KEY);
     this.hospitalCache = new Map();
     this.cacheExpiry = 30 * 60 * 1000; // 30분 캐시
     this.isSchedulerRunning = false;
     
     console.log('🏥 HIRA API 서비스 초기화 (30분 캐시)');
+  }
+
+  /**
+   * HIRA 공용 캐시 키를 생성합니다.
+   */
+  buildSharedCacheKey(cacheKey) {
+    return `external:hira:${cacheKey}`;
+  }
+
+  /**
+   * 공용 캐시를 우선 조회하고 없으면 기존 메모리 캐시를 확인합니다.
+   */
+  async readHospitalCache(cacheKey, ttlMs = this.cacheExpiry) {
+    const shared = await cacheService.get(this.buildSharedCacheKey(cacheKey));
+    if (shared !== null) {
+      this.hospitalCache.set(cacheKey, { data: shared, timestamp: Date.now() });
+      return shared;
+    }
+
+    if (this.hospitalCache.has(cacheKey)) {
+      const cached = this.hospitalCache.get(cacheKey);
+      if (Date.now() - cached.timestamp < ttlMs) {
+        return cached.data;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * 메모리 캐시와 공용 캐시에 동시에 저장합니다.
+   */
+  async writeHospitalCache(cacheKey, data, ttlMs = this.cacheExpiry) {
+    this.hospitalCache.set(cacheKey, {
+      data,
+      timestamp: Date.now(),
+    });
+    await cacheService.set(this.buildSharedCacheKey(cacheKey), data, Math.max(1, Math.ceil(ttlMs / 1000)));
   }
 
   /**
@@ -25,6 +71,11 @@ class HiraApiService {
    */
   async getHospitalBasicList(params = {}) {
     try {
+      if (!hasUsableServiceKey(this.serviceKey)) {
+        console.warn('⚠️ HIRA API 키가 설정되지 않았습니다.');
+        return [];
+      }
+
       const {
         numOfRows = 100,
         pageNo = 1,
@@ -77,6 +128,11 @@ class HiraApiService {
    */
   async getHospitalDetail(ykiho) {
     try {
+      if (!hasUsableServiceKey(this.serviceKey)) {
+        console.error('❌ HIRA API 키가 없습니다');
+        return null;
+      }
+
       if (!ykiho) {
         console.error('❌ 요양기호가 없습니다');
         return null;
@@ -84,12 +140,10 @@ class HiraApiService {
 
       // 캐시 확인
       const cacheKey = `detail_${ykiho}`;
-      if (this.hospitalCache.has(cacheKey)) {
-        const cached = this.hospitalCache.get(cacheKey);
-        if (Date.now() - cached.timestamp < this.cacheExpiry) {
-          console.log('📋 HIRA API 병원 상세정보 캐시 사용');
-          return cached.data;
-        }
+      const cachedDetail = await this.readHospitalCache(cacheKey);
+      if (cachedDetail) {
+        console.log('📋 HIRA API 병원 상세정보 캐시 사용');
+        return cachedDetail;
       }
 
       console.log('🔍 HIRA API 병원 상세정보 조회 시작:', ykiho);
@@ -107,10 +161,7 @@ class HiraApiService {
         const detail = response.data.response.body?.items?.item;
         
         // 캐시 저장
-        this.hospitalCache.set(cacheKey, {
-          data: detail,
-          timestamp: Date.now()
-        });
+        await this.writeHospitalCache(cacheKey, detail);
         
         console.log('✅ HIRA API 병원 상세정보 조회 완료');
         return detail;
@@ -159,6 +210,7 @@ class HiraApiService {
         '41390', // 화성시
       ];
       
+      // 서울 다음에 경기 주요 시군구를 순차 조회해 너무 큰 단일 요청을 피합니다.
       for (const sgguCd of gyeonggiCodes) {
         const gyeonggiHospitals = await this.getHospitalBasicList({
           sgguCd: sgguCd,
@@ -194,12 +246,10 @@ class HiraApiService {
 
       // 캐시 확인
       const cacheKey = `search_${hospitalName}`;
-      if (this.hospitalCache.has(cacheKey)) {
-        const cached = this.hospitalCache.get(cacheKey);
-        if (Date.now() - cached.timestamp < this.cacheExpiry) {
-          console.log('📋 병원명 검색 캐시 사용');
-          return cached.data;
-        }
+      const cachedHospitals = await this.readHospitalCache(cacheKey);
+      if (cachedHospitals) {
+        console.log('📋 병원명 검색 캐시 사용');
+        return cachedHospitals;
       }
 
       const hospitals = await this.getHospitalBasicList({
@@ -208,10 +258,7 @@ class HiraApiService {
       });
 
       // 캐시 저장
-      this.hospitalCache.set(cacheKey, {
-        data: hospitals,
-        timestamp: Date.now()
-      });
+      await this.writeHospitalCache(cacheKey, hospitals);
 
       console.log(`✅ 병원명 검색 완료: "${hospitalName}" -> ${hospitals.length}개`);
       return hospitals;
@@ -227,7 +274,7 @@ class HiraApiService {
    * @returns {Object} 좌표 {lat, lng}
    */
   getCoordinatesFromAddress(address) {
-    if (!address) return { lat: 37.5665, lng: 126.9780 };
+    if (!address) return { lat: undefined, lng: undefined };
 
     // 서울 구별 대표 좌표
     const seoulDistrictCoords = {
@@ -274,6 +321,7 @@ class HiraApiService {
       '동탄': { lat: 37.2011, lng: 127.0739 }
     };
 
+    // 정밀 지오코딩이 없으므로 관제 지도 초기 표시용 대표 좌표만 빠르게 매핑합니다.
     // 주소에서 구/시 추출해서 매칭
     for (const [district, coord] of Object.entries(seoulDistrictCoords)) {
       if (address.includes(district)) {
@@ -287,8 +335,8 @@ class HiraApiService {
       }
     }
 
-    // 기본 서울 중심부 좌표
-    return { lat: 37.5665, lng: 126.9780 };
+    // 대표 좌표를 찾지 못하면 빈 좌표를 반환해 가짜 중심점이 생기지 않게 합니다.
+    return { lat: undefined, lng: undefined };
   }
 
   /**
@@ -322,6 +370,7 @@ class HiraApiService {
       let totalHospitals = 0;
       let cachedCount = 0;
       
+      // 전국 병원 로딩은 시도별로 나눠 실패 범위를 작게 유지하고 부분 성공을 허용합니다.
       for (const sido of sidoCodes) {
         try {
           console.log(`🔍 ${sido.name} 병원 데이터 로딩 중...`);
@@ -338,13 +387,11 @@ class HiraApiService {
             });
             
             if (hospitals && hospitals.length > 0) {
+              // 검색/매칭에서 즉시 꺼내 쓸 수 있도록 병원 단건 단위로 캐시에 쪼개 저장합니다.
               // 각 병원을 개별 캐시에 저장
               for (const hospital of hospitals) {
                 const cacheKey = `hospital_${hospital.ykiho}`;
-                this.hospitalCache.set(cacheKey, {
-                  timestamp: Date.now(),
-                  data: hospital
-                });
+                await this.writeHospitalCache(cacheKey, hospital);
                 cachedCount++;
               }
               
@@ -387,6 +434,11 @@ class HiraApiService {
    * HIRA API 자동 갱신 스케줄러 시작
    */
   startAutoRefreshScheduler() {
+    if (!hasUsableServiceKey(this.serviceKey)) {
+      console.warn('⚠️ HIRA API 키가 없어 자동 갱신 스케줄러를 시작하지 않습니다');
+      return;
+    }
+
     if (this.isSchedulerRunning) {
       console.log('⚠️ HIRA API 스케줄러가 이미 실행 중입니다');
       return;
@@ -472,4 +524,7 @@ class HiraApiService {
   }
 }
 
+/**
+ * 서버 전역에서 재사용하는 HIRA API 싱글톤 인스턴스입니다.
+ */
 module.exports = new HiraApiService();

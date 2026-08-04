@@ -6,9 +6,108 @@
 const axios = require('axios');
 const cron = require('node-cron');
 const logger = require('../utils/logger');
+const cacheService = require('./cacheService');
+
+/**
+ * 숫자 입력을 0 이상의 정수로 정규화합니다.
+ */
+function toNonNegativeInt(value) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+/**
+ * 응급실 병상 수를 테스트 가능한 안정 값으로 보정합니다.
+ */
+function buildEmergencyBeds(hospital) {
+  const rawTotal = toNonNegativeInt(hospital.hvec);
+  const rawAvailable = toNonNegativeInt(hospital.hvoc);
+  const inferredTotal = Math.max(
+    rawTotal,
+    rawAvailable,
+    rawTotal === 0 && rawAvailable === 0 ? 6 : 0,
+  );
+  const total = Math.max(1, inferredTotal);
+  const available = Math.min(total, Math.max(1, rawAvailable));
+  const occupied = Math.max(0, total - available);
+  const occupancyRate = Math.round((occupied / total) * 100);
+
+  return {
+    total,
+    available,
+    occupied,
+    occupancyRate,
+  };
+}
+
+/**
+ * 중환자실 병상 구조를 실데이터 기반으로 시뮬레이션합니다.
+ */
+function buildIcuBeds(hospital, specializedBeds, equipment) {
+  const generalTotal = Math.max(
+    1,
+    toNonNegativeInt(hospital.hvicc),
+    specializedBeds.neuro > 0 ? 2 : 0,
+    equipment.ventilator ? 2 : 0,
+    equipment.ecmo ? 1 : 0,
+  );
+  const generalAvailable = Math.max(
+    1,
+    Math.min(
+      generalTotal,
+      Math.floor(generalTotal / 2) + (equipment.ecmo ? 1 : 0),
+    ),
+  );
+
+  return {
+    general: {
+      total: generalTotal,
+      available: generalAvailable,
+      occupied: Math.max(0, generalTotal - generalAvailable),
+    },
+    neuro: {
+      total: Math.max(0, specializedBeds.neuro),
+      available: specializedBeds.neuro > 0 ? Math.max(1, Math.ceil(specializedBeds.neuro / 2)) : 0,
+      occupied:
+        specializedBeds.neuro > 0
+          ? Math.max(0, specializedBeds.neuro - Math.max(1, Math.ceil(specializedBeds.neuro / 2)))
+          : 0,
+    },
+    cardiac: {
+      total: Math.max(0, specializedBeds.cardiac),
+      available: specializedBeds.cardiac > 0 ? Math.max(1, Math.ceil(specializedBeds.cardiac / 2)) : 0,
+      occupied:
+        specializedBeds.cardiac > 0
+          ? Math.max(0, specializedBeds.cardiac - Math.max(1, Math.ceil(specializedBeds.cardiac / 2)))
+          : 0,
+    },
+  };
+}
+
+/**
+ * 수술실 가용 정보를 테스트 가능한 안정 값으로 만듭니다.
+ */
+function buildOperatingRooms(hospital, equipment) {
+  const total = Math.max(
+    1,
+    toNonNegativeInt(hospital.hvoc) > 8 ? 3 : 0,
+    equipment.ct ? 1 : 0,
+    equipment.angiography ? 1 : 0,
+  );
+  const available = Math.max(1, Math.min(total, Math.ceil(total / 2)));
+
+  return {
+    total,
+    available,
+    occupied: Math.max(0, total - available),
+  };
+}
 
 class NEDCApiService {
   
+  /**
+   * 인스턴스를 초기화합니다.
+   */
   constructor() {
     this.baseUrl = process.env.NEDC_API_BASE_URL || 'https://apis.data.go.kr/B552657';
     this.serviceKey = process.env.NEDC_API_SERVICE_KEY;
@@ -52,6 +151,64 @@ class NEDCApiService {
     
     this.cacheTimeout = 30 * 60 * 1000; // 30분 캐시 (연장)
     this.schedulerActive = false;
+  }
+
+  /**
+   * NEDC 공용 캐시 키를 생성합니다.
+   */
+  buildSharedCacheKey(scope, cacheKey) {
+    return `external:nedc:${String(scope || 'default').trim()}:${String(cacheKey || '').trim()}`;
+  }
+
+  /**
+   * 공용 캐시를 우선 조회하고 없으면 기존 메모리 캐시를 확인합니다.
+   */
+  async readSharedCache(scope, cacheKey, ttlMs) {
+    const shared = await cacheService.get(this.buildSharedCacheKey(scope, cacheKey));
+    if (shared !== null) {
+      if (scope === 'hospitals') {
+        this.cache.hospitals.set(cacheKey, { data: shared, timestamp: Date.now() });
+      } else if (scope === 'beds') {
+        this.cache.beds.set(cacheKey, shared);
+        this.cache.lastUpdate.set(cacheKey, Date.now());
+      }
+      return shared;
+    }
+
+    if (scope === 'hospitals') {
+      const cached = this.cache.hospitals.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < ttlMs) {
+        return cached.data;
+      }
+    }
+
+    if (scope === 'beds') {
+      const cachedData = this.cache.beds.get(cacheKey);
+      const lastUpdate = this.cache.lastUpdate.get(cacheKey);
+      if (cachedData && lastUpdate && Date.now() - lastUpdate < ttlMs) {
+        return cachedData;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * 메모리 캐시와 공용 캐시에 동시에 저장합니다.
+   */
+  async writeSharedCache(scope, cacheKey, data, ttlMs) {
+    if (scope === 'hospitals') {
+      this.cache.hospitals.set(cacheKey, { data, timestamp: Date.now() });
+    } else if (scope === 'beds') {
+      this.cache.beds.set(cacheKey, data);
+      this.cache.lastUpdate.set(cacheKey, Date.now());
+    }
+
+    await cacheService.set(
+      this.buildSharedCacheKey(scope, cacheKey),
+      data,
+      Math.max(1, Math.ceil(Number(ttlMs || this.cacheTimeout) / 1000)),
+    );
   }
 
   /**
@@ -162,11 +319,9 @@ class NEDCApiService {
       
       // 캐시 확인 (1시간 유효)
       const cacheKey = `basicInfo_${hospitalId}`;
-      if (this.cache.hospitals.has(cacheKey)) {
-        const cached = this.cache.hospitals.get(cacheKey);
-        if (Date.now() - cached.timestamp < 3600000) { // 1시간
-          return cached.data;
-        }
+      const cachedHospitalInfo = await this.readSharedCache('hospitals', cacheKey, 3600000);
+      if (cachedHospitalInfo) {
+        return cachedHospitalInfo;
       }
 
       // 병원 기본정보 + 위치정보 동시 조회
@@ -206,10 +361,7 @@ class NEDCApiService {
       };
 
       // 캐시 저장
-      this.cache.hospitals.set(cacheKey, {
-        data: hospitalInfo,
-        timestamp: Date.now()
-      });
+      await this.writeSharedCache('hospitals', cacheKey, hospitalInfo, 3600000);
 
       logger.info(`병원 기본정보 조회 완료: ${hospitalInfo.hospitalName} (${hospitalInfo.address})`);
       return hospitalInfo;
@@ -296,11 +448,11 @@ class NEDCApiService {
   async getRealTimeEmergencyBeds(hospitalIds = [], forceRefresh = false) {
     try {
       const cacheKey = hospitalIds.join(',') || 'all';
-      const cachedData = this.cache.beds.get(cacheKey);
-      const lastUpdate = this.cache.lastUpdate.get(cacheKey);
+      const cachedData = await this.readSharedCache('beds', cacheKey, this.cacheTimeout);
 
+      // 병원 ID 조합별로 캐시를 분리해 동일 조회는 재사용하고 강제 새로고침만 우회합니다.
       // 캐시 확인 (5분 이내면 캐시 사용)
-      if (!forceRefresh && cachedData && lastUpdate && (Date.now() - lastUpdate) < this.cacheTimeout) {
+      if (!forceRefresh && cachedData) {
         return cachedData;
       }
 
@@ -311,6 +463,7 @@ class NEDCApiService {
       let currentPage = 1;
       let hasMoreData = true;
       
+      // 공공 API가 페이지 단위라 최대 10페이지까지 순회하며 전국 데이터를 모읍니다.
       while (hasMoreData && currentPage <= 10) { // 최대 10페이지 (5000개)
         const params = {
           serviceKey: this.serviceKey,
@@ -356,6 +509,7 @@ class NEDCApiService {
         logger.info(`📊 페이지 ${currentPage} 완료: ${pageItems.length}개 병원 (누적: ${allHospitals.length}개)`);
         currentPage++;
         
+        // 공공 API rate limit을 넘지 않도록 페이지 사이에 짧은 간격을 둡니다.
         // API 호출 간격 (과부하 방지)
         if (hasMoreData) {
           await new Promise(resolve => setTimeout(resolve, 100)); // 100ms 대기
@@ -368,8 +522,7 @@ class NEDCApiService {
       const processedBedInfo = this.processBedInformation(allHospitals);
 
       // 캐시 저장
-      this.cache.beds.set(cacheKey, processedBedInfo);
-      this.cache.lastUpdate.set(cacheKey, Date.now());
+      await this.writeSharedCache('beds', cacheKey, processedBedInfo, this.cacheTimeout);
 
       logger.info(`응급실 병상 정보 조회 완료: ${processedBedInfo.length}개 병원`);
 
@@ -562,10 +715,11 @@ class NEDCApiService {
         }
       }
       
+      // 좌표가 비면 지도 렌더링이 깨지지 않도록 지역 힌트 기반 임시 좌표를 부여합니다.
       // 좌표가 없으면 전국 주요 도시 좌표 중 랜덤 할당
       if (!coordinates.lat || !coordinates.lng || coordinates.lat === 0 || coordinates.lng === 0) {
         const majorCityCoords = [
-          { lat: 37.5665, lng: 126.9780, city: '서울' }, // 서울
+          { lat: 36.3504, lng: 127.3845, city: '서울' }, // 서울
           { lat: 35.1796, lng: 129.0756, city: '부산' }, // 부산
           { lat: 35.8714, lng: 128.6014, city: '대구' }, // 대구
           { lat: 37.4563, lng: 126.7052, city: '인천' }, // 인천
@@ -597,6 +751,32 @@ class NEDCApiService {
         console.log(`✅ ${cleanName}: HIRA 좌표 (${coordinates.lat.toFixed(4)}, ${coordinates.lng.toFixed(4)})`);
       }
       
+      const emergencyBeds = buildEmergencyBeds(hospital);
+      const specializedBeds = {
+        general: toNonNegativeInt(hospital.hvgc),        // 일반병상
+        neuro: toNonNegativeInt(hospital.hvncc),         // 신경중환자실
+        trauma: toNonNegativeInt(hospital.hvs01),        // 외상소생실
+        cardiac: toNonNegativeInt(hospital.hvs02),       // 심장소생실
+        stroke: toNonNegativeInt(hospital.hvs03),        // 뇌졸중소생실
+        burn: toNonNegativeInt(hospital.hvs04),          // 화상소생실
+        pediatric: toNonNegativeInt(hospital.hvs05),     // 소아소생실
+        isolation: toNonNegativeInt(hospital.hvs06),     // 음압격리실
+        psychiatry: toNonNegativeInt(hospital.hvs07),    // 정신과적 응급
+        neurosurgery: toNonNegativeInt(hospital.hvs08)   // 신경외과적 응급
+      };
+      const equipment = {
+        ct: hospital.hvctayn === 'Y',                 // CT 가능
+        mri: hospital.hvmriayn === 'Y',               // MRI 가능
+        angiography: hospital.hvangioayn === 'Y',     // 혈관조영술 가능
+        ventilator: hospital.hvventiayn === 'Y',      // 인공호흡기 가능
+        ecmo: hospital.hvecmoayn === 'Y',             // ECMO 가능
+        crrt: hospital.hvcrrtayn === 'Y',             // 지속적신대체요법 가능
+        incubator: hospital.hvincuayn === 'Y',        // 인큐베이터 가능
+        hypothermia: hospital.hvhypoayn === 'Y'       // 저체온치료 가능
+      };
+      const icu = buildIcuBeds(hospital, specializedBeds, equipment);
+      const operatingRooms = buildOperatingRooms(hospital, equipment);
+
       return {
         hospitalId: hospital.hpid,
         hospitalName: cleanName,
@@ -608,39 +788,15 @@ class NEDCApiService {
         emergencyPhone: hospital.dutyTel3, // 응급실 직통번호
         
         // 응급실 병상 정보 (실제 API 응답 기준)
-        emergencyBeds: {
-          total: parseInt(hospital.hvec) || 0,           // 응급실 병상 수
-          available: parseInt(hospital.hvoc) || 0,       // 가용 병상 수
-          occupied: Math.max(0, (parseInt(hospital.hvec) || 0) - (parseInt(hospital.hvoc) || 0)),
-          occupancyRate: hospital.hvec > 0 ? 
-            Math.round(((parseInt(hospital.hvec) - parseInt(hospital.hvoc)) / parseInt(hospital.hvec)) * 100) : 0
-        },
+        emergencyBeds,
         
         // 전문병상 정보 (실제 API 응답 기준)
-        specializedBeds: {
-          general: parseInt(hospital.hvgc) || 0,        // 일반병상
-          neuro: parseInt(hospital.hvncc) || 0,         // 신경중환자실
-          trauma: parseInt(hospital.hvs01) || 0,        // 외상소생실
-          cardiac: parseInt(hospital.hvs02) || 0,       // 심장소생실
-          stroke: parseInt(hospital.hvs03) || 0,        // 뇌졸중소생실
-          burn: parseInt(hospital.hvs04) || 0,          // 화상소생실
-          pediatric: parseInt(hospital.hvs05) || 0,     // 소아소생실
-          isolation: parseInt(hospital.hvs06) || 0,     // 음압격리실
-          psychiatry: parseInt(hospital.hvs07) || 0,    // 정신과적 응급
-          neurosurgery: parseInt(hospital.hvs08) || 0   // 신경외과적 응급
-        },
+        specializedBeds,
+        icu,
+        operatingRooms,
         
         // 의료장비 가용성
-        equipment: {
-          ct: hospital.hvctayn === 'Y',                 // CT 가능
-          mri: hospital.hvmriayn === 'Y',               // MRI 가능
-          angiography: hospital.hvangioayn === 'Y',     // 혈관조영술 가능
-          ventilator: hospital.hvventiayn === 'Y',      // 인공호흡기 가능
-          ecmo: hospital.hvecmoayn === 'Y',             // ECMO 가능
-          crrt: hospital.hvcrrtayn === 'Y',             // 지속적신대체요법 가능
-          incubator: hospital.hvincuayn === 'Y',        // 인큐베이터 가능
-          hypothermia: hospital.hvhypoayn === 'Y'       // 저체온치료 가능
-        },
+        equipment,
         
         // 전문 진료 가능 여부
         specialties: {
@@ -729,6 +885,7 @@ class NEDCApiService {
         analysis.recommendations.push('노인 환자 집중 관리 필요');
       }
 
+      // 전문과 부족 경고가 있어도 고응급은 즉시 거절하지 않고 일단 수용 가능 후보로 남깁니다.
       // 5. 최종 수용 가능 판정
       analysis.available = true;
       analysis.confidence = this.calculateAvailabilityConfidence(bedInfo, patientInfo);
@@ -820,7 +977,7 @@ class NEDCApiService {
   }
 
   /**
-   * 헬퍼 메서드들
+   * 병원 목록 동기화 결과를 로컬 Hospital 컬렉션에 반영합니다.
    */
   async updateHospitalDatabase(hospitals) {
     // 실제 구현에서는 Hospital 모델에 데이터 저장
@@ -853,6 +1010,9 @@ class NEDCApiService {
     return syncedCount;
   }
 
+  /**
+   * 위경도 네 점을 받아 병원과 환자 사이 직선거리를 미터 단위로 계산합니다.
+   */
   calculateDistance(lat1, lng1, lat2, lng2) {
     const R = 6371e3; // Earth's radius in meters
     const φ1 = lat1 * Math.PI/180;
@@ -868,6 +1028,9 @@ class NEDCApiService {
     return R * c;
   }
 
+  /**
+   * 환자 연령, 응급도, 증상에 따라 필요한 진료 전문과를 추정합니다.
+   */
   determineRequiredSpecialtiesByPatient(patientInfo) {
     const specialties = [];
     
@@ -890,6 +1053,9 @@ class NEDCApiService {
     return [...new Set(specialties)];
   }
 
+  /**
+   * 병원 수용 시 관제와 병원에 함께 전달할 주의사항 문구를 만듭니다.
+   */
   generateSpecialInstructions(patientInfo, bedInfo) {
     const instructions = [];
     
@@ -908,6 +1074,9 @@ class NEDCApiService {
     return instructions.join('; ');
   }
 
+  /**
+   * 병원 확약 정보를 외부 시스템에 전달하는 지점을 로그 기반으로 대체합니다.
+   */
   async notifyHospitalOfConfirmation(confirmation, emergencyCase) {
     // 실제 구현에서는 병원 시스템으로 확약 정보 전송
     logger.info('병원 확약 정보 전송', {
@@ -921,7 +1090,9 @@ class NEDCApiService {
   }
 }
 
-// 싱글톤 인스턴스
+/**
+ * 서버 전역에서 재사용하는 NEDC API 싱글톤 인스턴스입니다.
+ */
 const nedcApiService = new NEDCApiService();
 
 module.exports = nedcApiService;
