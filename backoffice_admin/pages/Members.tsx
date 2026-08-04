@@ -102,10 +102,12 @@ const getScopedWelfareStaffOptions = (
   options?: {
     fallbackToAll?: boolean;
     requireFullRegion?: boolean;
+    exactOnly?: boolean;
   },
 ) => {
   const fallbackToAll = options?.fallbackToAll ?? true;
   const requireFullRegion = options?.requireFullRegion ?? false;
+  const exactOnly = options?.exactOnly ?? false;
   const activeStaff = welfareStaff.filter((staff) => staff.accountStatus === 'active');
 
   if (
@@ -123,6 +125,7 @@ const getScopedWelfareStaffOptions = (
   );
 
   if (exact.length > 0) return exact;
+  if (exactOnly) return [];
 
   const districtMatched = activeStaff.filter(
     (staff) =>
@@ -563,28 +566,11 @@ export const Members: React.FC = () => {
   const expandedBiometricDetail =
     selectedMember && expandedBiometricCard ? getBiometricAccordionData(selectedMember, expandedBiometricCard.key) : null;
   const editAffiliation = editForm.affiliation || { city: '', district: '', dong: '', welfareName: '' };
-  const editWelfareOptionsBase = getScopedWelfareStaffOptions(welfareStaffOptions, editAffiliation);
-  const editWelfareOptions =
-    editAffiliation.welfareName && !editWelfareOptionsBase.some((staff) => staff.name === editAffiliation.welfareName)
-      ? [
-          {
-            id: `custom-${editAffiliation.welfareName}`,
-            name: editAffiliation.welfareName,
-            email: '',
-            phone: '',
-            role: 'medical' as const,
-            affiliation: {
-              city: editAffiliation.city || '',
-              district: editAffiliation.district || '',
-              dong: editAffiliation.dong || '',
-              welfareName: editAffiliation.welfareName,
-            },
-            createdAt: '',
-            accountStatus: 'active' as const,
-          },
-          ...editWelfareOptionsBase,
-        ]
-      : editWelfareOptionsBase;
+  const editWelfareOptions = getScopedWelfareStaffOptions(welfareStaffOptions, editAffiliation, {
+    fallbackToAll: false,
+    requireFullRegion: true,
+    exactOnly: true,
+  });
   const createWelfareOptions = getScopedWelfareStaffOptions(welfareStaffOptions, {
     city: createForm.city,
     district: createForm.district,
