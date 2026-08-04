@@ -1489,6 +1489,77 @@ export const Members: React.FC = () => {
                          </div>
                     </div>
 
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm h-fit">
+                      <div className="mb-3 flex items-start justify-between">
+                        <h4 className="text-[13px] text-black uppercase tracking-wider flex items-center gap-1">
+                          <Users size={14} /> 보호자 정보
+                        </h4>
+                        <button onClick={handleGuardianInfoSave} className={memberSectionSaveButtonClass}>
+                          <Save size={14} />
+                          저장
+                        </button>
+                      </div>
+                      <div className="space-y-2">
+                        <div>
+                          <label className="text-[11px] text-black">보호자 이름</label>
+                          <input
+                            type="text"
+                            value={editForm.guardian?.name || ''}
+                            onChange={(e) => setEditForm({
+                              ...editForm,
+                              guardian: {
+                                name: e.target.value,
+                                phone: editForm.guardian?.phone || '',
+                                relationship: editForm.guardian?.relationship || '',
+                              },
+                            })}
+                            className={memberDetailFieldClass}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] text-black">보호자 연락처</label>
+                          <input
+                            type="text"
+                            value={editForm.guardian?.phone || ''}
+                            onChange={(e) => setEditForm({
+                              ...editForm,
+                              guardian: {
+                                name: editForm.guardian?.name || '',
+                                phone: formatPhoneNumber(e.target.value),
+                                relationship: editForm.guardian?.relationship || '',
+                              },
+                            })}
+                            className={memberDetailFieldClass}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] text-black">관계</label>
+                          <input
+                            type="text"
+                            value={editForm.guardian?.relationship || ''}
+                            onChange={(e) => setEditForm({
+                              ...editForm,
+                              guardian: {
+                                name: editForm.guardian?.name || '',
+                                phone: editForm.guardian?.phone || '',
+                                relationship: e.target.value,
+                              },
+                            })}
+                            className={memberDetailFieldClass}
+                          />
+                        </div>
+                        <button
+                          onClick={handleIssueGuardianAccessCode}
+                          className="mt-3 inline-flex items-center rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-[12px] text-blue-700 hover:bg-blue-100"
+                        >
+                          인증코드 발급
+                        </button>
+                      </div>
+                    </div>
+
                     {/* Editable Account Status */}
                     <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm relative">
                        <div className="flex justify-between items-start mb-3">
@@ -1574,76 +1645,6 @@ export const Members: React.FC = () => {
                               />
                            </div>
                          </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm h-fit">
-                      <div className="mb-3 flex items-start justify-between">
-                        <h4 className="text-[13px] text-black uppercase tracking-wider flex items-center gap-1">
-                          <Users size={14} /> 보호자 정보
-                        </h4>
-                        <button onClick={handleGuardianInfoSave} className={memberSectionSaveButtonClass}>
-                          <Save size={14} />
-                          저장
-                        </button>
-                      </div>
-                      <div className="space-y-2">
-                        <div>
-                          <label className="text-[11px] text-black">보호자 이름</label>
-                          <input
-                            type="text"
-                            value={editForm.guardian?.name || ''}
-                            onChange={(e) => setEditForm({
-                              ...editForm,
-                              guardian: {
-                                name: e.target.value,
-                                phone: editForm.guardian?.phone || '',
-                                relationship: editForm.guardian?.relationship || '',
-                              },
-                            })}
-                            className={memberDetailFieldClass}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[11px] text-black">보호자 연락처</label>
-                          <input
-                            type="text"
-                            value={editForm.guardian?.phone || ''}
-                            onChange={(e) => setEditForm({
-                              ...editForm,
-                              guardian: {
-                                name: editForm.guardian?.name || '',
-                                phone: formatPhoneNumber(e.target.value),
-                                relationship: editForm.guardian?.relationship || '',
-                              },
-                            })}
-                            className={memberDetailFieldClass}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[11px] text-black">관계</label>
-                          <input
-                            type="text"
-                            value={editForm.guardian?.relationship || ''}
-                            onChange={(e) => setEditForm({
-                              ...editForm,
-                              guardian: {
-                                name: editForm.guardian?.name || '',
-                                phone: editForm.guardian?.phone || '',
-                                relationship: e.target.value,
-                              },
-                            })}
-                            className={memberDetailFieldClass}
-                          />
-                        </div>
-                        <button
-                          onClick={handleIssueGuardianAccessCode}
-                          className="mt-3 inline-flex items-center rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-[12px] text-blue-700 hover:bg-blue-100"
-                        >
-                          인증코드 발급
-                        </button>
-                      </div>
                     </div>
 
                     <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm h-fit">
