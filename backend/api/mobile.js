@@ -20,6 +20,11 @@ const { generateNonDiagnosticSummary } = require('../services/ollamaService');
 const { emitEmergencyCaseCreated, emitCaseStatusUpdated, emitBiometricDataUpdated } = require('../services/socketService');
 const { cacheMiddleware, invalidateCache } = require('../middleware/cache');
 const cacheService = require('../services/cacheService');
+const {
+  setVerificationEntry,
+  getVerificationEntry,
+  deleteVerificationEntry,
+} = require('../services/verificationCacheService');
 const logger = require('../utils/logger');
 const { sendSMS } = require('../services/notificationService');
 const crypto = require('crypto');
@@ -27,7 +32,6 @@ const IP_LOCATION_CACHE_TTL_MS = 2 * 60 * 1000;
 const IP_LOCATION_LOOKUP_TIMEOUT_MS = 2500;
 const IP_LOCATION_CLUSTER_RADIUS_M = 15000;
 const ipLocationCache = new Map();
-const guardianProfilePhoneVerificationStore = new Map();
 
 /**
  * 폰 위치 provider/정확도를 기준으로 GPS·Wi-Fi·기지국 출처를 분류합니다.
@@ -224,8 +228,8 @@ function generateGuardianProfilePhoneVerificationToken() {
 /**
  * 보호자 정보 수정에서 전달된 인증 토큰이 해당 번호에 대해 유효한지 확인합니다.
  */
-function hasVerifiedGuardianProfilePhoneToken(normalizedPhone, phoneVerificationToken) {
-  const verificationEntry = guardianProfilePhoneVerificationStore.get(normalizedPhone);
+async function hasVerifiedGuardianProfilePhoneToken(normalizedPhone, phoneVerificationToken) {
+  const verificationEntry = await getVerificationEntry('guardian-profile-phone', normalizedPhone);
   return Boolean(
     verificationEntry &&
       verificationEntry.verifiedToken === String(phoneVerificationToken || '') &&
@@ -1730,7 +1734,7 @@ router.post('/guardian/profile/phone-verification/request', authenticateToken, a
     }
 
     const code = generateGuardianProfilePhoneVerificationCode();
-    guardianProfilePhoneVerificationStore.set(normalizedPhone, {
+    await setVerificationEntry('guardian-profile-phone', normalizedPhone, {
       code,
       expiresAt: Date.now() + 3 * 60 * 1000,
       verifiedToken: '',
@@ -1767,14 +1771,14 @@ router.post('/guardian/profile/phone-verification/verify', authenticateToken, as
 
     const normalizedPhone = normalizeMemberPhone(req.body?.phone);
     const inputCode = String(req.body?.code || '').trim();
-    const verificationEntry = guardianProfilePhoneVerificationStore.get(normalizedPhone);
+    const verificationEntry = await getVerificationEntry('guardian-profile-phone', normalizedPhone);
 
     if (
       !verificationEntry ||
       verificationEntry.userId !== String(req.user.sub || '') ||
       isExpiredAt(verificationEntry.expiresAt)
     ) {
-      guardianProfilePhoneVerificationStore.delete(normalizedPhone);
+      await deleteVerificationEntry('guardian-profile-phone', normalizedPhone);
       return res.status(400).json({
         success: false,
         message: '인증번호가 만료되었습니다. 다시 요청해주세요.',
@@ -1789,7 +1793,7 @@ router.post('/guardian/profile/phone-verification/verify', authenticateToken, as
     }
 
     const verificationToken = generateGuardianProfilePhoneVerificationToken();
-    guardianProfilePhoneVerificationStore.set(normalizedPhone, {
+    await setVerificationEntry('guardian-profile-phone', normalizedPhone, {
       ...verificationEntry,
       verifiedToken: verificationToken,
       verifiedUntil: Date.now() + 10 * 60 * 1000,
@@ -1859,7 +1863,7 @@ router.put('/guardian/profile', authenticateToken, async (req, res) => {
     if (
       nextPhone &&
       nextPhone !== currentPhone &&
-      !hasVerifiedGuardianProfilePhoneToken(nextPhone, phoneVerificationToken)
+      !(await hasVerifiedGuardianProfilePhoneToken(nextPhone, phoneVerificationToken))
     ) {
       return res.status(400).json({
         success: false,
@@ -1883,7 +1887,7 @@ router.put('/guardian/profile', authenticateToken, async (req, res) => {
     await user.save();
 
     if (nextPhone && nextPhone !== currentPhone) {
-      guardianProfilePhoneVerificationStore.delete(nextPhone);
+      await deleteVerificationEntry('guardian-profile-phone', nextPhone);
     }
 
     return res.json({

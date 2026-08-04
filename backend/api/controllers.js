@@ -17,9 +17,13 @@ const { autoMatchParamedicForCase } = require('../services/matchingService');
 const { autoMatchHospitalForCase } = require('../services/hospitalService');
 const { emitParamedicMatched, emitHospitalMatched } = require('../services/socketService');
 const { sendVerificationSms } = require('../services/smsService');
+const {
+  setVerificationEntry,
+  getVerificationEntry,
+  deleteVerificationEntry,
+} = require('../services/verificationCacheService');
 
 const ADMIN_MENU_PERMISSIONS = ['controllers', 'welfare', 'members', 'guardians', 'history', 'settings', 'admins'];
-const staffPhoneVerificationStore = new Map();
 const TOPIS_CCTV_LIST_URL = 'https://topis.seoul.go.kr/map/cctv/selectCctvList.do';
 const TOPIS_CCTV_INFO_URL = 'https://topis.seoul.go.kr/map/selectCctvInfo.do';
 const TOPIS_CCTV_MAP_URL = 'https://topis.seoul.go.kr/map/openCctvMap.do';
@@ -402,8 +406,8 @@ function isExpiredAt(timestamp) {
 /**
  * 운영자 번호 변경 요청에 포함된 인증 토큰이 해당 번호로 검증 완료된 값인지 확인합니다.
  */
-function hasVerifiedStaffPhoneToken(normalizedPhone, phoneVerificationToken) {
-  const verificationEntry = staffPhoneVerificationStore.get(normalizedPhone);
+async function hasVerifiedStaffPhoneToken(normalizedPhone, phoneVerificationToken) {
+  const verificationEntry = await getVerificationEntry('staff-phone', normalizedPhone);
   return Boolean(
     verificationEntry &&
       verificationEntry.verifiedToken === String(phoneVerificationToken || '') &&
@@ -1067,7 +1071,7 @@ router.post('/phone-verification/request', requireAuth, requireRole('admin'), as
 
     const code = generatePhoneVerificationCode();
     const expiresAt = Date.now() + 3 * 60 * 1000;
-    staffPhoneVerificationStore.set(normalizedPhone, {
+    await setVerificationEntry('staff-phone', normalizedPhone, {
       code,
       expiresAt,
       verifiedToken: '',
@@ -1158,10 +1162,10 @@ router.post('/phone-verification/verify', requireAuth, requireRole('admin'), asy
   try {
     const normalizedPhone = normalizePhoneNumber(req.body?.phone);
     const inputCode = String(req.body?.code || '').trim();
-    const verificationEntry = staffPhoneVerificationStore.get(normalizedPhone);
+    const verificationEntry = await getVerificationEntry('staff-phone', normalizedPhone);
 
     if (!verificationEntry || isExpiredAt(verificationEntry.expiresAt)) {
-      staffPhoneVerificationStore.delete(normalizedPhone);
+      await deleteVerificationEntry('staff-phone', normalizedPhone);
       return res.status(400).json({
         success: false,
         message: '인증번호가 만료되었습니다. 다시 요청해주세요.',
@@ -1176,7 +1180,7 @@ router.post('/phone-verification/verify', requireAuth, requireRole('admin'), asy
     }
 
     const verificationToken = generatePhoneVerificationToken();
-    staffPhoneVerificationStore.set(normalizedPhone, {
+    await setVerificationEntry('staff-phone', normalizedPhone, {
       ...verificationEntry,
       verifiedToken: verificationToken,
       verifiedUntil: Date.now() + 10 * 60 * 1000,
@@ -1220,7 +1224,7 @@ router.post('/me/phone-verification/request', requireAuth, async (req, res) => {
     }
 
     const code = generatePhoneVerificationCode();
-    staffPhoneVerificationStore.set(normalizedPhone, {
+    await setVerificationEntry('staff-phone', normalizedPhone, {
       code,
       expiresAt: Date.now() + 3 * 60 * 1000,
       verifiedToken: '',
@@ -1265,10 +1269,10 @@ router.post('/me/phone-verification/verify', requireAuth, async (req, res) => {
 
     const normalizedPhone = normalizePhoneNumber(req.body?.phone);
     const inputCode = String(req.body?.code || '').trim();
-    const verificationEntry = staffPhoneVerificationStore.get(normalizedPhone);
+    const verificationEntry = await getVerificationEntry('staff-phone', normalizedPhone);
 
     if (!verificationEntry || isExpiredAt(verificationEntry.expiresAt)) {
-      staffPhoneVerificationStore.delete(normalizedPhone);
+      await deleteVerificationEntry('staff-phone', normalizedPhone);
       return res.status(400).json({
         success: false,
         message: '인증번호가 만료되었습니다. 다시 요청해주세요.',
@@ -1283,7 +1287,7 @@ router.post('/me/phone-verification/verify', requireAuth, async (req, res) => {
     }
 
     const verificationToken = generatePhoneVerificationToken();
-    staffPhoneVerificationStore.set(normalizedPhone, {
+    await setVerificationEntry('staff-phone', normalizedPhone, {
       ...verificationEntry,
       verifiedToken: verificationToken,
       verifiedUntil: Date.now() + 10 * 60 * 1000,
@@ -1562,7 +1566,7 @@ router.post('/admin-create', requireAuth, requireRole('admin'), async (req, res)
       });
     }
 
-    const verificationEntry = staffPhoneVerificationStore.get(normalizedPhone);
+    const verificationEntry = await getVerificationEntry('staff-phone', normalizedPhone);
 
     if (normalizedPhone.length < 10) {
       return res.status(400).json({
@@ -1605,7 +1609,7 @@ router.post('/admin-create', requireAuth, requireRole('admin'), async (req, res)
       data: serializeControllerSummary(controller),
     });
 
-    staffPhoneVerificationStore.delete(normalizedPhone);
+    await deleteVerificationEntry('staff-phone', normalizedPhone);
   } catch (error) {
     console.error('관제요원 수동 등록 오류:', error);
     res.status(500).json({
@@ -1708,7 +1712,7 @@ router.patch('/:id', requireAuth, requireAdminOrSameController, async (req, res)
       requesterRole !== 'admin' &&
       normalizedPhone &&
       normalizedPhone !== currentPhone &&
-      !hasVerifiedStaffPhoneToken(normalizedPhone, phoneVerificationToken)
+      !(await hasVerifiedStaffPhoneToken(normalizedPhone, phoneVerificationToken))
     ) {
       return res.status(400).json({
         success: false,
@@ -1752,7 +1756,7 @@ router.patch('/:id', requireAuth, requireAdminOrSameController, async (req, res)
     await controller.save();
 
     if (requesterRole !== 'admin' && normalizedPhone && normalizedPhone !== currentPhone) {
-      staffPhoneVerificationStore.delete(normalizedPhone);
+      await deleteVerificationEntry('staff-phone', normalizedPhone);
     }
 
     res.json({
