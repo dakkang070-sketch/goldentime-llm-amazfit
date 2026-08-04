@@ -3,7 +3,11 @@ const cacheService = require('../services/cacheService');
 /**
  * GET 요청 응답을 URL 기준 키로 캐시에 저장하는 미들웨어를 생성합니다.
  */
-function cacheMiddleware(ttlSeconds = 60) {
+function cacheMiddleware(options = 60) {
+  const resolvedOptions = typeof options === 'number' ? { ttlSeconds: options } : (options || {});
+  const ttlSeconds = resolvedOptions.ttlSeconds ?? 60;
+  const keyBuilder = resolvedOptions.keyBuilder;
+
   return async (req, res, next) => {
     try {
       // GET 요청만 캐시
@@ -12,7 +16,9 @@ function cacheMiddleware(ttlSeconds = 60) {
       }
 
       // URL과 query 조합으로 동일 조회 요청을 구분합니다.
-      const cacheKey = `cache:${req.originalUrl}:${JSON.stringify(req.query)}`;
+      const cacheKey = typeof keyBuilder === 'function'
+        ? await keyBuilder(req)
+        : `cache:${req.originalUrl}:${JSON.stringify(req.query)}`;
       const cached = await cacheService.get(cacheKey);
 
       if (cached) {

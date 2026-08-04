@@ -18,6 +18,7 @@ const { analyzeBiometricAndMaybeOpenCase } = require('../services/analyzerServic
 const { buildEmergencyCaseBiometricSnapshot } = require('../services/emergencyCaseSnapshotService');
 const { generateNonDiagnosticSummary } = require('../services/ollamaService');
 const { emitEmergencyCaseCreated, emitCaseStatusUpdated, emitBiometricDataUpdated } = require('../services/socketService');
+const { cacheMiddleware, invalidateCache } = require('../middleware/cache');
 const logger = require('../utils/logger');
 const { sendSMS } = require('../services/notificationService');
 const crypto = require('crypto');
@@ -1901,6 +1902,51 @@ router.put('/guardian/profile', authenticateToken, async (req, res) => {
 });
 
 /**
+ * 보호자 계정이 현재 연결된 보호자 정보를 해지합니다.
+ */
+router.delete('/guardian/profile', authenticateToken, async (req, res) => {
+  try {
+    if (req.user?.role !== 'guardian') {
+      return res.status(403).json({
+        success: false,
+        message: '보호자 계정만 해지할 수 있습니다.',
+      });
+    }
+
+    const user = await User.findById(req.user.sub);
+    if (!user || !user.isEmergencyAppUser) {
+      return res.status(404).json({
+        success: false,
+        message: '사용자를 찾을 수 없습니다.',
+      });
+    }
+
+    user.emergencyContact = {
+      ...(user.emergencyContact || {}),
+      name: '',
+      relationship: '',
+      phone: '',
+    };
+    user.emergencySettings = {
+      ...(user.emergencySettings || {}),
+      guardianAccess: {},
+    };
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: '보호자 연결이 해지되었습니다.',
+    });
+  } catch (error) {
+    logger.error('보호자 연결 해지 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '보호자 연결 해지 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+/**
  * @swagger
  * /api/mobile/profile:
  *   get:
@@ -1917,7 +1963,15 @@ router.put('/guardian/profile', authenticateToken, async (req, res) => {
 /**
  * 로그인한 응급 사용자의 프로필과 연결 정보를 조회합니다.
  */
-router.get('/profile', authenticateToken, requireReadableEmergencyUserOrGuardian, async (req, res) => {
+router.get(
+  '/profile',
+  authenticateToken,
+  requireReadableEmergencyUserOrGuardian,
+  cacheMiddleware({
+    ttlSeconds: 30,
+    keyBuilder: async (req) => `cache:/api/mobile/profile:${req.user?.role || 'user'}:${req.user?.sub || 'anonymous'}`,
+  }),
+  async (req, res) => {
   try {
     const user = await User.findById(req.user.sub)
       .select('-password')
@@ -2235,6 +2289,9 @@ router.put('/profile', authenticateToken, requireActiveEmergencyUser, async (req
 
     await user.save();
 
+    invalidateCache(`^cache:/api/mobile/profile:[^:]+:${user._id}$`);
+    invalidateCache('^cache:/api/users');
+
     logger.info(`사용자 프로필 수정 요청 접수: ${user.email}`);
 
     res.json({
@@ -2294,6 +2351,9 @@ router.delete('/profile', authenticateToken, requireActiveEmergencyUser, async (
     }
 
     await user.save();
+
+    invalidateCache(`^cache:/api/mobile/profile:[^:]+:${user._id}$`);
+    invalidateCache('^cache:/api/users');
 
     logger.info(`응급 사용자 회원탈퇴 처리: ${user.email}`);
 

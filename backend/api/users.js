@@ -8,6 +8,7 @@ const { assignUserToController } = require('../services/controllerAssignmentServ
 const { authLimiter } = require('../middleware/rateLimiter');
 const { authRequired: requireAuth } = require('../middleware/auth');
 const { requireRole } = require('../middleware/requireRole');
+const { cacheMiddleware, invalidateCache } = require('../middleware/cache');
 const { sendSMS } = require('../services/notificationService');
 
 /**
@@ -297,7 +298,7 @@ function applyApprovedMemberProfileChange(user, rawPendingProfileChange = {}) {
 /**
  * 전체 사용자와 각 사용자의 최신 생체 상태를 함께 조회합니다.
  */
-router.get('/', requireAuth, requireRole(['admin', 'medical']), async (req, res, next) => {
+router.get('/', requireAuth, requireRole(['admin', 'medical']), cacheMiddleware(30), async (req, res, next) => {
   try {
     // 1. 모든 사용자 조회
     const users = await User.find()
@@ -446,6 +447,8 @@ router.patch('/:id/approval', requireAuth, requireRole('admin'), async (req, res
       }
     }
 
+    invalidateCache('^cache:/api/users');
+
     res.json({
       success: true,
       message: accountStatus === 'active' ? '회원 가입이 승인되었습니다.' : '회원 가입 상태가 변경되었습니다.',
@@ -503,6 +506,9 @@ router.patch('/:id/profile-approval', requireAuth, requireRole('admin'), async (
 
     user.pendingProfileChange = undefined;
     await user.save();
+
+    invalidateCache('^cache:/api/users');
+    invalidateCache(`^cache:/api/mobile/profile:[^:]+:${id}$`);
 
     res.json({
       success: true,
@@ -608,6 +614,9 @@ router.put('/:id', requireAuth, requireRole('admin'), async (req, res, next) => 
       return res.status(404).json({ success: false, message: '사용자를 찾을 수 없습니다.' });
     }
 
+    invalidateCache('^cache:/api/users');
+    invalidateCache(`^cache:/api/mobile/profile:[^:]+:${id}$`);
+
     res.json({ success: true, data: user });
   } catch (err) {
     next(err);
@@ -645,6 +654,9 @@ router.delete('/:id', requireAuth, requireRole('admin'), async (req, res, next) 
     // 관련 생체 데이터도 함께 삭제 (선택 사항이나 데이터 무결성을 위해 권장)
     await BiometricData.deleteMany({ userId: id });
     await EmergencyCase.deleteMany({ userId: id });
+
+    invalidateCache('^cache:/api/users');
+    invalidateCache(`^cache:/api/mobile/profile:[^:]+:${id}$`);
 
     res.json({ success: true, message: '사용자가 삭제되었습니다.' });
   } catch (err) {
@@ -749,6 +761,8 @@ router.post('/signup', authLimiter, async (req, res, next) => {
       accountStatus: 'pending',
     });
 
+    invalidateCache('^cache:/api/users');
+
     res.status(201).json({
       success: true,
       userId: user._id,
@@ -825,6 +839,8 @@ router.post('/admin-create', requireAuth, requireRole('admin'), async (req, res,
       consents: consents || undefined,
       accountStatus: 'active',
     });
+
+    invalidateCache('^cache:/api/users');
 
     res.status(201).json({
       success: true,
