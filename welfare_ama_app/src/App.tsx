@@ -236,6 +236,29 @@ interface WelfareSystemOverview {
   };
 }
 
+interface WelfareShadowConsistencyResponse {
+  scope: string;
+  summary: {
+    status: 'OK' | 'MISMATCH';
+    totalGap: number;
+    selectedScopes: string[];
+    inconsistentScopes: string[];
+    summaryLevel: 'info' | 'warning' | 'critical';
+    bannerTone: 'neutral' | 'warning' | 'danger';
+    actionPriority: 'low' | 'medium' | 'high';
+    summaryMessage: string;
+    recommendedAction: string;
+    realtimeTrend: {
+      totalMismatchCount: number;
+      consecutiveMismatchCount: number;
+    };
+    workflowTrend: {
+      totalMismatchCount: number;
+      consecutiveMismatchCount: number;
+    };
+  };
+}
+
 interface EmergencyCaseRow {
   _id: string;
   emergencyLevel?: number;
@@ -2006,6 +2029,7 @@ export default function App() {
   const [staffs, setStaffs] = useState<WelfareStaff[]>([]);
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [systemOverview, setSystemOverview] = useState<WelfareSystemOverview | null>(null);
+  const [shadowConsistency, setShadowConsistency] = useState<WelfareShadowConsistencyResponse | null>(null);
   const [monitoredUsers, setMonitoredUsers] = useState<MonitoredUser[]>([]);
   const [cases, setCases] = useState<EmergencyCaseRow[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState('');
@@ -2186,6 +2210,7 @@ export default function App() {
   const loadDashboard = useCallback(async (options?: { silent?: boolean }) => {
     if (!session?.token) {
       setSystemOverview(null);
+      setShadowConsistency(null);
       setLoading(false);
       return;
     }
@@ -2200,18 +2225,20 @@ export default function App() {
         setLoading(true);
       }
       setError('');
-      const [staffJson, usersJson, monitoredJson, casesJson, overviewJson] = await Promise.all([
+      const [staffJson, usersJson, monitoredJson, casesJson, overviewJson, consistencyJson] = await Promise.all([
         fetchJson<{ success: boolean; data: WelfareStaff[] }>('/api/controllers'),
         fetchJson<{ success: boolean; data: ApiUser[] }>('/api/users'),
         fetchJson<{ success: boolean; users: MonitoredUser[] }>('/api/controllers/medical/monitored-users'),
         fetchJson<{ success: boolean; cases: EmergencyCaseRow[] }>('/api/controllers/medical/emergency-cases'),
         fetchJson<{ success: boolean; data: WelfareSystemOverview }>('/api/system-monitoring/overview'),
+        fetchJson<{ success: boolean; data: WelfareShadowConsistencyResponse }>('/api/system-monitoring/shadow-consistency').catch(() => null),
       ]);
       setStaffs(Array.isArray(staffJson.data) ? staffJson.data.filter((row) => row.role === 'medical') : []);
       setUsers(Array.isArray(usersJson.data) ? usersJson.data : []);
       setMonitoredUsers(Array.isArray(monitoredJson.users) ? monitoredJson.users : []);
       setCases(Array.isArray(casesJson.cases) ? casesJson.cases : []);
       setSystemOverview(overviewJson?.data || null);
+      setShadowConsistency(consistencyJson?.data || null);
       setLastDashboardSyncedAt(new Date().toLocaleTimeString('ko-KR', { hour12: false }));
     } catch (loadError) {
       setError('복지사 모바일 데이터를 불러오지 못했습니다.');
@@ -2262,6 +2289,7 @@ export default function App() {
   );
   const alertItems = useMemo(() => buildAlertItems(cases, memberRows), [cases, memberRows]);
   const shadowMonitoring = systemOverview?.shadowMonitoring;
+  const shadowConsistencySummary = shadowConsistency?.summary;
   const shadowBannerToneClass = useMemo(
     () => resolveShadowBannerToneClass(shadowMonitoring?.bannerTone),
     [shadowMonitoring?.bannerTone],
@@ -3611,6 +3639,46 @@ export default function App() {
                   <span>실시간 {shadowMonitoring.realtimeGap}</span>
                   <span>워크플로우 {shadowMonitoring.workflowGap}</span>
                 </div>
+                {shadowConsistencySummary ? (
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    <div className="rounded-[20px] border border-white/70 bg-white/65 px-3.5 py-3">
+                      <div className="text-[11px] font-extrabold tracking-[0.08em] text-slate-500">
+                        SHADOW CONSISTENCY
+                      </div>
+                      <p className="mt-1 text-[13px] font-bold leading-5 text-slate-800">
+                        {shadowConsistencySummary.summaryMessage}
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-2 text-[12px] font-semibold text-slate-700">
+                        <span>scope {shadowConsistencySummary.selectedScopes.join(', ')}</span>
+                        <span>불일치 {shadowConsistencySummary.inconsistentScopes.length}개</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="rounded-[20px] border border-white/70 bg-white/65 px-3.5 py-3 text-slate-800">
+                        <div className="text-[11px] font-extrabold tracking-[0.08em] text-slate-500">
+                          REALTIME
+                        </div>
+                        <div className="mt-1 text-[15px] font-bold">
+                          연속 {shadowConsistencySummary.realtimeTrend.consecutiveMismatchCount}
+                        </div>
+                        <div className="text-[12px] font-semibold text-slate-600">
+                          누적 {shadowConsistencySummary.realtimeTrend.totalMismatchCount}
+                        </div>
+                      </div>
+                      <div className="rounded-[20px] border border-white/70 bg-white/65 px-3.5 py-3 text-slate-800">
+                        <div className="text-[11px] font-extrabold tracking-[0.08em] text-slate-500">
+                          WORKFLOW
+                        </div>
+                        <div className="mt-1 text-[15px] font-bold">
+                          연속 {shadowConsistencySummary.workflowTrend.consecutiveMismatchCount}
+                        </div>
+                        <div className="text-[12px] font-semibold text-slate-600">
+                          누적 {shadowConsistencySummary.workflowTrend.totalMismatchCount}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
               </section>
             ) : null}
 
