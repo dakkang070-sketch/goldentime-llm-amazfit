@@ -1990,20 +1990,20 @@ export default function App() {
   const [signupDomainOption, setSignupDomainOption] = useState('');
   const [signupCustomDomain, setSignupCustomDomain] = useState('');
   const authTitleClass = 'text-[24px] font-semibold tracking-[-0.02em] text-slate-900';
-  const authFieldLabelClass = 'mb-2 text-[13px] font-medium text-slate-600';
+  const authFieldLabelClass = 'mb-2 text-[14px] font-medium text-slate-600';
   const authInputShellClass = 'flex h-[44px] items-center gap-3 overflow-hidden rounded-lg border border-slate-200 bg-white px-4';
-  const authInputClass = 'h-full min-h-0 w-full appearance-none bg-transparent text-[14px] leading-none text-slate-900 outline-none';
+  const authInputClass = 'h-full min-h-0 w-full appearance-none bg-transparent text-[16px] leading-none text-slate-900 outline-none';
   const authEmailGroupClass = 'mt-1 space-y-3';
   const authSelectClass =
-    'h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-teal-600';
+    'h-11 rounded-lg border border-slate-200 bg-white px-4 text-[15px] text-slate-900 outline-none focus:border-teal-600';
   const authStaticDomainClass =
-    'flex h-11 items-center rounded-lg border border-slate-100 bg-slate-50 px-4 text-sm text-slate-500';
+    'flex h-11 items-center rounded-lg border border-slate-100 bg-slate-50 px-4 text-[15px] text-slate-500';
   const authPrimaryButtonClass =
-    'inline-flex h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 text-[14px] font-semibold text-white shadow-sm disabled:opacity-50';
+    'inline-flex h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 text-[15px] font-semibold text-white shadow-sm disabled:opacity-50';
   const authSecondaryButtonClass =
-    'inline-flex h-[44px] shrink-0 items-center justify-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-4 text-[14px] font-semibold text-teal-700';
+    'inline-flex h-[44px] shrink-0 items-center justify-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-4 text-[15px] font-semibold text-teal-700';
   const authCheckboxLabelClass =
-    'inline-flex items-center gap-2 text-[13px] font-medium text-slate-600';
+    'inline-flex items-center gap-2 text-[14px] font-medium text-slate-600';
   const signupInputIconButtonClass =
     'inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-teal-50 hover:text-teal-600';
 
@@ -2985,7 +2985,7 @@ export default function App() {
                     onChange={(event) => setRememberWelfareEmail(event.target.checked)}
                     className="peer sr-only"
                   />
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 border-slate-300 peer-checked:border-teal-600 peer-checked:bg-teal-600 transition-colors">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded border-2 border-slate-300 peer-checked:border-teal-600 peer-checked:bg-teal-600 transition-colors">
                     <svg className="h-3 w-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                   </span>
                   <span className="text-[13px] font-medium text-slate-600">ID 저장</span>
@@ -2997,7 +2997,7 @@ export default function App() {
                     onChange={(event) => setAutoLoginEnabled(event.target.checked)}
                     className="peer sr-only"
                   />
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 border-slate-300 peer-checked:border-teal-600 peer-checked:bg-teal-600 transition-colors">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded border-2 border-slate-300 peer-checked:border-teal-600 peer-checked:bg-teal-600 transition-colors">
                     <svg className="h-3 w-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                   </span>
                   <span className="text-[13px] font-medium text-slate-600">자동 로그인</span>
@@ -3291,7 +3291,7 @@ export default function App() {
                       }}
                       className="peer sr-only"
                     />
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 border-slate-300 peer-checked:border-teal-600 peer-checked:bg-teal-600 transition-colors">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded border-2 border-slate-300 peer-checked:border-teal-600 peer-checked:bg-teal-600 transition-colors">
                       <svg className="h-3 w-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                     <span className="text-[13px] font-semibold text-slate-900">필수 약관 모두 동의</span>
@@ -3306,7 +3306,7 @@ export default function App() {
                       onChange={(event) => setWelfareTermsAgreed(event.target.checked)}
                       className="peer sr-only"
                     />
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 border-slate-300 peer-checked:border-teal-600 peer-checked:bg-teal-600 transition-colors">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded border-2 border-slate-300 peer-checked:border-teal-600 peer-checked:bg-teal-600 transition-colors">
                       <svg className="h-3 w-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                     <span className="text-[13px] text-slate-700">
@@ -3330,7 +3330,7 @@ export default function App() {
                       onChange={(event) => setWelfarePrivacyAgreed(event.target.checked)}
                       className="peer sr-only"
                     />
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 border-slate-300 peer-checked:border-teal-600 peer-checked:bg-teal-600 transition-colors">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded border-2 border-slate-300 peer-checked:border-teal-600 peer-checked:bg-teal-600 transition-colors">
                       <svg className="h-3 w-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                     <span className="text-[13px] text-slate-700">
@@ -3354,7 +3354,7 @@ export default function App() {
                       onChange={(event) => setWelfareLocationAgreed(event.target.checked)}
                       className="peer sr-only"
                     />
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 border-slate-300 peer-checked:border-teal-600 peer-checked:bg-teal-600 transition-colors">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded border-2 border-slate-300 peer-checked:border-teal-600 peer-checked:bg-teal-600 transition-colors">
                       <svg className="h-3 w-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                     <span className="text-[13px] text-slate-700">
@@ -3378,7 +3378,7 @@ export default function App() {
                       onChange={(event) => setWelfareBiometricAgreed(event.target.checked)}
                       className="peer sr-only"
                     />
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 border-slate-300 peer-checked:border-teal-600 peer-checked:bg-teal-600 transition-colors">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded border-2 border-slate-300 peer-checked:border-teal-600 peer-checked:bg-teal-600 transition-colors">
                       <svg className="h-3 w-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                     <span className="text-[13px] text-slate-700">

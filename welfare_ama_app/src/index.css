@@ -1,0 +1,166 @@
+@import url("https://cdn.jsdelivr.net/gh/sun-typeface/SUITE@2/fonts/static/woff2/SUITE.css");
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+@theme {
+  --font-headline: "SUITE", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-body: "SUITE", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --color-primary: #0f766e;
+  --color-primary-strong: #115e59;
+  --color-secondary: #f97316;
+  --color-surface: #f4f7fb;
+  --color-surface-muted: #e7edf5;
+  --color-surface-card: #ffffff;
+  --color-on-surface: #0f172a;
+  --color-on-surface-variant: #475569;
+  --color-danger: #dc2626;
+  --color-warning: #d97706;
+  --color-success: #059669;
+}
+
+@layer base {
+  html {
+    font-size: 18px;
+    font-family: var(--font-body);
+    background: var(--color-surface);
+  }
+
+  body {
+    margin: 0;
+    min-width: 320px;
+    min-height: 100vh;
+    overflow-x: hidden;
+    background:
+      radial-gradient(circle at top, rgba(191, 219, 254, 0.28), transparent 34%),
+      linear-gradient(180deg, #f4f7fb 0%, #f8fbff 36%, #eef4ff 100%);
+    color: var(--color-on-surface);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+    font-size: 18px;
+  }
+}
+
+@layer components {
+  .safe-area-shell {
+    min-height: 100vh;
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+
+  .card {
+    @apply rounded-[22px] border border-white/80 bg-white/92 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm;
+  }
+
+  .section-title {
+    @apply text-[17px] font-bold text-slate-500 tracking-[-0.01em];
+  }
+
+  .status-chip {
+    @apply inline-flex items-center rounded-full px-2.5 py-1 text-[14px] font-bold leading-none;
+  }
+
+  .leaflet-container {
+    height: 100%;
+    width: 100%;
+    font-family: var(--font-body);
+    background: #e2e8f0;
+  }
+
+  .welfare-map-marker {
+    background: transparent;
+    border: 0;
+  }
+
+  .welfare-map-marker__wrap {
+    position: relative;
+    display: flex;
+    width: 112px;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .welfare-map-marker__pin {
+    position: relative;
+    display: flex;
+    height: 30px;
+    width: 30px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: rgba(79, 70, 229, 0.26);
+    box-shadow: 0 12px 26px rgba(79, 70, 229, 0.28);
+  }
+
+  .welfare-map-marker__dot {
+    position: relative;
+    height: 14px;
+    width: 14px;
+    border-radius: 9999px;
+    background: #4338ca;
+    border: 3px solid #ffffff;
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.18);
+  }
+
+  .welfare-map-marker__label {
+    position: absolute;
+    top: 38px;
+    left: 50%;
+    min-width: 52px;
+    max-width: 88px;
+    transform: translateX(-50%);
+    border-radius: 9999px;
+    background: rgba(15, 23, 42, 0.82);
+    padding: 4px 8px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.2;
+    color: #ffffff;
+    white-space: nowrap;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.18);
+  }
+
+  .welfare-current-map-marker {
+    background: transparent;
+    border: 0;
+  }
+
+  .welfare-current-map-marker__pin {
+    position: relative;
+    display: flex;
+    height: 36px;
+    width: 36px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: rgba(14, 165, 233, 0.28);
+    box-shadow: 0 12px 28px rgba(14, 165, 233, 0.34);
+  }
+
+  .welfare-current-map-marker__pulse {
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background: rgba(14, 165, 233, 0.16);
+    border: 2px solid rgba(14, 165, 233, 0.28);
+  }
+
+  .welfare-current-map-marker__dot {
+    position: relative;
+    z-index: 1;
+    height: 16px;
+    width: 16px;
+    border-radius: 9999px;
+    background: #0ea5e9;
+    border: 3px solid #ffffff;
+    box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.16);
+  }
+}

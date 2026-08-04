@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -119,9 +119,9 @@ interface SignupFormData {
 }
 
 const inputBase =
-  'w-full h-11 px-4 bg-white text-[16px] text-slate-900 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none placeholder:text-slate-400 transition-all';
+  'w-full h-11 px-4 bg-white text-[17px] text-slate-900 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none placeholder:text-slate-400 transition-all';
 const labelBase =
-  'text-[14px] font-medium text-slate-900 mb-1.5 flex items-center gap-1';
+  'text-[15px] font-medium text-slate-900 mb-1.5 flex items-center gap-1';
 const requiredMark = <span className="text-red-500">*</span>;
 const emailDomainOptions = ['naver.com', 'gmail.com', 'kakao.com', '직접입력'];
 
@@ -133,6 +133,31 @@ function formatPhoneNumber(value: string) {
   if (digits.length <= 3) return digits;
   if (digits.length <= 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
   return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+}
+
+/**
+ * 회원앱에서 브라우저 알림 권한을 요청합니다.
+ */
+function requestMemberNotificationPermission() {
+  if (typeof window === 'undefined' || !('Notification' in window)) {
+    return;
+  }
+  if (window.Notification.permission === 'default') {
+    window.Notification.requestPermission().catch(() => {});
+  }
+}
+
+/**
+ * 회원 상태 변경을 브라우저 알림으로 알려줍니다.
+ */
+function notifyMember(title: string, body: string) {
+  if (typeof window === 'undefined' || !('Notification' in window)) {
+    return;
+  }
+  if (window.Notification.permission !== 'granted') {
+    return;
+  }
+  new window.Notification(title, { body });
 }
 
 /**
@@ -313,6 +338,8 @@ export default function App() {
     emergencyPhone: '',
   });
   const [editForm, setEditForm] = useState<SignupFormData>(formData);
+  const previousPendingRequestRef = useRef('');
+  const previousMemberStatusRef = useRef('');
 
   /**
    * 최신 회원 프로필을 다시 조회해 승인 상태와 워치 정보를 동기화합니다.
@@ -356,6 +383,33 @@ export default function App() {
       refreshProfile().catch(() => {});
     }
   }, [refreshProfile]);
+
+  /**
+   * 회원 정보수정 승인 결과나 상태 변화가 확인되면 브라우저 알림으로 전달합니다.
+   */
+  useEffect(() => {
+    if (!user) {
+      previousPendingRequestRef.current = '';
+      previousMemberStatusRef.current = '';
+      return;
+    }
+
+    const currentPendingRequest = String(user.pendingProfileChange?.requestedAt || '');
+    const currentStatus = String(user.status || '');
+    if (previousPendingRequestRef.current && !currentPendingRequest) {
+      notifyMember('회원앱 알림', '정보수정 요청 상태가 갱신되었습니다.');
+    }
+    if (
+      previousMemberStatusRef.current &&
+      currentStatus &&
+      previousMemberStatusRef.current !== currentStatus
+    ) {
+      notifyMember('회원앱 알림', `회원 상태가 ${currentStatus}(으)로 변경되었습니다.`);
+    }
+
+    previousPendingRequestRef.current = currentPendingRequest;
+    previousMemberStatusRef.current = currentStatus;
+  }, [user]);
 
   /**
    * 회원 프로필 데이터를 편집 폼과 동기화합니다.
@@ -493,6 +547,7 @@ export default function App() {
 
         setUser(nextUser);
         syncEditForm(nextUser);
+        requestMemberNotificationPermission();
         refreshProfile().catch(() => {});
       } catch (error: any) {
         setLoginError(error.message || '서버 연결에 실패했습니다.');
@@ -750,7 +805,7 @@ export default function App() {
               <ShieldCheck className="text-white" size={40} />
             </div>
             <h1 className="text-3xl font-semibold tracking-tight text-slate-900">회원</h1>
-            <p className="mt-2 text-sm text-slate-500">오전 회원앱 구조 복구본</p>
+            <p className="mt-2 text-[15px] text-slate-500">오전 회원앱 구조 복구본</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
@@ -773,7 +828,7 @@ export default function App() {
                   value={loginPassword}
                   onChange={(event) => setLoginPassword(event.target.value)}
                   placeholder="비밀번호 입력"
-                  className="h-full min-h-0 w-full appearance-none bg-transparent text-[14px] leading-none text-slate-900 outline-none"
+                  className="h-full min-h-0 w-full appearance-none bg-transparent text-[16px] leading-none text-slate-900 outline-none"
                 />
                 {loginPassword ? (
                   <button
@@ -796,19 +851,29 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm">
+            <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-[15px]">
               <label className="flex items-center gap-2 text-slate-600">
-                <input type="checkbox" checked={savedId} onChange={() => setSavedId((prev) => !prev)} />
+                <input
+                  type="checkbox"
+                  checked={savedId}
+                  onChange={() => setSavedId((prev) => !prev)}
+                  className="h-6 w-6 rounded border-slate-300"
+                />
                 아이디 저장
               </label>
               <label className="flex items-center gap-2 text-slate-600">
-                <input type="checkbox" checked={autoLogin} onChange={() => setAutoLogin((prev) => !prev)} />
+                <input
+                  type="checkbox"
+                  checked={autoLogin}
+                  onChange={() => setAutoLogin((prev) => !prev)}
+                  className="h-6 w-6 rounded border-slate-300"
+                />
                 자동 로그인
               </label>
             </div>
 
             {loginError ? (
-              <p className="rounded-2xl bg-rose-50 px-4 py-3 text-[13px] text-rose-500">{loginError}</p>
+              <p className="rounded-2xl bg-rose-50 px-4 py-3 text-[14px] text-rose-500">{loginError}</p>
             ) : null}
 
             <button
@@ -822,12 +887,12 @@ export default function App() {
           </form>
 
           <div className="mt-6 space-y-3 text-center">
-            <button onClick={() => setAuthMode('reset-password')} className="text-sm text-indigo-500">
+            <button onClick={() => setAuthMode('reset-password')} className="text-[15px] text-indigo-500">
               비밀번호 찾기
             </button>
             <div>
-              <span className="text-sm text-slate-400">계정이 없으신가요? </span>
-              <button onClick={() => setAuthMode('signup')} className="text-sm font-medium text-indigo-600">
+              <span className="text-[15px] text-slate-400">계정이 없으신가요? </span>
+              <button onClick={() => setAuthMode('signup')} className="text-[15px] font-medium text-indigo-600">
                 회원가입
               </button>
             </div>
