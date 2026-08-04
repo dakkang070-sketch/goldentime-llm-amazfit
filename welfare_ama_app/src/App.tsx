@@ -221,6 +221,21 @@ interface WelfareSession {
   role: string;
 }
 
+interface WelfareSystemOverview {
+  shadowMonitoring?: {
+    status: 'OK' | 'MISMATCH';
+    totalGap: number;
+    realtimeGap: number;
+    workflowGap: number;
+    summaryLevel: 'info' | 'warning' | 'critical';
+    bannerTone: 'neutral' | 'warning' | 'danger';
+    actionPriority: 'low' | 'medium' | 'high';
+    summaryMessage: string;
+    recommendedAction: string;
+    inconsistentScopes: string[];
+  };
+}
+
 interface EmergencyCaseRow {
   _id: string;
   emergencyLevel?: number;
@@ -1351,6 +1366,19 @@ function resolveRiskChipClass(label: RiskLabel | '안내'): string {
 }
 
 /**
+ * shadow 모니터링 배너의 톤에 맞는 카드 색상을 반환합니다.
+ */
+function resolveShadowBannerToneClass(bannerTone?: 'neutral' | 'warning' | 'danger'): string {
+  if (bannerTone === 'danger') {
+    return 'border-red-200 bg-[linear-gradient(180deg,#fff1f2_0%,#ffe4e6_100%)] text-red-900';
+  }
+  if (bannerTone === 'warning') {
+    return 'border-amber-200 bg-[linear-gradient(180deg,#fffbeb_0%,#fef3c7_100%)] text-amber-900';
+  }
+  return 'border-slate-200 bg-[linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] text-slate-800';
+}
+
+/**
  * 설계서 상단의 햄버거/소속/이름/알림 바를 공통으로 렌더링합니다.
  */
 function TopBar({
@@ -1977,6 +2005,7 @@ export default function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [staffs, setStaffs] = useState<WelfareStaff[]>([]);
   const [users, setUsers] = useState<ApiUser[]>([]);
+  const [systemOverview, setSystemOverview] = useState<WelfareSystemOverview | null>(null);
   const [monitoredUsers, setMonitoredUsers] = useState<MonitoredUser[]>([]);
   const [cases, setCases] = useState<EmergencyCaseRow[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState('');
@@ -2156,6 +2185,7 @@ export default function App() {
    */
   const loadDashboard = useCallback(async (options?: { silent?: boolean }) => {
     if (!session?.token) {
+      setSystemOverview(null);
       setLoading(false);
       return;
     }
@@ -2170,16 +2200,18 @@ export default function App() {
         setLoading(true);
       }
       setError('');
-      const [staffJson, usersJson, monitoredJson, casesJson] = await Promise.all([
+      const [staffJson, usersJson, monitoredJson, casesJson, overviewJson] = await Promise.all([
         fetchJson<{ success: boolean; data: WelfareStaff[] }>('/api/controllers'),
         fetchJson<{ success: boolean; data: ApiUser[] }>('/api/users'),
         fetchJson<{ success: boolean; users: MonitoredUser[] }>('/api/controllers/medical/monitored-users'),
         fetchJson<{ success: boolean; cases: EmergencyCaseRow[] }>('/api/controllers/medical/emergency-cases'),
+        fetchJson<{ success: boolean; data: WelfareSystemOverview }>('/api/system-monitoring/overview'),
       ]);
       setStaffs(Array.isArray(staffJson.data) ? staffJson.data.filter((row) => row.role === 'medical') : []);
       setUsers(Array.isArray(usersJson.data) ? usersJson.data : []);
       setMonitoredUsers(Array.isArray(monitoredJson.users) ? monitoredJson.users : []);
       setCases(Array.isArray(casesJson.cases) ? casesJson.cases : []);
+      setSystemOverview(overviewJson?.data || null);
       setLastDashboardSyncedAt(new Date().toLocaleTimeString('ko-KR', { hour12: false }));
     } catch (loadError) {
       setError('복지사 모바일 데이터를 불러오지 못했습니다.');
@@ -2229,6 +2261,11 @@ export default function App() {
     [filteredMembers, selectedMemberId],
   );
   const alertItems = useMemo(() => buildAlertItems(cases, memberRows), [cases, memberRows]);
+  const shadowMonitoring = systemOverview?.shadowMonitoring;
+  const shadowBannerToneClass = useMemo(
+    () => resolveShadowBannerToneClass(shadowMonitoring?.bannerTone),
+    [shadowMonitoring?.bannerTone],
+  );
 
   /**
    * 신규 위험 알림이 들어오면 복지사앱 브라우저 알림으로 알려줍니다.
@@ -3549,6 +3586,33 @@ export default function App() {
               ) : null
             }
             />
+
+            {shadowMonitoring ? (
+              <section className={`mt-3 rounded-[24px] border px-4 py-3 shadow-[0_14px_30px_rgba(15,23,42,0.08)] ${shadowBannerToneClass}`}>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <ShieldAlert size={18} className="shrink-0" />
+                    <span className="text-[13px] font-extrabold tracking-[0.08em]">
+                      SHADOW MONITORING
+                    </span>
+                  </div>
+                  <div className="rounded-full bg-white/70 px-2.5 py-1 text-[12px] font-extrabold">
+                    {shadowMonitoring.status === 'MISMATCH' ? '주의' : '정상'}
+                  </div>
+                </div>
+                <p className="mt-2 text-[14px] font-bold leading-5">
+                  {shadowMonitoring.summaryMessage}
+                </p>
+                <p className="mt-1 text-[13px] leading-5 opacity-90">
+                  {shadowMonitoring.recommendedAction}
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px] font-semibold opacity-90">
+                  <span>전체 gap {shadowMonitoring.totalGap}</span>
+                  <span>실시간 {shadowMonitoring.realtimeGap}</span>
+                  <span>워크플로우 {shadowMonitoring.workflowGap}</span>
+                </div>
+              </section>
+            ) : null}
 
             {activeTab === 'members' && (
               <div className="mt-4 space-y-3">
