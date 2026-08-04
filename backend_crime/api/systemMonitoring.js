@@ -6,6 +6,9 @@
 const express = require('express');
 const router = express.Router();
 const logger = require('../utils/logger');
+const realtimeBiosignalEngine = require('../services/realtimeBiosignalEngine');
+const emergencyWorkflowService = require('../services/emergencyWorkflowService');
+const { listShadowStates } = require('../services/shadowStateCacheService');
 
 /**
  * @swagger
@@ -19,17 +22,18 @@ const logger = require('../utils/logger');
  */
 router.get('/overview', async (req, res) => {
   try {
+    const shadowMonitoring = await getShadowMonitoringSummary();
     const systemOverview = {
-      systemStatus: 'OPERATIONAL',
+      systemStatus: shadowMonitoring.totalGap > 0 ? 'WARNING' : 'OPERATIONAL',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       
       // 전체 시스템 건강도
       overallHealth: {
-        status: 'HEALTHY',
-        score: 96.2,
-        criticalAlerts: 0,
-        warningAlerts: 2
+        status: shadowMonitoring.totalGap > 0 ? 'WARNING' : 'HEALTHY',
+        score: Math.max(80, 96.2 - shadowMonitoring.totalGap),
+        criticalAlerts: shadowMonitoring.actionPriority === 'high' ? 1 : 0,
+        warningAlerts: 2 + (shadowMonitoring.totalGap > 0 ? 1 : 0)
       },
 
       // 활성 응급 케이스
@@ -46,7 +50,8 @@ router.get('/overview', async (req, res) => {
         hospitalConnections: 414,
         availableBeds: await getAvailableBedsCount(),
         activeParamedics: await getActiveParamedicsCount()
-      }
+      },
+      shadowMonitoring,
     };
 
     res.json({
@@ -395,6 +400,9 @@ async function getActiveCasesCount() {
   }
 }
 
+/**
+ * `getCriticalCasesCount` 기능을 수행합니다.
+ */
 async function getCriticalCasesCount() {
   try {
     const EmergencyCase = require('../models/EmergencyCase');
@@ -407,6 +415,9 @@ async function getCriticalCasesCount() {
   }
 }
 
+/**
+ * `getTodayCasesCount` 기능을 수행합니다.
+ */
 async function getTodayCasesCount() {
   try {
     const EmergencyCase = require('../models/EmergencyCase');
@@ -420,6 +431,9 @@ async function getTodayCasesCount() {
   }
 }
 
+/**
+ * `getAvailableBedsCount` 기능을 수행합니다.
+ */
 async function getAvailableBedsCount() {
   // NEDC API 캐시에서 가져오기
   try {
@@ -431,6 +445,9 @@ async function getAvailableBedsCount() {
   }
 }
 
+/**
+ * `getActiveParamedicsCount` 기능을 수행합니다.
+ */
 async function getActiveParamedicsCount() {
   try {
     const Paramedic = require('../models/Paramedic');
@@ -440,27 +457,45 @@ async function getActiveParamedicsCount() {
   }
 }
 
+/**
+ * `checkBiosignalEngine` 기능을 수행합니다.
+ */
 function checkBiosignalEngine() {
   return process.env.ENABLE_REALTIME_BIOSIGNAL === 'true' ? 'ACTIVE' : 'DISABLED';
 }
 
+/**
+ * `checkAutoLearningSystem` 기능을 수행합니다.
+ */
 function checkAutoLearningSystem() {
   return process.env.ENABLE_AUTO_LEARNING === 'true' ? 'ACTIVE' : 'DISABLED';
 }
 
+/**
+ * `checkNEDCConnection` 기능을 수행합니다.
+ */
 function checkNEDCConnection() {
   return !!process.env.NEDC_API_SERVICE_KEY;
 }
 
+/**
+ * `checkOllamaConnection` 기능을 수행합니다.
+ */
 function checkOllamaConnection() {
   return process.env.OLLAMA_ENABLED === 'true';
 }
 
+/**
+ * `getLastNEDCUpdate` 기능을 수행합니다.
+ */
 function getLastNEDCUpdate() {
   // 캐시에서 마지막 업데이트 시간 가져오기
   return new Date(Date.now() - 2 * 60 * 1000).toISOString(); // 2분 전
 }
 
+/**
+ * `getSystemAlerts` 기능을 수행합니다.
+ */
 async function getSystemAlerts() {
   const alerts = [];
   
@@ -489,39 +524,175 @@ async function getSystemAlerts() {
   return alerts;
 }
 
+async function getShadowMonitoringSummary() {
+  const realtimeShadowItems = await listShadowStates('realtime-biosignal', 500);
+  const workflowShadowItems = await listShadowStates('emergency-workflow', 500);
+  const realtimeGap = Math.abs(realtimeBiosignalEngine.activeStreams.size - realtimeShadowItems.length);
+  const workflowGap = Math.abs(emergencyWorkflowService.activeWorkflows.size - workflowShadowItems.length);
+  const totalGap = realtimeGap + workflowGap;
+
+  if (totalGap === 0) {
+    return {
+      status: 'OK',
+      totalGap,
+      realtimeGap,
+      workflowGap,
+      summaryLevel: 'info',
+      bannerTone: 'neutral',
+      actionPriority: 'low',
+      summaryMessage: 'shadow 상태가 메모리 상태와 일치합니다.',
+      recommendedAction: '현재는 추가 조치 없이 추세만 계속 관찰하면 됩니다.',
+      inconsistentScopes: [],
+    };
+  }
+
+  const highPriority = realtimeGap >= 5 || workflowGap >= 3;
+  return {
+    status: 'MISMATCH',
+    totalGap,
+    realtimeGap,
+    workflowGap,
+    summaryLevel: highPriority ? 'critical' : 'warning',
+    bannerTone: highPriority ? 'danger' : 'warning',
+    actionPriority: highPriority ? 'high' : 'medium',
+    summaryMessage: `범죄 관제 shadow 불일치가 감지되었습니다. 실시간 gap=${realtimeGap}, 워크플로우 gap=${workflowGap} 입니다.`,
+    recommendedAction: '범죄 관제 서버의 실시간 엔진/워크플로우와 shadow 기록 동기화 상태를 확인해 주세요.',
+    inconsistentScopes: [
+      realtimeGap > 0 ? 'realtime-biosignal' : null,
+      workflowGap > 0 ? 'emergency-workflow' : null,
+    ].filter(Boolean),
+  };
+}
+
 // 나머지 헬퍼 함수들 (간단한 mock 데이터로 구현)
 async function getActiveStreamsCount() { return 12; }
+/**
+ * `getTodayEmergencyDetections` 기능을 수행합니다.
+ */
 async function getTodayEmergencyDetections() { return 8; }
+/**
+ * `getTrainingStatus` 기능을 수행합니다.
+ */
 async function getTrainingStatus() { return 'COMPLETED'; }
+/**
+ * `getDatasetSize` 기능을 수행합니다.
+ */
 async function getDatasetSize() { return 15247; }
+/**
+ * `getLastTrainingTime` 기능을 수행합니다.
+ */
 async function getLastTrainingTime() { return new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(); }
+/**
+ * `getActiveWorkflowsCount` 기능을 수행합니다.
+ */
 async function getActiveWorkflowsCount() { return 3; }
+/**
+ * `getTodayEscalations` 기능을 수행합니다.
+ */
 async function getTodayEscalations() { return 1; }
+/**
+ * `getTodayProcessedCases` 기능을 수행합니다.
+ */
 async function getTodayProcessedCases() { return 89; }
+/**
+ * `getAvgRiskScore` 기능을 수행합니다.
+ */
 async function getAvgRiskScore() { return 3.2; }
+/**
+ * `getLabeledDataCount` 기능을 수행합니다.
+ */
 async function getLabeledDataCount() { return 12456; }
+/**
+ * `getPendingLabelsCount` 기능을 수행합니다.
+ */
 async function getPendingLabelsCount() { return 23; }
+/**
+ * `getActiveTasks` 기능을 수행합니다.
+ */
 async function getActiveTasks() { return 5; }
+/**
+ * `getTodayFeedbackCount` 기능을 수행합니다.
+ */
 async function getTodayFeedbackCount() { return 34; }
+/**
+ * `getAvgSentiment` 기능을 수행합니다.
+ */
 async function getAvgSentiment() { return 'POSITIVE'; }
+/**
+ * `getHighPriorityCount` 기능을 수행합니다.
+ */
 async function getHighPriorityCount() { return 3; }
+/**
+ * `getTrackedParamedicsCount` 기능을 수행합니다.
+ */
 async function getTrackedParamedicsCount() { return 18; }
+/**
+ * `getTodayLocationUpdates` 기능을 수행합니다.
+ */
 async function getTodayLocationUpdates() { return 2847; }
+/**
+ * `getAvailableParamedicsCount` 기능을 수행합니다.
+ */
 async function getAvailableParamedicsCount() { return 45; }
+/**
+ * `getResourceAlerts` 기능을 수행합니다.
+ */
 async function getResourceAlerts() { return 0; }
+/**
+ * `getRouteCalculationsRate` 기능을 수행합니다.
+ */
 async function getRouteCalculationsRate() { return 127; }
+/**
+ * `getAlternativeRoutesCount` 기능을 수행합니다.
+ */
 async function getAlternativeRoutesCount() { return 89; }
+/**
+ * `getTodayNotificationCount` 기능을 수행합니다.
+ */
 async function getTodayNotificationCount() { return 456; }
+/**
+ * `getTodayMessagesCount` 기능을 수행합니다.
+ */
 async function getTodayMessagesCount() { return 1247; }
+/**
+ * `getConnectedClientsCount` 기능을 수행합니다.
+ */
 async function getConnectedClientsCount() { return 23; }
+/**
+ * `getCacheItemsCount` 기능을 수행합니다.
+ */
 async function getCacheItemsCount() { return 1895; }
+/**
+ * `getExpiredCacheCount` 기능을 수행합니다.
+ */
 async function getExpiredCacheCount() { return 156; }
+/**
+ * `getAvgResponseTime` 기능을 수행합니다.
+ */
 async function getAvgResponseTime() { return '180ms'; }
+/**
+ * `getAPIThroughput` 기능을 수행합니다.
+ */
 async function getAPIThroughput() { return '450 req/min'; }
+/**
+ * `getAPIErrorRate` 기능을 수행합니다.
+ */
 async function getAPIErrorRate() { return '0.3%'; }
+/**
+ * `getActiveRequestsCount` 기능을 수행합니다.
+ */
 async function getActiveRequestsCount() { return 12; }
+/**
+ * `checkDBConnection` 기능을 수행합니다.
+ */
 async function checkDBConnection() { return 'CONNECTED'; }
+/**
+ * `getAvgQueryTime` 기능을 수행합니다.
+ */
 async function getAvgQueryTime() { return '45ms'; }
+/**
+ * `getActiveDBConnections` 기능을 수행합니다.
+ */
 async function getActiveDBConnections() { return 8; }
 
 // HIRA API 관련 헬퍼 함수들
@@ -535,6 +706,9 @@ async function checkHiraApiStatus() {
   }
 }
 
+/**
+ * `getHiraCacheStatus` 기능을 수행합니다.
+ */
 async function getHiraCacheStatus() {
   try {
     const hiraApiService = require('../services/hiraApiService');
@@ -545,6 +719,9 @@ async function getHiraCacheStatus() {
   }
 }
 
+/**
+ * `getHiraLastUpdate` 기능을 수행합니다.
+ */
 async function getHiraLastUpdate() {
   try {
     const hiraApiService = require('../services/hiraApiService');
@@ -559,6 +736,9 @@ async function getHiraLastUpdate() {
   }
 }
 
+/**
+ * `getHiraCachedHospitalsCount` 기능을 수행합니다.
+ */
 async function getHiraCachedHospitalsCount() {
   try {
     const hiraApiService = require('../services/hiraApiService');

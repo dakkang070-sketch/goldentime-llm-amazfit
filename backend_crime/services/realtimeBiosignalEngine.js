@@ -6,9 +6,13 @@
 const EventEmitter = require('events');
 const logger = require('../utils/logger');
 const { emitEmergencyAlert, emitBiosignalAlert } = require('./socketService');
+const { setShadowState, deleteShadowState } = require('./shadowStateCacheService');
 
 class RealtimeBiosignalEngine extends EventEmitter {
   
+  /**
+   * 인스턴스를 초기화합니다.
+   */
   constructor() {
     super();
     
@@ -119,6 +123,14 @@ class RealtimeBiosignalEngine extends EventEmitter {
 
       // 스트림 시작
       await streamProcessor.start();
+      await setShadowState('realtime-biosignal', userId, {
+        active: true,
+        deviceId,
+        signalTypes,
+        bufferSize,
+        hasAnalysisWindow: this.analysisWindows.has(userId),
+        lastStatus: 'active',
+      });
 
       logger.info(`실시간 생체신호 스트림 시작: ${userId}`, {
         deviceId,
@@ -630,6 +642,7 @@ class RealtimeBiosignalEngine extends EventEmitter {
       // 버퍼 및 분석 윈도우 정리
       this.signalBuffer.delete(userId);
       this.analysisWindows.delete(userId);
+      await deleteShadowState('realtime-biosignal', userId);
 
       logger.info(`실시간 생체신호 스트림 중단: ${userId}`);
 
@@ -679,6 +692,9 @@ class RealtimeBiosignalEngine extends EventEmitter {
     return severityMap[type] || 2;
   }
 
+  /**
+   * `getHealthStatus` 기능을 수행합니다.
+   */
   getHealthStatus(severity) {
     if (severity >= 5) return 'critical';
     if (severity >= 4) return 'emergency';
@@ -687,6 +703,9 @@ class RealtimeBiosignalEngine extends EventEmitter {
     return 'normal';
   }
 
+  /**
+   * `extractVitalSigns` 기능을 수행합니다.
+   */
   extractVitalSigns(analysisResults) {
     return {
       heartRate: analysisResults.ecg?.heartRate || analysisResults.ppg?.heartRate || null,
@@ -700,6 +719,9 @@ class RealtimeBiosignalEngine extends EventEmitter {
     };
   }
 
+  /**
+   * `extractRecentBiometricData` 기능을 수행합니다.
+   */
   extractRecentBiometricData(userId) {
     const buffer = this.signalBuffer.get(userId);
     if (!buffer || buffer.length === 0) return null;
@@ -720,6 +742,9 @@ class RealtimeBiosignalEngine extends EventEmitter {
     return vitals;
   }
 
+  /**
+   * `calculateAverage` 기능을 수행합니다.
+   */
   calculateAverage(data, field) {
     const values = data.filter(d => d.signals && d.signals[field]).map(d => d.signals[field]);
     return values.length > 0 ? values.reduce((sum, v) => sum + v, 0) / values.length : null;
@@ -730,6 +755,9 @@ class RealtimeBiosignalEngine extends EventEmitter {
  * 생체신호 스트림 프로세서
  */
 class BiosignalStreamProcessor extends EventEmitter {
+  /**
+   * 인스턴스를 초기화합니다.
+   */
   constructor(userId, deviceId, signalTypes, config) {
     super();
     this.userId = userId;
@@ -740,6 +768,9 @@ class BiosignalStreamProcessor extends EventEmitter {
     this.dataBuffer = [];
   }
 
+  /**
+   * `start` 기능을 수행합니다.
+   */
   async start() {
     this.isRunning = true;
     logger.info(`스트림 프로세서 시작 [${this.userId}]`);
@@ -749,11 +780,17 @@ class BiosignalStreamProcessor extends EventEmitter {
     this.simulateDataStream();
   }
 
+  /**
+   * `stop` 기능을 수행합니다.
+   */
   async stop() {
     this.isRunning = false;
     logger.info(`스트림 프로세서 중단 [${this.userId}]`);
   }
 
+  /**
+   * `simulateDataStream` 기능을 수행합니다.
+   */
   simulateDataStream() {
     // 개발/테스트용 시뮬레이션
     const interval = setInterval(() => {
@@ -768,6 +805,9 @@ class BiosignalStreamProcessor extends EventEmitter {
     }, 100); // 100ms마다 (10Hz 기준)
   }
 
+  /**
+   * `generateMockBiosignalData` 기능을 수행합니다.
+   */
   generateMockBiosignalData() {
     const now = Date.now();
     const signals = {};
@@ -825,6 +865,9 @@ class BiosignalStreamProcessor extends EventEmitter {
  * 링 버퍼 (순환 버퍼)
  */
 class RingBuffer {
+  /**
+   * 인스턴스를 초기화합니다.
+   */
   constructor(size) {
     this.size = size;
     this.buffer = new Array(size);
@@ -833,6 +876,9 @@ class RingBuffer {
     this.length = 0;
   }
 
+  /**
+   * `push` 기능을 수행합니다.
+   */
   push(item) {
     this.buffer[this.tail] = item;
     this.tail = (this.tail + 1) % this.size;
@@ -844,6 +890,9 @@ class RingBuffer {
     }
   }
 
+  /**
+   * `getRecent` 기능을 수행합니다.
+   */
   getRecent(timeWindowMs) {
     const now = Date.now();
     const cutoffTime = now - timeWindowMs;
@@ -866,83 +915,297 @@ class RingBuffer {
  * 분석 윈도우 관리자
  */
 class AnalysisWindowManager {
+  /**
+   * 인스턴스를 초기화합니다.
+   */
   constructor(config) {
     this.config = config;
     this.windows = {};
+    this.maxSamplingRate = Math.max(...Object.values(config.samplingRates));
     
-    // 각 분석 타입별 윈도우 초기화
+    // 각 분석 타입별 윈도우를 ring buffer로 초기화합니다.
     Object.keys(config.windowSizes).forEach(type => {
-      this.windows[type] = [];
+      const windowSizeSeconds = config.windowSizes[type];
+      const bufferSize = Math.max(1, Math.ceil(this.maxSamplingRate * windowSizeSeconds));
+      this.windows[type] = new RingBuffer(bufferSize);
     });
   }
 
+  /**
+   * `addData` 기능을 수행합니다.
+   */
   addData(signalData) {
-    const now = Date.now();
-    
     Object.keys(this.windows).forEach(type => {
       this.windows[type].push(signalData);
-      
-      // 오래된 데이터 제거
-      const windowSizeMs = this.config.windowSizes[type] * 1000;
-      const cutoffTime = now - windowSizeMs;
-      
-      this.windows[type] = this.windows[type].filter(data => 
-        data.timestamp >= cutoffTime
-      );
     });
   }
 
+  /**
+   * `getWindow` 기능을 수행합니다.
+   */
   getWindow(type) {
-    return this.windows[type] || [];
+    const window = this.windows[type];
+    if (!window) {
+      return [];
+    }
+
+    return window.getRecent(this.config.windowSizes[type] * 1000);
   }
 }
 
-// 분석 알고리즘 클래스들 (Mock 구현)
+/**
+ * 신호 분석에 공통으로 쓰는 보조 함수들입니다.
+ */
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+/**
+ * 숫자 배열의 평균을 계산합니다.
+ */
+function averageOf(values) {
+  if (!values.length) {
+    return null;
+  }
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+/**
+ * 숫자 배열의 표준편차를 계산합니다.
+ */
+function standardDeviation(values) {
+  if (values.length < 2) {
+    return 0;
+  }
+  const mean = averageOf(values);
+  const variance = values.reduce((sum, value) => sum + ((value - mean) ** 2), 0) / values.length;
+  return Math.sqrt(variance);
+}
+
+/**
+ * 윈도우에서 지정한 필드의 숫자 값을 추출합니다.
+ */
+function extractWindowValues(window, primaryField, secondaryField = null) {
+  return window
+    .map((item) => {
+      const signals = item?.signals || {};
+      const primaryValue = signals[primaryField];
+      if (typeof primaryValue === 'number' && Number.isFinite(primaryValue)) {
+        return primaryValue;
+      }
+      if (secondaryField) {
+        const secondaryValue = signals[secondaryField];
+        if (typeof secondaryValue === 'number' && Number.isFinite(secondaryValue)) {
+          return secondaryValue;
+        }
+      }
+      return null;
+    })
+    .filter((value) => value !== null);
+}
+
+/**
+ * 가속도 벡터의 크기를 계산합니다.
+ */
+function calculateAccelerationMagnitude(accelerometer = {}) {
+  const x = Number(accelerometer.x) || 0;
+  const y = Number(accelerometer.y) || 0;
+  const z = Number(accelerometer.z) || 0;
+  return Math.sqrt((x ** 2) + (y ** 2) + (z ** 2));
+}
+
+/**
+ * 윈도우 데이터와 현재 샘플을 함께 묶어 심박 관련 값을 정리합니다.
+ */
+function resolveHeartMetrics(window, currentSample, fallbackField) {
+  const series = extractWindowValues(window, fallbackField);
+  if (typeof currentSample === 'number' && Number.isFinite(currentSample)) {
+    series.push(currentSample);
+  }
+  const heartRate = averageOf(series) ?? (typeof currentSample === 'number' ? currentSample : 75);
+  const hrv = series.length >= 2 ? standardDeviation(series) * 10 : 35;
+  return {
+    heartRate: clamp(heartRate, 35, 220),
+    hrv: clamp(hrv, 5, 120),
+    variability: standardDeviation(series),
+    series,
+  };
+}
+
+// 분석 알고리즘 클래스들
 class ECGAnalyzer {
+  /**
+   * 인스턴스를 초기화합니다.
+   */
   constructor(config) { this.config = config; }
+  /**
+   * `analyzeRealtime` 기능을 수행합니다.
+   */
   async analyzeRealtime(window, currentSample) {
+    const metrics = resolveHeartMetrics(window, currentSample, 'ecg');
+    let arrhythmiaType = 'normal';
+    let arrhythmiaConfidence = 0.65;
+
+    if (metrics.heartRate >= 140) {
+      arrhythmiaType = 'tachycardia';
+      arrhythmiaConfidence = 0.7 + Math.min(0.25, (metrics.heartRate - 140) / 120);
+    } else if (metrics.heartRate <= 45) {
+      arrhythmiaType = 'bradycardia';
+      arrhythmiaConfidence = 0.7 + Math.min(0.25, (45 - metrics.heartRate) / 45);
+    } else if (metrics.variability >= 8) {
+      arrhythmiaType = 'irregular_rhythm';
+      arrhythmiaConfidence = 0.68 + Math.min(0.22, (metrics.variability - 8) / 20);
+    }
+
     return {
-      heartRate: 75 + Math.random() * 10,
-      hrv: 45 + Math.random() * 10,
-      arrhythmia: { type: 'normal', confidence: 0.95 }
+      heartRate: Number(metrics.heartRate.toFixed(1)),
+      hrv: Number(metrics.hrv.toFixed(1)),
+      arrhythmia: {
+        type: arrhythmiaType,
+        confidence: Number(clamp(arrhythmiaConfidence, 0.5, 0.95).toFixed(2)),
+      }
     };
   }
-  assessQuality(signal) { return { score: 8.5 }; }
+  /**
+   * `assessQuality` 기능을 수행합니다.
+   */
+  assessQuality(signal) {
+    const isValid = typeof signal === 'number' && Number.isFinite(signal);
+    return { score: isValid ? 8.2 : 4.0 };
+  }
 }
 
 class PPGAnalyzer {
+  /**
+   * 인스턴스를 초기화합니다.
+   */
   constructor(config) { this.config = config; }
+  /**
+   * `analyzeRealtime` 기능을 수행합니다.
+   */
   async analyzeRealtime(window, currentSample) {
+    const metrics = resolveHeartMetrics(window, currentSample, 'ppg');
+    const spo2Values = extractWindowValues(window, 'spo2');
+    const spo2 = averageOf(spo2Values) ?? 97;
+    const systolic = clamp(110 + ((metrics.heartRate - 70) * 0.6), 85, 190);
+    const diastolic = clamp(70 + ((metrics.heartRate - 70) * 0.25), 50, 120);
+
     return {
-      heartRate: 75 + Math.random() * 8,
-      spo2: 97 + Math.random() * 2,
-      bloodPressure: { systolic: 120, diastolic: 80 }
+      heartRate: Number(metrics.heartRate.toFixed(1)),
+      spo2: Number(clamp(spo2, 70, 100).toFixed(1)),
+      hrv: Number(metrics.hrv.toFixed(1)),
+      bloodPressure: { systolic: Math.round(systolic), diastolic: Math.round(diastolic) }
     };
   }
-  assessQuality(signal) { return { score: 7.8 }; }
+  /**
+   * `assessQuality` 기능을 수행합니다.
+   */
+  assessQuality(signal) {
+    const isValid = typeof signal === 'number' && Number.isFinite(signal);
+    return { score: isValid ? 7.9 : 4.0 };
+  }
 }
 
 class ActivityAnalyzer {
+  /**
+   * 인스턴스를 초기화합니다.
+   */
   constructor(config) { this.config = config; }
+  /**
+   * `analyzeRealtime` 기능을 수행합니다.
+   */
   async analyzeRealtime(window, currentSample) {
+    const magnitudes = window
+      .map((item) => calculateAccelerationMagnitude(item?.signals?.accelerometer))
+      .filter((value) => Number.isFinite(value));
+    const currentMagnitude = calculateAccelerationMagnitude(currentSample);
+    magnitudes.push(currentMagnitude);
+
+    const baselineMagnitude = averageOf(magnitudes) ?? 1;
+    const maxMagnitude = magnitudes.length ? Math.max(...magnitudes) : currentMagnitude;
+    const variance = standardDeviation(magnitudes);
+    const inactivitySamples = magnitudes.filter((value) => Math.abs(value - 1) < 0.08).length;
+    const inactivityRatio = magnitudes.length ? inactivitySamples / magnitudes.length : 0;
+    const fallDetected = currentMagnitude >= 2.2 || maxMagnitude >= 2.4;
+    const prolongedInactivity = !fallDetected && magnitudes.length >= 10 && inactivityRatio >= 0.85;
+
+    let level = 'low';
+    if (baselineMagnitude >= 1.6 || variance >= 0.45) {
+      level = 'high';
+    } else if (baselineMagnitude >= 1.15 || variance >= 0.2) {
+      level = 'moderate';
+    }
+
     return {
-      level: 'moderate',
-      fallDetected: false,
-      fallMagnitude: 0.8,
-      fallConfidence: 0.1,
-      prolongedInactivity: false,
-      inactivityDuration: 5
+      level,
+      fallDetected,
+      fallMagnitude: Number(maxMagnitude.toFixed(2)),
+      fallConfidence: Number(clamp((maxMagnitude - 1) / 1.8, 0.05, 0.98).toFixed(2)),
+      prolongedInactivity,
+      inactivityDuration: Math.round((window.length / (this.config.samplingRates.accelerometer || 1)) / 60)
     };
   }
 }
 
 class SensorFusionAnalyzer {
+  /**
+   * 인스턴스를 초기화합니다.
+   */
   constructor(config) { this.config = config; }
+  /**
+   * `analyze` 기능을 수행합니다.
+   */
   analyze(analysisResults, signalData) {
+    let riskLevel = 1;
+    const detectedPatterns = [];
+
+    const heartRate = analysisResults.ecg?.heartRate || analysisResults.ppg?.heartRate || null;
+    const spo2 = analysisResults.ppg?.spo2 || signalData?.signals?.spo2 || null;
+    const arrhythmiaType = analysisResults.ecg?.arrhythmia?.type;
+    const activity = analysisResults.activity || {};
+
+    if (arrhythmiaType && arrhythmiaType !== 'normal') {
+      detectedPatterns.push(arrhythmiaType);
+      riskLevel = Math.max(riskLevel, arrhythmiaType === 'irregular_rhythm' ? 3 : 4);
+    } else if (heartRate) {
+      detectedPatterns.push('normal_sinus_rhythm');
+    }
+
+    if (typeof heartRate === 'number') {
+      if (heartRate >= 150 || heartRate <= 40) {
+        detectedPatterns.push('critical_heart_rate');
+        riskLevel = Math.max(riskLevel, 5);
+      } else if (heartRate >= 120 || heartRate <= 50) {
+        detectedPatterns.push('abnormal_heart_rate');
+        riskLevel = Math.max(riskLevel, 3);
+      }
+    }
+
+    if (typeof spo2 === 'number') {
+      if (spo2 < 90) {
+        detectedPatterns.push('critical_hypoxia');
+        riskLevel = Math.max(riskLevel, 5);
+      } else if (spo2 < 94) {
+        detectedPatterns.push('hypoxia');
+        riskLevel = Math.max(riskLevel, 3);
+      }
+    }
+
+    if (activity.fallDetected) {
+      detectedPatterns.push('fall_detected');
+      riskLevel = Math.max(riskLevel, 5);
+    } else if (activity.prolongedInactivity) {
+      detectedPatterns.push('prolonged_inactivity');
+      riskLevel = Math.max(riskLevel, 3);
+    }
+
+    const uniquePatterns = [...new Set(detectedPatterns)];
+    const confidenceBase = 0.55 + (uniquePatterns.length * 0.08) + ((riskLevel - 1) * 0.05);
+
     return {
-      riskLevel: 2,
-      confidence: 0.8,
-      detectedPatterns: ['normal_sinus_rhythm']
+      riskLevel,
+      confidence: Number(clamp(confidenceBase, 0.55, 0.98).toFixed(2)),
+      detectedPatterns: uniquePatterns.length ? uniquePatterns : ['normal_sinus_rhythm']
     };
   }
 }
@@ -951,8 +1214,14 @@ class SensorFusionAnalyzer {
  * 혈압 분석기
  */
 class BloodPressureAnalyzer {
+  /**
+   * 인스턴스를 초기화합니다.
+   */
   constructor(config) { this.config = config; }
   
+  /**
+   * `analyzeRealtime` 기능을 수행합니다.
+   */
   async analyzeRealtime(bloodPressureData) {
     // 실제 구현에서는 PPG 신호로부터 추정
     // 여기서는 직접 입력된 값 사용
@@ -969,8 +1238,14 @@ class BloodPressureAnalyzer {
  * 혈당 분석기
  */
 class BloodGlucoseAnalyzer {
+  /**
+   * 인스턴스를 초기화합니다.
+   */
   constructor(config) { this.config = config; }
   
+  /**
+   * `analyzeRealtime` 기능을 수행합니다.
+   */
   async analyzeRealtime(glucoseData) {
     // 실제 구현에서는 연속혈당측정기(CGM) 데이터
     return {
@@ -985,8 +1260,14 @@ class BloodGlucoseAnalyzer {
  * 체온 분석기
  */
 class BodyTemperatureAnalyzer {
+  /**
+   * 인스턴스를 초기화합니다.
+   */
   constructor(config) { this.config = config; }
   
+  /**
+   * `analyzeRealtime` 기능을 수행합니다.
+   */
   async analyzeRealtime(tempData) {
     return {
       value: tempData.value || tempData || 36.5,

@@ -20,8 +20,12 @@ const { calculateOptimalRoute } = require("./routeService");
 const medicalWeightingService = require("./medicalWeightingService");
 const cron = require("node-cron");
 const logger = require("../utils/logger");
+const { setShadowState, deleteShadowState } = require('./shadowStateCacheService');
 
 class EmergencyWorkflowService {
+  /**
+   * 인스턴스를 초기화합니다.
+   */
   constructor() {
     this.activeWorkflows = new Map(); // 진행 중인 워크플로우 추적
     this.slaTimeouts = new Map(); // SLA 타임아웃 관리
@@ -83,6 +87,13 @@ class EmergencyWorkflowService {
       };
 
       this.activeWorkflows.set(emergencyCaseId, workflow);
+      await setShadowState('emergency-workflow', emergencyCaseId, {
+        caseId: emergencyCaseId,
+        state: workflow.state,
+        startTime: workflow.startTime,
+        escalationLevel: workflow.escalationLevel,
+        timelineLength: workflow.timeline.length,
+      });
 
       // 타임라인 기록
       this.addTimelineEvent(
@@ -434,6 +445,7 @@ class EmergencyWorkflowService {
     });
 
     // 워크플로우 아카이브
+    await deleteShadowState('emergency-workflow', emergencyCaseId);
     this.archiveWorkflow(emergencyCaseId);
 
     logger.info(`응급 워크플로우 완료: ${emergencyCaseId}`, {
@@ -534,6 +546,9 @@ class EmergencyWorkflowService {
     this.slaTimeouts.get(emergencyCaseId)[slaType] = timeout;
   }
 
+  /**
+   * `clearSLATimer` 기능을 수행합니다.
+   */
   clearSLATimer(emergencyCaseId, slaType) {
     const timers = this.slaTimeouts.get(emergencyCaseId);
     if (timers && timers[slaType]) {
@@ -542,6 +557,9 @@ class EmergencyWorkflowService {
     }
   }
 
+  /**
+   * `clearAllSLATimers` 기능을 수행합니다.
+   */
   clearAllSLATimers(emergencyCaseId) {
     const timers = this.slaTimeouts.get(emergencyCaseId);
     if (timers) {
@@ -561,6 +579,16 @@ class EmergencyWorkflowService {
         eventType,
         description,
         state: workflow.state,
+      });
+      setShadowState('emergency-workflow', emergencyCaseId, {
+        caseId: emergencyCaseId,
+        state: workflow.state,
+        startTime: workflow.startTime,
+        escalationLevel: workflow.escalationLevel,
+        timelineLength: workflow.timeline.length,
+        lastTimelineEvent: eventType,
+      }).catch((error) => {
+        logger.warn('crime workflow shadow state 저장 실패', { emergencyCaseId, error: error.message });
       });
     }
   }
