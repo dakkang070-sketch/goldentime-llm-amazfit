@@ -282,7 +282,7 @@ export const Guardians: React.FC = () => {
 
       {selectedGuardian ? (
         <div className="flex w-[480px] min-w-[480px] min-h-0 flex-col border-l border-slate-300 bg-white shadow-[-8px_0_24px_rgba(15,23,42,0.08)]">
-          <div className="flex-1 overflow-hidden p-5">
+          <div className="flex-1 min-h-0 overflow-y-auto p-5">
             <div className="h-full space-y-6 overflow-y-auto">
               <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-5 shadow-sm">
                 <div className="flex items-start justify-between gap-4">
