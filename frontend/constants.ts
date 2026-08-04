@@ -1,21 +1,34 @@
-
 import { Patient, Hospital, PatientStatus, Ambulance, AmbulanceStatus, FireStation } from './types';
 
-// 서울 지역 소방서 위치
-export const FIRE_STATIONS: FireStation[] = [
-  { id: 'fs1', name: '서울종로소방서', location: '종로구', lat: 37.5735, lng: 126.9786 },
-  { id: 'fs2', name: '서울중구소방서', location: '중구', lat: 37.5641, lng: 126.9979 },
-  { id: 'fs3', name: '서울용산소방서', location: '용산구', lat: 37.5326, lng: 126.9906 },
-  { id: 'fs4', name: '서울성동소방서', location: '성동구', lat: 37.5506, lng: 127.0409 },
-  { id: 'fs5', name: '서울광진소방서', location: '광진구', lat: 37.5384, lng: 127.0822 },
-  { id: 'fs6', name: '서울동대문소방서', location: '동대문구', lat: 37.5744, lng: 127.0396 },
-  { id: 'fs7', name: '서울중랑소방서', location: '중랑구', lat: 37.6063, lng: 127.0923 },
-  { id: 'fs8', name: '서울성북소방서', location: '성북구', lat: 37.6067, lng: 127.0181 },
-  { id: 'fs9', name: '서울강북소방서', location: '강북구', lat: 37.6392, lng: 127.0157 },
-  { id: 'fs10', name: '서울도봉소방서', location: '도봉구', lat: 37.6686, lng: 127.0473 }
-];
+/**
+ * 응급 관제 데모 화면에 사용하는 초기 자원/병원/환자 상수 데이터를 모아둔 모듈입니다.
+ */
+const buildFireStation = ({
+  id,
+  name,
+  location,
+  region,
+  lat,
+  lng,
+}: {
+  id: string;
+  name: string;
+  location: string;
+  region: string;
+  lat: number;
+  lng: number;
+}): FireStation => ({
+  id,
+  name,
+  location,
+  region,
+  lat,
+  lng,
+});
 
-// 서울 25개 자치구 중심 좌표 (실제 위치 기반 배치용)
+/**
+ * 서울 자치구별 중심 좌표를 전시용 자원 배치 기준점으로 사용합니다.
+ */
 const DISTRICT_COORDS: Record<string, {lat: number, lng: number}> = {
   '종로': {lat: 37.5730, lng: 126.9794}, '중구': {lat: 37.5641, lng: 126.9979}, '용산': {lat: 37.5326, lng: 126.9908},
   '성동': {lat: 37.5633, lng: 127.0371}, '광진': {lat: 37.5385, lng: 127.0824}, '동대문': {lat: 37.5744, lng: 127.0397},
@@ -29,8 +42,11 @@ const DISTRICT_COORDS: Record<string, {lat: number, lng: number}> = {
 };
 
 // 서울 지역 유효 좌표 생성 함수 (구별 배치)
+/**
+ * 자치구 중심 좌표 주변으로 약간 흩어진 전시용 자원 좌표를 생성합니다.
+ */
 const generateDistrictCoords = (district: string): { lat: number; lng: number } => {
-  const center = DISTRICT_COORDS[district] || {lat: 37.5665, lng: 126.9780};
+  const center = DISTRICT_COORDS[district] || {lat: 36.3504, lng: 127.3845};
   // 관내 2~3km 범위 내 분산 (약 0.02도)
   return {
     lat: center.lat + (Math.random() - 0.5) * 0.03,
@@ -415,6 +431,834 @@ export const INITIAL_HOSPITALS: Hospital[] = [
     isEROpen: true,
     activeTraumaLevel: 3
   }
+];
+
+/**
+ * 서울 자치구 중심 좌표에 고정 오프셋을 더해 지도 표시용 좌표를 만듭니다.
+ */
+const getDistrictHospitalCoords = (
+  district: string,
+  latOffset = 0,
+  lngOffset = 0,
+): { lat: number; lng: number } => {
+  const center = DISTRICT_COORDS[district] || { lat: 36.3504, lng: 127.3845 };
+  return {
+    lat: Number((center.lat + latOffset).toFixed(4)),
+    lng: Number((center.lng + lngOffset).toFixed(4)),
+  };
+};
+
+/**
+ * 병원명 비교 시 공백 차이로 인한 누락을 막기 위해 이름을 정규화합니다.
+ */
+const normalizeHospitalName = (name: string) => name.replace(/\s+/g, "").trim();
+
+/**
+ * 실제 병원 위치가 확인된 주요 병원 좌표를 우선 사용합니다.
+ */
+const EXACT_HOSPITAL_COORDS: Record<string, { lat: number; lng: number }> = {
+  [normalizeHospitalName("강남세브란스병원")]: { lat: 37.4923433, lng: 127.04661 },
+  [normalizeHospitalName("연세대학교세브란스병원")]: { lat: 37.5622617, lng: 126.9403921 },
+  [normalizeHospitalName("삼성서울병원")]: { lat: 37.4884518, lng: 127.0853414 },
+  [normalizeHospitalName("가톨릭대학교서울성모병원")]: { lat: 37.5004435, lng: 127.0055211 },
+  [normalizeHospitalName("이대서울병원")]: { lat: 37.5572503, lng: 126.8361187 },
+  [normalizeHospitalName("부민병원")]: { lat: 37.55841, lng: 126.84932 },
+  [normalizeHospitalName("홍익병원")]: { lat: 37.528508, lng: 126.863557 },
+  [normalizeHospitalName("서남병원")]: { lat: 37.5120211, lng: 126.8331694 },
+  [normalizeHospitalName("강남차병원")]: { lat: 37.5067161, lng: 127.034799 },
+};
+
+/**
+ * 소아전문응급의료센터 지정 병원 여부를 반환합니다.
+ */
+const PEDIATRIC_EMERGENCY_CENTER_HOSPITALS = new Set([
+  normalizeHospitalName("서울대학교병원"),
+  normalizeHospitalName("연세대학교세브란스병원"),
+  normalizeHospitalName("서울아산병원"),
+]);
+
+/**
+ * 병원명 기준 실좌표가 있으면 우선 사용하고, 없으면 전달받은 좌표를 사용합니다.
+ */
+const resolveHospitalCoords = (
+  name: string,
+  fallbackCoords: { lat: number; lng: number },
+): { lat: number; lng: number } => {
+  return EXACT_HOSPITAL_COORDS[normalizeHospitalName(name)] || fallbackCoords;
+};
+
+/**
+ * 병원명 기준 소아전문응급의료센터 여부를 반환합니다.
+ */
+const isPediatricEmergencyCenter = (name: string) =>
+  PEDIATRIC_EMERGENCY_CENTER_HOSPITALS.has(normalizeHospitalName(name));
+
+/**
+ * 서울 병원 지도 표시에 사용할 정적 병원 데이터를 생성합니다.
+ */
+const buildSeoulMapHospital = ({
+  id,
+  name,
+  location,
+  district,
+  category,
+  role,
+  lat,
+  lng,
+  latOffset = 0,
+  lngOffset = 0,
+  erAvailable,
+  erTotal,
+  icuAvailable,
+  icuTotal,
+  operatingAvailable,
+  operatingTotal,
+}: {
+  id: string;
+  name: string;
+  location: string;
+  district?: string;
+  category: string;
+  role: string;
+  lat?: number;
+  lng?: number;
+  latOffset?: number;
+  lngOffset?: number;
+  erAvailable?: number;
+  erTotal?: number;
+  icuAvailable?: number;
+  icuTotal?: number;
+  operatingAvailable?: number;
+  operatingTotal?: number;
+}): Hospital => {
+  const fallbackByCategory =
+    category === "권역응급의료센터"
+      ? { erAvailable: 10, erTotal: 40, icuAvailable: 6, icuTotal: 30, operatingAvailable: 3, operatingTotal: 14, traumaLevel: 1 }
+      : category === "지역응급의료센터"
+        ? { erAvailable: 6, erTotal: 30, icuAvailable: 3, icuTotal: 20, operatingAvailable: 2, operatingTotal: 10, traumaLevel: 2 }
+        : { erAvailable: 4, erTotal: 20, icuAvailable: 2, icuTotal: 10, operatingAvailable: 1, operatingTotal: 6, traumaLevel: 3 };
+  const coords = resolveHospitalCoords(
+    name,
+    typeof lat === "number" && typeof lng === "number"
+      ? { lat, lng }
+      : getDistrictHospitalCoords(district || "", latOffset, lngOffset),
+  );
+  const pediatricEmergencyCenter = isPediatricEmergencyCenter(name);
+
+  return {
+    id,
+    name,
+    location,
+    lat: coords.lat,
+    lng: coords.lng,
+    category,
+    role,
+    pediatricEmergencyCenter,
+    availableBeds: erAvailable ?? fallbackByCategory.erAvailable,
+    totalBeds: erTotal ?? fallbackByCategory.erTotal,
+    icuBeds: {
+      available: icuAvailable ?? fallbackByCategory.icuAvailable,
+      total: icuTotal ?? fallbackByCategory.icuTotal,
+    },
+    erBeds: {
+      available: erAvailable ?? fallbackByCategory.erAvailable,
+      total: erTotal ?? fallbackByCategory.erTotal,
+    },
+    operatingRooms: {
+      available: operatingAvailable ?? fallbackByCategory.operatingAvailable,
+      total: operatingTotal ?? fallbackByCategory.operatingTotal,
+    },
+    specialties: pediatricEmergencyCenter
+      ? [category, "소아전문응급의료센터"]
+      : [category],
+    surgicalCapabilities: [],
+    bloodSupply: "Normal",
+    distance: "서울",
+    isEROpen: true,
+    activeTraumaLevel: fallbackByCategory.traumaLevel,
+  };
+};
+
+export const SEOUL_MAP_HOSPITALS: Hospital[] = [
+  buildSeoulMapHospital({
+    id: "map-h1",
+    name: "서울대학교병원",
+    location: "서울 종로구",
+    lat: 37.5796,
+    lng: 127.0001,
+    category: "권역응급의료센터",
+    role: "중증 응급환자 전담, 24시간 전문의 상주, 대규모 재난 대응",
+    erAvailable: 12,
+    erTotal: 40,
+    icuAvailable: 6,
+    icuTotal: 30,
+  }),
+  buildSeoulMapHospital({
+    id: "map-h2",
+    name: "서울특별시서울의료원",
+    location: "서울 중랑구",
+    district: "중랑",
+    latOffset: 0.006,
+    lngOffset: -0.004,
+    category: "권역응급의료센터",
+    role: "중증 응급환자 전담, 24시간 전문의 상주, 대규모 재난 대응",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h3",
+    name: "고려대학교 안암병원",
+    location: "서울 성북구",
+    lat: 37.5871,
+    lng: 127.0264,
+    category: "권역응급의료센터",
+    role: "중증 응급환자 전담, 24시간 전문의 상주, 대규모 재난 대응",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h4",
+    name: "이화여자대학교부속목동병원",
+    location: "서울 양천구",
+    lat: 37.5342,
+    lng: 126.8858,
+    category: "권역응급의료센터",
+    role: "중증 응급환자 전담, 24시간 전문의 상주, 대규모 재난 대응",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h5",
+    name: "고려대학교구로병원",
+    location: "서울 구로구",
+    district: "구로",
+    latOffset: 0.009,
+    lngOffset: 0.011,
+    category: "권역응급의료센터",
+    role: "중증 응급환자 전담, 24시간 전문의 상주, 대규모 재난 대응",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h6",
+    name: "한양대학교병원",
+    location: "서울 성동구",
+    lat: 37.5592,
+    lng: 127.0445,
+    category: "권역응급의료센터",
+    role: "중증 응급환자 전담, 24시간 전문의 상주, 대규모 재난 대응",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h7",
+    name: "강동경희대학교병원",
+    location: "서울 강동구",
+    district: "강동",
+    latOffset: 0.004,
+    lngOffset: -0.006,
+    category: "권역응급의료센터",
+    role: "중증 응급환자 전담, 24시간 전문의 상주, 대규모 재난 대응",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h8",
+    name: "강북삼성병원",
+    location: "서울 종로구",
+    district: "종로",
+    latOffset: -0.005,
+    lngOffset: -0.004,
+    category: "지역응급의료센터",
+    role: "권역센터 보완, 중등도 이상 환자 치료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h9",
+    name: "순천향대학교서울병원",
+    location: "서울 용산구",
+    lat: 37.5338,
+    lng: 127.0012,
+    category: "지역응급의료센터",
+    role: "권역센터 보완, 중등도 이상 환자 치료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h10",
+    name: "건국대학교병원",
+    location: "서울 광진구",
+    lat: 37.5408,
+    lng: 127.0718,
+    category: "지역응급의료센터",
+    role: "권역센터 보완, 중등도 이상 환자 치료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h11",
+    name: "경희대학교병원",
+    location: "서울 동대문구",
+    lat: 37.5898,
+    lng: 127.0519,
+    category: "지역응급의료센터",
+    role: "권역센터 보완, 중등도 이상 환자 치료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h12",
+    name: "삼육서울병원",
+    location: "서울 동대문구",
+    district: "동대문",
+    latOffset: 0.012,
+    lngOffset: 0.003,
+    category: "지역응급의료센터",
+    role: "권역센터 보완, 중등도 이상 환자 치료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h13",
+    name: "인제대학교상계백병원",
+    location: "서울 노원구",
+    lat: 37.6481,
+    lng: 127.0623,
+    category: "지역응급의료센터",
+    role: "권역센터 보완, 중등도 이상 환자 치료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h14",
+    name: "을지대학교을지병원",
+    location: "서울 노원구",
+    district: "노원",
+    latOffset: -0.008,
+    lngOffset: 0.01,
+    category: "지역응급의료센터",
+    role: "권역센터 보완, 중등도 이상 환자 치료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h15",
+    name: "가톨릭대학교은평성모병원",
+    location: "서울 은평구",
+    lat: 37.6334,
+    lng: 126.9165,
+    category: "지역응급의료센터",
+    role: "권역센터 보완, 중등도 이상 환자 치료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h16",
+    name: "연세대학교세브란스병원",
+    location: "서울 서대문구",
+    lat: 37.5623,
+    lng: 126.9408,
+    category: "지역응급의료센터",
+    role: "권역센터 보완, 중등도 이상 환자 치료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h17",
+    name: "홍익병원",
+    location: "서울 양천구",
+    district: "양천",
+    latOffset: 0.01,
+    lngOffset: 0.007,
+    category: "지역응급의료센터",
+    role: "권역센터 보완, 중등도 이상 환자 치료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h18",
+    name: "서남병원",
+    location: "서울 양천구",
+    district: "양천",
+    latOffset: -0.011,
+    lngOffset: 0.002,
+    category: "지역응급의료센터",
+    role: "권역센터 보완, 중등도 이상 환자 치료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h19",
+    name: "이대서울병원",
+    location: "서울 강서구",
+    district: "강서",
+    latOffset: -0.002,
+    lngOffset: 0.008,
+    category: "지역응급의료센터",
+    role: "권역센터 보완, 중등도 이상 환자 치료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h20",
+    name: "부민병원",
+    location: "서울 강서구",
+    district: "강서",
+    latOffset: 0.006,
+    lngOffset: -0.01,
+    category: "지역응급의료센터",
+    role: "권역센터 보완, 중등도 이상 환자 치료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h21",
+    name: "가톨릭대학교여의도성모병원",
+    location: "서울 영등포구",
+    lat: 37.5183,
+    lng: 126.9365,
+    category: "지역응급의료센터",
+    role: "권역센터 보완, 중등도 이상 환자 치료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h22",
+    name: "한림대학교강남성심병원",
+    location: "서울 영등포구",
+    lat: 37.4915,
+    lng: 126.9075,
+    category: "지역응급의료센터",
+    role: "권역센터 보완, 중등도 이상 환자 치료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h23",
+    name: "중앙대학교병원",
+    location: "서울 동작구",
+    lat: 37.5065,
+    lng: 126.9575,
+    category: "지역응급의료센터",
+    role: "권역센터 보완, 중등도 이상 환자 치료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h24",
+    name: "에이치플러스양지병원",
+    location: "서울 관악구",
+    district: "관악",
+    latOffset: 0.008,
+    lngOffset: 0.007,
+    category: "지역응급의료센터",
+    role: "권역센터 보완, 중등도 이상 환자 치료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h25",
+    name: "가톨릭대학교서울성모병원",
+    location: "서울 서초구",
+    lat: 37.5029,
+    lng: 127.0048,
+    category: "지역응급의료센터",
+    role: "권역센터 보완, 중등도 이상 환자 치료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h26",
+    name: "삼성서울병원",
+    location: "서울 강남구",
+    lat: 37.4882,
+    lng: 127.0851,
+    category: "지역응급의료센터",
+    role: "권역센터 보완, 중등도 이상 환자 치료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h27",
+    name: "강남세브란스병원",
+    location: "서울 강남구",
+    district: "강남",
+    latOffset: -0.004,
+    lngOffset: -0.012,
+    category: "지역응급의료센터",
+    role: "권역센터 보완, 중등도 이상 환자 치료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h28",
+    name: "강남차병원",
+    location: "서울 강남구",
+    district: "강남",
+    latOffset: 0.004,
+    lngOffset: -0.006,
+    category: "지역응급의료센터",
+    role: "권역센터 보완, 중등도 이상 환자 치료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h29",
+    name: "성심의료재단강동성심병원",
+    location: "서울 강동구",
+    lat: 37.534,
+    lng: 127.135,
+    category: "지역응급의료센터",
+    role: "권역센터 보완, 중등도 이상 환자 치료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h29b",
+    name: "서울특별시보라매병원",
+    location: "서울 동작구",
+    lat: 37.4925,
+    lng: 126.9234,
+    category: "지역응급의료센터",
+    role: "중등도 이상의 응급환자 치료 및 권역센터 보완",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h30",
+    name: "서울적십자병원",
+    location: "서울 종로구",
+    district: "종로",
+    latOffset: 0.002,
+    lngOffset: -0.011,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용, 지역사회 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h31",
+    name: "세란병원",
+    location: "서울 종로구",
+    district: "종로",
+    latOffset: -0.006,
+    lngOffset: 0.006,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용, 지역사회 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h32",
+    name: "청구성심병원",
+    location: "서울 은평구",
+    district: "은평",
+    latOffset: 0.01,
+    lngOffset: -0.004,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용, 지역사회 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h33",
+    name: "은평연세병원",
+    location: "서울 은평구",
+    district: "은평",
+    latOffset: -0.006,
+    lngOffset: 0.007,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h33b",
+    name: "최원호병원",
+    location: "서울 은평구",
+    district: "은평",
+    latOffset: 0.004,
+    lngOffset: -0.009,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h33c",
+    name: "신촌연세병원",
+    location: "서울 마포구",
+    district: "마포",
+    latOffset: 0.005,
+    lngOffset: 0.006,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h34",
+    name: "동신병원",
+    location: "서울 성북구",
+    district: "성북",
+    latOffset: -0.004,
+    lngOffset: -0.008,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h35",
+    name: "혜민병원",
+    location: "서울 광진구",
+    district: "광진",
+    latOffset: -0.006,
+    lngOffset: -0.004,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h36",
+    name: "동신병원",
+    location: "서울 성북구",
+    district: "성북",
+    latOffset: 0.008,
+    lngOffset: -0.012,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h37",
+    name: "서울성심병원",
+    location: "서울 동대문구",
+    district: "동대문",
+    latOffset: 0.009,
+    lngOffset: 0.01,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h38",
+    name: "서울특별시동부병원",
+    location: "서울 동대문구",
+    district: "동대문",
+    latOffset: 0.003,
+    lngOffset: -0.01,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h39",
+    name: "녹색병원",
+    location: "서울 중랑구",
+    district: "중랑",
+    latOffset: -0.008,
+    lngOffset: -0.007,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h40",
+    name: "동부제일병원",
+    location: "서울 중랑구",
+    district: "중랑",
+    latOffset: 0.006,
+    lngOffset: -0.005,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h41",
+    name: "강북으뜸병원",
+    location: "서울 강북구",
+    district: "강북",
+    latOffset: 0.005,
+    lngOffset: 0.004,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h42",
+    name: "현대병원",
+    location: "서울 동대문구",
+    district: "동대문",
+    latOffset: -0.005,
+    lngOffset: 0.009,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h43",
+    name: "대한병원",
+    location: "서울 강북구",
+    district: "강북",
+    latOffset: -0.006,
+    lngOffset: -0.003,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h44",
+    name: "한전의료재단한일병원",
+    location: "서울 도봉구",
+    district: "도봉",
+    latOffset: -0.01,
+    lngOffset: -0.004,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h45",
+    name: "원자력병원",
+    location: "서울 노원구",
+    district: "노원",
+    latOffset: 0.005,
+    lngOffset: -0.007,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h46",
+    name: "구로성심병원",
+    location: "서울 구로구",
+    district: "구로",
+    latOffset: 0.003,
+    lngOffset: -0.006,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h47",
+    name: "희명병원",
+    location: "서울 금천구",
+    district: "금천",
+    latOffset: 0.009,
+    lngOffset: 0.004,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h48",
+    name: "성애병원",
+    location: "서울 영등포구",
+    lat: 37.5085,
+    lng: 126.9185,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h49",
+    name: "명지성모병원",
+    location: "서울 영등포구",
+    lat: 37.4965,
+    lng: 126.8985,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h50",
+    name: "대림성모병원",
+    location: "서울 영등포구",
+    district: "영등포",
+    latOffset: -0.01,
+    lngOffset: 0.005,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h51",
+    name: "씨엠병원",
+    location: "서울 영등포구",
+    district: "영등포",
+    latOffset: 0.009,
+    lngOffset: -0.006,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h52",
+    name: "영등포병원",
+    location: "서울 영등포구",
+    district: "영등포",
+    latOffset: -0.004,
+    lngOffset: -0.004,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h53",
+    name: "한강수병원",
+    location: "서울 영등포구",
+    district: "영등포",
+    latOffset: 0.004,
+    lngOffset: 0.009,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h54",
+    name: "한강성심병원",
+    location: "서울 영등포구",
+    district: "영등포",
+    latOffset: 0.012,
+    lngOffset: 0.002,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h55",
+    name: "사랑의병원",
+    location: "서울 서초구",
+    district: "서초",
+    latOffset: 0.007,
+    lngOffset: -0.004,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h56",
+    name: "강남힐병원",
+    location: "서울 강남구",
+    district: "강남",
+    latOffset: -0.009,
+    lngOffset: 0.004,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h57",
+    name: "강남고려병원",
+    location: "서울 강남구",
+    district: "강남",
+    latOffset: 0.01,
+    lngOffset: 0.002,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h58",
+    name: "기쁨병원",
+    location: "서울 강남구",
+    district: "강남",
+    latOffset: -0.006,
+    lngOffset: 0.01,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h59",
+    name: "올바로병원",
+    location: "서울 강남구",
+    district: "강남",
+    latOffset: 0.002,
+    lngOffset: 0.012,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h60",
+    name: "강남베드로병원",
+    location: "서울 강남구",
+    district: "강남",
+    latOffset: -0.012,
+    lngOffset: -0.002,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h61",
+    name: "강남더드림병원",
+    location: "서울 강남구",
+    district: "강남",
+    latOffset: 0.006,
+    lngOffset: -0.01,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h62",
+    name: "국립경찰병원",
+    location: "서울 송파구",
+    district: "송파",
+    latOffset: 0.005,
+    lngOffset: 0.01,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+  buildSeoulMapHospital({
+    id: "map-h63",
+    name: "중앙보훈병원",
+    location: "서울 강동구",
+    district: "강동",
+    latOffset: -0.002,
+    lngOffset: 0.008,
+    category: "지역응급의료기관",
+    role: "경증 환자 수용 및 기본 진료",
+  }),
+];
+
+export const GYEONGGI_MAP_HOSPITALS: Hospital[] = [];
+
+export const INCHEON_MAP_HOSPITALS: Hospital[] = [];
+
+export const SEOUL_GYEONGGI_MAP_HOSPITALS: Hospital[] = [...SEOUL_MAP_HOSPITALS];
+
+export const ALL_FIRE_STATIONS: FireStation[] = [
+  buildFireStation({ id: "s-fs1", name: "종로소방서", location: "서울 종로/중구", region: "서울", lat: 37.5735, lng: 126.9786 }),
+  buildFireStation({ id: "s-fs2", name: "중부소방서", location: "서울 종로/중구", region: "서울", lat: 37.5641, lng: 126.9979 }),
+  buildFireStation({ id: "s-fs3", name: "성동소방서", location: "서울 동북권", region: "서울", lat: 37.5506, lng: 127.0409 }),
+  buildFireStation({ id: "s-fs4", name: "동대문소방서", location: "서울 동북권", region: "서울", lat: 37.5744, lng: 127.0396 }),
+  buildFireStation({ id: "s-fs5", name: "중랑소방서", location: "서울 동북권", region: "서울", lat: 37.6063, lng: 127.0923 }),
+  buildFireStation({ id: "s-fs6", name: "성북소방서", location: "서울 동북권", region: "서울", lat: 37.6067, lng: 127.0181 }),
+  buildFireStation({ id: "s-fs7", name: "강북소방서", location: "서울 동북권", region: "서울", lat: 37.6392, lng: 127.0157 }),
+  buildFireStation({ id: "s-fs8", name: "도봉소방서", location: "서울 동북권", region: "서울", lat: 37.6686, lng: 127.0473 }),
+  buildFireStation({ id: "s-fs9", name: "노원소방서", location: "서울 동북권", region: "서울", lat: 37.6542, lng: 127.0568 }),
+  buildFireStation({ id: "s-fs10", name: "은평소방서", location: "서울 서북권", region: "서울", lat: 37.6027, lng: 126.9291 }),
+  buildFireStation({ id: "s-fs11", name: "서대문소방서", location: "서울 서북권", region: "서울", lat: 37.5791, lng: 126.9368 }),
+  buildFireStation({ id: "s-fs12", name: "마포소방서", location: "서울 서북권", region: "서울", lat: 37.5662, lng: 126.9016 }),
+  buildFireStation({ id: "s-fs13", name: "양천소방서", location: "서울 서남권", region: "서울", lat: 37.5169, lng: 126.8664 }),
+  buildFireStation({ id: "s-fs14", name: "강서소방서", location: "서울 서남권", region: "서울", lat: 37.5509, lng: 126.8497 }),
+  buildFireStation({ id: "s-fs15", name: "구로소방서", location: "서울 서남권", region: "서울", lat: 37.4954, lng: 126.8874 }),
+  buildFireStation({ id: "s-fs16", name: "금천소방서", location: "서울 서남권", region: "서울", lat: 37.4568, lng: 126.8952 }),
+  buildFireStation({ id: "s-fs17", name: "영등포소방서", location: "서울 서남권", region: "서울", lat: 37.5263, lng: 126.8962 }),
+  buildFireStation({ id: "s-fs18", name: "동작소방서", location: "서울 서남권", region: "서울", lat: 37.5124, lng: 126.9395 }),
+  buildFireStation({ id: "s-fs19", name: "관악소방서", location: "서울 서남권", region: "서울", lat: 37.4784, lng: 126.9516 }),
+  buildFireStation({ id: "s-fs20", name: "서초소방서", location: "서울 동남권", region: "서울", lat: 37.4837, lng: 127.0324 }),
+  buildFireStation({ id: "s-fs21", name: "강남소방서", location: "서울 동남권", region: "서울", lat: 37.4959, lng: 127.0664 }),
+  buildFireStation({ id: "s-fs22", name: "송파소방서", location: "서울 동남권", region: "서울", lat: 37.5145, lng: 127.1066 }),
+  buildFireStation({ id: "s-fs23", name: "강동소방서", location: "서울 동남권", region: "서울", lat: 37.5301, lng: 127.1238 }),
+  buildFireStation({ id: "s-fs24", name: "용산소방서", location: "서울 동남권", region: "서울", lat: 37.5326, lng: 126.9906 }),
+  buildFireStation({ id: "s-fs25", name: "광진소방서", location: "서울 동남권", region: "서울", lat: 37.5384, lng: 127.0822 }),
 ];
 
 export const INITIAL_PATIENTS: Patient[] = [
